@@ -7,6 +7,7 @@ import scipy.io
 from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
+import _pickle as cPickle
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
@@ -14,7 +15,10 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 allz = []
 allthetamod = []
 
-for session in datasets:
+Hcorr = cPickle.load(open('../data/SWR_THAL_corr.pickle', 'rb'))
+
+# for session in datasets:
+for session in Hcorr.keys():
 	###############################################################################################################
 	# GENERAL INFO
 	###############################################################################################################
@@ -65,6 +69,8 @@ for session in datasets:
 			channelStructure[k[0]] = generalinfo['channelStructure'][0][0][1][0][i][0][0]
 		else:
 			channelStructure[k[0]] = []
+
+sys.exit()
 
 
 
@@ -140,6 +146,15 @@ v = evectors2[:,0:2]
 rY = np.dot(X, v)
 score2 = np.dot(allzth, rY)
 phi3 = np.mod(np.arctan2(score2[:,1], score2[:,0]), 2*np.pi)
+
+dynamical_system = {	'x'		:	X,
+						'dx'	:	dX,
+						'Mskew'	:	Mskew,
+						'Msym'	:	Msym,
+						'times'	:	times 	}
+
+import _pickle as cPickle
+cPickle.dump(dynamical_system, open('dynamical_system.pickle', 'wb'))
 
 ###############################################################################################################
 # CROSS-VALIDATION
