@@ -10,7 +10,7 @@ import _pickle as cPickle
 ###############################################################################################################
 # LOADING DYNAMICAL SYSTEM
 ###############################################################################################################
-dynamical_system = cPickle.load(open('dynamical_system.pickle', 'rb'))
+dynamical_system = cPickle.load(open('../data/dynamical_system.pickle', 'rb'))
 Mskew 	= dynamical_system['Mskew']
 Msymm 	= dynamical_system['Msym']
 x 		= dynamical_system['x']

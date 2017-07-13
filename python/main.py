@@ -15,10 +15,10 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 allz = []
 allthetamod = []
 
-Hcorr = cPickle.load(open('../data/SWR_THAL_corr.pickle', 'rb'))
+# Hcorr = cPickle.load(open('../data/SWR_THAL_corr.pickle', 'rb'))
 
-# for session in datasets:
-for session in Hcorr.keys():
+for session in datasets:
+# for session in Hcorr.keys():
 	###############################################################################################################
 	# GENERAL INFO
 	###############################################################################################################
@@ -70,7 +70,7 @@ for session in Hcorr.keys():
 		else:
 			channelStructure[k[0]] = []
 
-sys.exit()
+
 
 
 
@@ -170,6 +170,14 @@ allzth_sorted = allzth[index,:]
 allthetamodth_sorted = allthetamodth[index,:]
 scoreqr, phiqr = quartiles(allzth_sorted, times, n_fold = 4, dims = (6,2))
 
+###############################################################################################################
+# QUARTILES OF VARIANCE OF RIPPLE MODULATION
+###############################################################################################################
+variance = np.var(allzth, 1)
+index = np.argsort(variance)
+allzth_sorted2 = allzth[index,:]
+allthetamodth_sorted2 = allthetamodth[index,:]
+scoreva, phiva = quartiles(allzth_sorted2, times, n_fold = 4, dims = (6,2))
 
 ###############################################################################################################
 # PLOT
@@ -241,12 +249,7 @@ H, xedges, yedges = np.histogram2d(y, x, 50)
 H = gaussFilt(H, (3,3))
 imshow(H, origin = 'lower', interpolation = 'nearest', aspect = 'auto')
 
-
-
-#########################
-figure()
-
-subplot(2,4,1)
+subplot(2,3,6)
 theta_mod_toplot = allthetamodth[:,0]#,dist_cp>0.02]
 phi_toplot = np.hstack(phicv)
 x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
@@ -256,13 +259,11 @@ xlabel('Theta phase (rad)')
 ylabel('SWR PCA phase (rad)')
 title('Cross-Validation (10)')
 
-subplot(2,4,2)
-H, xedges, yedges = np.histogram2d(y, x, 50)
-H = gaussFilt(H, (3,3))
-imshow(H, origin = 'lower', interpolation = 'nearest', aspect = 'auto')
-title('Cross-Validation')
 
-subplot(2,4,3)
+#########################
+figure()
+
+subplot(2,5,1)
 tmp = []
 indexdata = np.linspace(0,len(allthetamodth_sorted),4+1).astype('int')	
 for i in range(4):
@@ -278,15 +279,97 @@ for i in range(len(phi_toplot)):
 	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
 	scatter(x,y, s = 10, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))
 legend()
-title('Quartiles')
+title('Theta Modulation')
 
 for i in range(4):	
-	subplot(2,4,4+i)	
+	subplot(2,5,2+i)	
 	x = np.concatenate([theta_mod_toplot[i], theta_mod_toplot[i], theta_mod_toplot[i]+2*np.pi, theta_mod_toplot[i]+2*np.pi])
 	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
-	scatter(x,y, s = 20, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))	
+	scatter(x,y, s = 10, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))	
+
+subplot(2,5,6)
+tmp = []
+indexdata = np.linspace(0,len(allthetamodth_sorted2),4+1).astype('int')	
+for i in range(4):
+	tmp.append(allthetamodth_sorted2[indexdata[i]:indexdata[i+1],0])
+theta_mod_toplot = np.array(tmp)
+phi_toplot = phiva
+idxColor = np.arange(1,5)
+idxColor = idxColor-np.min(idxColor)
+idxColor = idxColor/float(np.max(idxColor))
+colors = cm.rainbow(idxColor)
+for i in range(len(phi_toplot)):
+	x = np.concatenate([theta_mod_toplot[i], theta_mod_toplot[i], theta_mod_toplot[i]+2*np.pi, theta_mod_toplot[i]+2*np.pi])
+	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
+	scatter(x,y, s = 10, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))
+legend()
+title('Ripple Modulation')
+
+for i in range(4):	
+	subplot(2,5,7+i)	
+	x = np.concatenate([theta_mod_toplot[i], theta_mod_toplot[i], theta_mod_toplot[i]+2*np.pi, theta_mod_toplot[i]+2*np.pi])
+	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
+	scatter(x,y, s = 10, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))	
+
+
+
+
+# subplot(2,6,7)
+# H, xedges, yedges = np.histogram2d(y, x, 50)
+# H = gaussFilt(H, (3,3))
+# imshow(H, origin = 'lower', interpolation = 'nearest', aspect = 'auto')
+# title('Theta modulation')
+
+# subplot(2,6,8)
+# tmp = []
+# indexdata = np.linspace(0,len(allthetamodth_sorted),4+1).astype('int')	
+# for i in range(4):
+# 	tmp.append(allthetamodth_sorted[indexdata[i]:indexdata[i+1],0])
+# theta_mod_toplot = np.array(tmp)
+# phi_toplot = phiqr
+# idxColor = np.arange(1,5)
+# idxColor = idxColor-np.min(idxColor)
+# idxColor = idxColor/float(np.max(idxColor))
+# colors = cm.rainbow(idxColor)
+# for i in range(len(phi_toplot)):
+# 	x = np.concatenate([theta_mod_toplot[i], theta_mod_toplot[i], theta_mod_toplot[i]+2*np.pi, theta_mod_toplot[i]+2*np.pi])
+# 	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
+# 	scatter(x,y, s = 10, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))
+# legend()
+# title('Quartiles')
+
+# for i in range(4):	
+# 	subplot(2,6,3+i)	
+# 	x = np.concatenate([theta_mod_toplot[i], theta_mod_toplot[i], theta_mod_toplot[i]+2*np.pi, theta_mod_toplot[i]+2*np.pi])
+# 	y = np.concatenate([phi_toplot[i], phi_toplot[i] + 2*np.pi, phi_toplot[i], phi_toplot[i] + 2*np.pi])
+# 	scatter(x,y, s = 20, c = colors[i], label = str(np.round(np.mean(theta_mod_toplot[i]),2)))	
+
 
 show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
