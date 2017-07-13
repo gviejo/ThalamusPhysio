@@ -4,6 +4,7 @@ import pandas as pd
 import scipy.io
 from functions import *
 from pylab import *
+import ipyparallel
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
@@ -94,3 +95,56 @@ ripples = np.genfromtxt(data_directory+'/'+session+'/'+session.split("/")[1]+'.s
 # 3 : amplitude nombre de sd au dessus de bruit
 # 4 : frequence instantané
 ripples_ep = ripples[:,(0,2)]
+# restrict ripples_ep to sws_ep
+tmp = []
+for e in sws_ep:
+	start, stop = e
+	for s in ripples_ep:
+		substart, substop = s
+		if substart > start and substop < stop:
+			tmp.append(s)
+ripples_ep = np.array(tmp)
+# create time stamp from ripples
+ripples_tsd = ripples[:,(1,3,4)]
+# restrict rip_tsd to sws_ep
+tmp = []
+for e in sws_ep:
+	start, stop = e
+	for s in ripples_tsd:
+		middle = s[0]
+		if middle > start and middle < stop:
+			tmp.append(s)
+ripples_tsd = np.array(tmp)
+
+###############################################################################################################
+# JITTERED CROSS-CORRELATION FOR EACH CHANNEL
+###############################################################################################################
+clients = ipyparallel.Client()
+print(clients.ids)
+dview = clients.direct_view()
+
+rip_tsd = ripples_tsd[:,0]
+
+def cross_correlation(tsd):
+	spike_tsd, rip_tsd = tsd
+	import numpy as np
+	from functions import xcrossCorr
+	bin_size 	= 5 # ms 
+	nb_bins 	= 200
+	confInt 	= 0.95
+	nb_iter 	= 100
+	jitter  	= 150 # ms			
+	# return len(spikes_tsd)
+	return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
+
+for i in range(len(spikes)):
+	spikes[i] = spikes[i].flatten()
+
+
+Hcorr = dview.map_sync(cross_correlation, zip(spikes, [rip_tsd for i in range(len(spikes))]))
+
+
+# Hcorr 		= np.zeros((nb_bins+1,nb_channels))
+
+	
+	
