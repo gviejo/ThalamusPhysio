@@ -26,7 +26,8 @@ dview = clients.direct_view()
 def compute_population_correlation(session):
 	data_directory = '/mnt/DataGuillaume/MergedData/'
 	import numpy as np	
-	import scipy.io			
+	import scipy.io	
+	import scipy.stats		
 	import _pickle as cPickle
 	import time
 	import os, sys	
@@ -93,7 +94,7 @@ def compute_population_correlation(session):
 			if t[0] > start and t[0] < stop:
 				tmp.append(t)
 	linear_speed_tsd = np.array(tmp)
-	index = (linear_speed_tsd[:,1] > 1.0)*1.0
+	index = (linear_speed_tsd[:,1] > 2.0)*1.0
 	start = np.where((index[1:]-index[0:-1] == 1))[0]+1
 	stop = np.where((index[1:]-index[0:-1] == -1))[0]
 	if len(start) == len(stop):
@@ -289,7 +290,7 @@ def compute_population_correlation(session):
 			# matrix of distance between creux
 			interval_mat = np.vstack(ep[:,0]) - ep[:,0]
 			interval_index = np.logical_and(interval_mat < 5.0, interval_mat > 0.0)
-			corr = np.zeros(interval_mat.shape)
+			corr = np.ones(interval_mat.shape)
 			subpop = pop[i]
 			index = np.tril_indices(n_theta[i],-1)
 			for j, k in zip(index[0], index[1]):	
@@ -332,7 +333,7 @@ def compute_population_correlation(session):
 			# matrix of distance between creux
 			interval_mat = np.vstack(ep[:,0]) - ep[:,0]
 			interval_index = np.logical_and(interval_mat < 5.0, interval_mat > 0.0)
-			corr = np.zeros(interval_mat.shape)
+			corr = np.ones(interval_mat.shape)
 			subpop = pop[i]
 			index = np.tril_indices(n_theta[i],-1)
 			for j, k in zip(index[0], index[1]):	
@@ -355,6 +356,8 @@ def compute_population_correlation(session):
 		cPickle.dump(tosave, open('../data/corr_pop/'+session.split("/")[1]+".pickle", 'wb'))
 
 		return session
+	else:
+		return 0
 
 a = dview.map_sync(compute_population_correlation, datasets)
 	
