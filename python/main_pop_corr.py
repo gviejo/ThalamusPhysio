@@ -5,8 +5,6 @@ import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
 import scipy.io
 from functions import *
-from pylab import *
-from sklearn.decomposition import PCA
 import _pickle as cPickle
 import time
 import os, sys
