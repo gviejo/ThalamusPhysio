@@ -154,7 +154,7 @@ dynamical_system = {	'x'		:	X,
 						'times'	:	times 	}
 
 import _pickle as cPickle
-cPickle.dump(dynamical_system, open('dynamical_system.pickle', 'wb'))
+cPickle.dump(dynamical_system, open('../data/dynamical_system.pickle', 'wb'))
 
 ###############################################################################################################
 # CROSS-VALIDATION
@@ -178,6 +178,21 @@ index = np.argsort(variance)
 allzth_sorted2 = allzth[index,:]
 allthetamodth_sorted2 = allthetamodth[index,:]
 scoreva, phiva = quartiles(allzth_sorted2, times, n_fold = 4, dims = (6,2))
+
+
+###############################################################################################################
+# TO SAVE
+###############################################################################################################
+datatosave = {	'allzth'		:	allzth,
+				'eigen'			:	eigen,
+				'times' 		: 	times,
+				'allthetamodth' :	allthetamodth,
+				'phi' 			: 	phi,
+				'zpca'			: 	zpca,
+				'phi2' 			: 	phi2				
+				}	
+
+cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
 
 ###############################################################################################################
 # PLOT
