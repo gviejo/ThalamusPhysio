@@ -157,6 +157,7 @@ def quartiles(data, times, n_fold = 4, dims = (6,2)):
 	scorecv = []
 	phicv = []
 	n = dims[0]
+	jpca = []
 	for i in range(n_fold):
 		Xtrain = data[indexdata[i]:indexdata[i+1], :]		
 		pca = PCA(n_components = n)
@@ -195,8 +196,10 @@ def quartiles(data, times, n_fold = 4, dims = (6,2)):
 		phi = np.mod(np.arctan2(score[:,1], score[:,0]), 2*np.pi)
 		scorecv.append(score)
 		phicv.append(phi)
+		jpca.append(rX)
 
-	return np.array(scorecv), np.array(phicv)
+	index = np.array([np.arange(indexdata[i],indexdata[i+1]) for i in range(len(indexdata)-1)])
+	return np.array(scorecv), np.array(phicv), index, np.array(jpca)
 
 def crossCorr(t1, t2, binsize, nbins):
 	''' 
@@ -235,7 +238,7 @@ def crossCorr(t1, t2, binsize, nbins):
 			C[j] += k
 
 	for j in range(nbins):
-		C[j] = C[j] / (nt1 * binsize / 10000)
+		C[j] = C[j] / (nt1 * binsize)
 
 	return C
 
@@ -254,7 +257,7 @@ def crossCorr2(t1, t2, binsize, nbins):
 		# count each occurences 
 		count = np.array([np.sum(index == i) for i in range(2,mwind.shape[0]-1)])
 		allcount += np.array(count)
-	allcount = allcount/(float(len(t1))*binsize / 10000)
+	allcount = allcount/(float(len(t1))*binsize)
 	return allcount
 
 def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):	
@@ -267,3 +270,20 @@ def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):
 	mean_jitter_count = jitter_count.mean(0)		
 	
 	return (allcount - mean_jitter_count)/np.std(allcount)
+
+def corr_circular_(alpha1, alpha2):
+	axis = None
+	from pycircstat import center
+	from scipy.stats import norm
+	alpha1_bar, alpha2_bar = center(alpha1, alpha2, axis=axis)
+	num = np.sum(np.sin(alpha1_bar) * np.sin(alpha2_bar), axis=axis)
+	den = np.sqrt(np.sum(np.sin(alpha1_bar) ** 2, axis=axis) * np.sum(np.sin(alpha2_bar) ** 2, axis=axis))
+	rho = num/den
+	# pvalue
+	l20 = np.mean(np.sin(alpha1 - alpha1_bar)**2)
+	l02 = np.mean(np.sin(alpha2 - alpha2_bar)**2)
+	l22 = np.mean((np.sin(alpha1-alpha1_bar)**2) * (np.sin(alpha2 - alpha2_bar)**2))
+	ts = np.sqrt((float(len(alpha1)) * l20 * l02)/l22) * rho
+	pval = 2.0 * (1.0 - norm.cdf(np.abs(ts)))
+
+	return rho, pval

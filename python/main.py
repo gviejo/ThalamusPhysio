@@ -16,7 +16,8 @@ allz = []
 allthetamod = []
 
 # Hcorr = cPickle.load(open('../data/SWR_THAL_corr.pickle', 'rb'))
-
+session_index = []
+count = 0
 for session in datasets:
 # for session in Hcorr.keys():
 	###############################################################################################################
@@ -42,7 +43,8 @@ for session in datasets:
 	###############################################################################################################
 	# THETA 
 	###############################################################################################################
-	thetaInfo = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/ThetaInfo.mat')
+	print(data_directory+session+'/Analysis/ThetaInfo.mat')	
+	thetaInfo = scipy.io.loadmat(data_directory+session+'/Analysis/ThetaInfo.mat')
 	thMod = thetaInfo['thetaModREM'][shankIndex,:] # all neurons vs 
 	allthetamod.append(thMod[shankIndex,:])
 	###############################################################################################################
@@ -60,6 +62,8 @@ for session in datasets:
 	z = np.array([gaussFilt(z[:,i], (10,)) for i in range(z.shape[1])]).transpose()
 
 	allz.append(z.transpose())
+	session_index.append(np.ones(z.shape[1])*count)
+	count+=1.0
 	###############################################################################################################
 	# CHANNEL STRUCTURE
 	###############################################################################################################
@@ -72,7 +76,7 @@ for session in datasets:
 
 
 
-
+session_index = np.hstack(session_index)
 
 allz = np.concatenate(allz, axis = 0)
 allthetamod = np.concatenate(allthetamod, axis = 0)
@@ -86,7 +90,7 @@ tmp = np.unique(np.concatenate([tmp1,tmp2,tmp3]))
 if len(tmp):
 	allzth = np.delete(allz, tmp, axis = 0)
 	allthetamodth = np.delete(allthetamod, tmp, axis = 0)
-
+	session_index = np.delete(session_index, tmp)
 
 ###############################################################################################################
 # PCA
@@ -136,6 +140,7 @@ u = np.vstack([
 			]).transpose()
 # PRoject X
 rX = np.dot(X, u)
+rX = rX*-1.0
 score = np.dot(allzth, rX)
 phi2 = np.mod(np.arctan2(score[:,1], score[:,0]), 2*np.pi)
 # Construct the two vectors for projection with MSYM
@@ -159,7 +164,7 @@ cPickle.dump(dynamical_system, open('../data/dynamical_system.pickle', 'wb'))
 ###############################################################################################################
 # CROSS-VALIDATION
 ###############################################################################################################
-scorecv, phicv = crossValidation(allzth, times, n_cv = 5, dims = (6,2))
+# scorecv, phicv = crossValidation(allzth, times, n_cv = 5, dims = (6,2))
 
 ###############################################################################################################
 # QUARTILES OF THETA FORCES MODULATION
@@ -168,7 +173,7 @@ force = allthetamodth[:,2]
 index = np.argsort(force)
 allzth_sorted = allzth[index,:]
 allthetamodth_sorted = allthetamodth[index,:]
-scoreqr, phiqr = quartiles(allzth_sorted, times, n_fold = 4, dims = (6,2))
+scoretheta, phitheta, indextheta, jpca_theta = quartiles(allzth_sorted, times, n_fold = 2, dims = (6,2))
 
 ###############################################################################################################
 # QUARTILES OF VARIANCE OF RIPPLE MODULATION
@@ -177,7 +182,7 @@ variance = np.var(allzth, 1)
 index = np.argsort(variance)
 allzth_sorted2 = allzth[index,:]
 allthetamodth_sorted2 = allthetamodth[index,:]
-scoreva, phiva = quartiles(allzth_sorted2, times, n_fold = 4, dims = (6,2))
+scorerip, phirip, indexrip, jpca_rip = quartiles(allzth_sorted2, times, n_fold = 2, dims = (6,2))
 
 
 ###############################################################################################################
@@ -189,7 +194,20 @@ datatosave = {	'allzth'		:	allzth,
 				'allthetamodth' :	allthetamodth,
 				'phi' 			: 	phi,
 				'zpca'			: 	zpca,
-				'phi2' 			: 	phi2				
+				'phi2' 			: 	phi2,
+				'rX'			: 	rX,
+				'jscore'		:	score,
+				'variance'		:	variance,
+				'force'			: 	force,
+				'scoretheta'	:	scoretheta,
+				'scorerip'		:	scorerip,
+				'phitheta'		:	phitheta,
+				'phirip'		:	phirip,
+				'indextheta'	:	indextheta,
+				'indexrip'		:	indexrip,
+				'jpca_theta'	: 	jpca_theta,
+				'jpca_rip'		: 	jpca_rip
+
 				}	
 
 cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
@@ -273,6 +291,8 @@ plot(x, y, 'o', markersize = 1)
 xlabel('Theta phase (rad)')
 ylabel('SWR PCA phase (rad)')
 title('Cross-Validation (10)')
+
+
 
 
 #########################

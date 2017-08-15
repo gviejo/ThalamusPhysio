@@ -21,15 +21,16 @@ times 			= 	data['times' 		]
 allthetamodth 	= 	data['allthetamodth']		
 phi 			= 	data['phi' 			]		
 zpca 			= 	data['zpca'			]		
-phi2			= 	data['phi2' 		]	 					
+phi2			= 	data['phi2' 		]	 	
+jX				= 	data['rX'			]
+jscore			= 	data['jscore'		]
+force 			= 	data['force'		] # theta modulation
+variance 		= 	data['variance'		] # ripple modulation
 
-# sort allzth 
-index = np.argsort(allzth[:,np.where(times == 0)[0][0]])
-index = index[::-1]
-allzthsorted = allzth[index,:]
-zpca = zpca[index,:]
-phi = phi[index]
-allthetamodth = allthetamodth[index,:]
+
+# reverce jPCA
+# jX = jX*-1.0
+
 
 ###############################################################################################################
 # PLOT
@@ -85,97 +86,88 @@ from mpl_toolkits.axes_grid.inset_locator import inset_axes
 
 fig = figure(figsize = figsize(1))
 # outer = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)#, height_ratios = [1,3])#, width_ratios = [1.6,0.7]) 
-gs = gridspec.GridSpec(6,3, wspace = 0.4, hspace = 1.0)
+gs = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.4)
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[0])
 
-subplot(gs[0:2,0])
-imshow(allzthsorted, aspect = 'auto', cmap = 'viridis')
-xticks(np.arange(20,200,40), (times[np.arange(20,200,40)]).astype('int'))
-yticks([0,1000], ['0', '1000'])
-cb = colorbar()
-cb.set_label("z", labelpad = -13, y = 1.08, rotation = 0)
-ylabel("Thalamic neurons", labelpad = -5.0)
+ax = subplot(gs[0,0])
+simpleaxis(ax)	
+plot(times, eigen.transpose(), linewidth = 1)
+ylabel("PC")
 xlabel("Time from SWR (ms)")
-title("Sharp-waves Ripples \n modulation", fontsize = 5)
+title("PCA", fontsize = 5)
 
-# gs = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec = outer[1], hspace = 0.6)
 ax = subplot(gs[0, 1])
 simpleaxis(ax)	
-cmap = plt.get_cmap('viridis')
-cNorm = matplotlib.colors.Normalize(vmin = allzthsorted[:,100].min(), vmax = allzthsorted[:,100].max())
-scalarMap = matplotlib.cm.ScalarMappable(norm = cNorm, cmap = cmap)
-for i in range(0,10):
-	colorVal = scalarMap.to_rgba(allzthsorted[i,100])
-	plot(times, allzthsorted[i], color = colorVal, linewidth = 1.0, alpha = 0.8)
-ylabel('z')
-title('Positive modulation', fontsize = 5, y = 1)
-ax = subplot(gs[1, 1])	
-simpleaxis(ax)
-for i in range(len(allzthsorted)-10,len(allzthsorted)):
-	colorVal = scalarMap.to_rgba(allzthsorted[i,100])
-	plot(times, allzthsorted[i], color = colorVal, linewidth = 1.0, alpha = 0.8)	
-ylabel('z')
+plot(times, jX[:,0], color = '#386150')
+plot(times, jX[:,1], color = '#58b09c')
+ylabel('jPC')
 xlabel('Time from SWR (ms)')
-title('Negative modulation', fontsize = 5, y = 1)
-
+title('jPCA', fontsize = 5, y = 1)
 
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[2])
-ax = subplot(gs[0:2, 2])
+
+ax = subplot(gs[0, 2])
+# axis('off')
 simpleaxis(ax)
-plot(times, eigen[0], label = 'PC 1', color = 'black')
-plot(times, eigen[1], label = 'PC 2', color = 'red')
-ylabel('PC score')
-legend(fancybox = False, edgecolor = 'None')
-title('Principal Component \n analysis', fontsize = 5)
-xlabel('Time from SWR')
+plot(jX[0,0], jX[0,1], 'o', markersize = 3, color = '#5c7d6f')
+plot(jX[:,0], jX[:,1], linewidth = 0.8, color = '#5c7d6f')
+arrow(jX[-10,0],jX[-10,1],jX[-1,0]-jX[-10,0],jX[-1,1]-jX[-10,1], color = '#5c7d6f', head_width = 0.01)
+ax.spines['left'].set_bounds(np.min(jX[:,1]), np.min(jX[:,1]+0.1))
+ax.spines['bottom'].set_bounds(np.min(jX[:,0]), np.min(jX[:,0]+0.1))
+xticks([], [])
+yticks([], [])
+ax.xaxis.set_label_coords(0.15, -0.02)
+ax.yaxis.set_label_coords(-0.02, 0.15)
+ylabel('jPC2')
+xlabel('jPC1')
 
 
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[3:5])
-ax = subplot(gs[2:,0:2])
+ax = subplot(gs[1:,0:2])
 # ax = subplot2grid(gs[0], colspan = 2, rowspan = 2)
 # simpleaxis(ax)
 axis('off')
-axhline(0, xmin = 0.25, xmax = 0.75, color = 'black', linewidth = 0.7)
-axvline(0, ymin = 0.25, ymax = 0.75, color = 'red', linewidth = 0.7)
-text(14.0, -1.7, 'PC1', fontsize = 5)
-text(0.7, 15.0, 'PC2', fontsize = 5)
-xlim(-35, 35)
-ylim(-35, 35)
+axhline(0, xmin = 0.25, xmax = 0.75, color = '#386150', linewidth = 0.7)
+axvline(0, ymin = 0.25, ymax = 0.75, color = '#58b09c', linewidth = 0.7)
+text(19.0, -2.0, 'jPC1', fontsize = 5)
+text(0.7, 20.0, 'jPC2', fontsize = 5)
+xlim(-50, 50)
+ylim(-45, 45)
 # tmp = ax.get_position().bounds
 # ai = axes([tmp[0]+tmp[2]*0.7,tmp[1]+tmp[3]*0.8, 0.06, 0.07])
 # ai.get_xaxis().tick_bottom()
 # ai.get_yaxis().tick_left()
 # ai.plot(np.random.rand(100), 'o')
-x, y = (np.cos(phi), np.sin(phi))
-r = 29+np.random.rand(len(x))
-
+x, y = (np.cos(phi2), np.sin(phi2))
+r = 40+2*np.random.rand(len(x))
 # scatter(x*r, y*r, s = 3, c = phi, cmap = cm.get_cmap('hsv'), zorder = 2)
-scatter(x*r, y*r, s = 2, c = allzthsorted[:,100], cmap = cm.get_cmap('viridis'), zorder = 2)
-x2, y2 = (np.cos(allthetamodth[:,0]), np.sin(allthetamodth[:,0]))
-r2 = 35
-# scatter(x2*r2, y2*r2, s = 3, c = 'grey')
-# for n in range(0,len(zpca),2):
-# 	plot([zpca[n][0], x[n]*r], [zpca[n][1], y[n]*r], color = 'grey', linewidth = 0.2, alpha = 0.2, zorder = 1)
-scatter(zpca[:,0], zpca[:,1], s = 2, c = allzthsorted[:,100], cmap = cm.get_cmap('viridis'), zorder = 2)
-# text(0, 37, 'Theta phase'  ,horizontalalignment='center')
-text(0, 32, '$\mathbf{SWR\ PCA\ phase}$',horizontalalignment='center')
-# lower_left = 1001
-lower_left = 1010
-arrow(zpca[lower_left,0],zpca[lower_left,1], x[lower_left]*r[lower_left]-zpca[lower_left,0]+3, y[lower_left]*r[lower_left]-zpca[lower_left,1]+3,
+scatter(x*r, y*r, s = 2, c = allzth[:,100], cmap = cm.get_cmap('viridis'), zorder = 2)
+scatter(jscore[:,0], jscore[:,1], s = 2, c = allzth[:,100], cmap = cm.get_cmap('viridis'), zorder = 2)
+text(0, 32, '$\mathbf{SWR\ jPCA\ phase}$',horizontalalignment='center')
+lower_left = np.argmin(jscore[:,0])
+arrow(jscore[lower_left,0],jscore[lower_left,1], x[lower_left]*r[lower_left]-jscore[lower_left,0]+3, y[lower_left]*r[lower_left]-jscore[lower_left,1]+3,
 		head_width = 0.8,
 		linewidth = 0.5
 		)
-text(-25.,5, 'arctan2', rotation = -15.0)
+text(-35.,-7, 'arctan2', rotation = 13.0)
+cbaxes = fig.add_axes([0.25, 0.45, 0.01, 0.04])
+cmap = cm.viridis
+norm = matplotlib.colors.Normalize(allzth[:,100].min(), allzth[:,100].max())
+cb = matplotlib.colorbar.ColorbarBase(cbaxes, cmap = cmap, norm = norm)
+cbaxes.axes.set_xlabel('SWR \n modulation')
+
+
+
 
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[4])
-ax = subplot(gs[2:4,2])
+ax = subplot(gs[1,2])
 simpleaxis(ax)
 # dist_cp = np.sqrt(np.sum(np.power(eigen[0] - eigen[1], 2))
 theta_mod_toplot = allthetamodth[:,0]#,dist_cp>0.02]
-phi_toplot = phi #[dist_cp>0.02]
+phi_toplot = phi2 #[dist_cp>0.02]
 x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
 y = np.concatenate([phi_toplot, phi_toplot + 2*np.pi, phi_toplot, phi_toplot + 2*np.pi])
-scatter(x, y, s = 0.8, c = np.tile(allzthsorted[:,100],4), cmap = cm.get_cmap('viridis'), zorder = 2, alpha = 0.5)
+scatter(x, y, s = 0.8, c = np.tile(allzth[:,100],4), cmap = cm.get_cmap('viridis'), zorder = 2, alpha = 0.5)
 xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
 yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
 xlabel('Theta phase (rad)', labelpad = 1.2)
@@ -183,7 +175,7 @@ ylabel('SWR PCA phase (rad)')
 
 
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[5])
-ax = subplot(gs[4:6,2])
+ax = subplot(gs[2,2])
 H, xedges, yedges = np.histogram2d(y, x, 50)
 H = gaussFilt(H, (3,3))
 H = H - H.min()
@@ -206,7 +198,10 @@ cbaxes = fig.add_axes([0.63, 0.11, 0.01, 0.04])
 cb = colorbar(axp, cax = cbaxes, ticks = [0, 1])
 cbaxes.yaxis.set_ticks_position('left')
 
+# correlation coefficient
+r, p = corr_circular_(theta_mod_toplot, phi2)
+print(r, p)
 
-savefig("../figures/fig1.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
-os.system("evince ../figures/fig1.pdf &")
+savefig("../figures/fig2.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+os.system("evince ../figures/fig2.pdf &")
 
