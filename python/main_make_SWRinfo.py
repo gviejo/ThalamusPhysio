@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import scipy.io
 from functions import *
-from pylab import *
+# from pylab import *
 import ipyparallel
 import os, sys
 import neuroseries as nts
@@ -22,6 +22,9 @@ import time
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
+
+clients = ipyparallel.Client()	
+dview = clients.direct_view()
 
 start2 = time.time()
 for session in datasets:	
@@ -45,8 +48,7 @@ for session in datasets:
 	spikes_sws 		= {n:spikes[n].restrict(sws_ep) for n in spikes.keys()}
 	
 	# plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, spikes_sws)	
-	clients = ipyparallel.Client()	
-	dview = clients.direct_view()
+
 
 	def cross_correlation(tsd):
 		spike_tsd, rip_tsd = tsd
@@ -55,7 +57,7 @@ for session in datasets:
 		bin_size 	= 5 # ms 
 		nb_bins 	= 200
 		confInt 	= 0.95
-		nb_iter 	= 2
+		nb_iter 	= 1000
 		jitter  	= 150 # ms			
 		# return len(spikes_tsd)
 		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
