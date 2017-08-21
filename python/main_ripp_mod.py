@@ -1,4 +1,15 @@
+#!/usr/bin/env python
 
+'''
+    File name: main_ripp_mod.py
+    Author: Guillaume Viejo
+    Date created: 16/08/2017    
+    Python Version: 3.5.2
+
+Sharp-waves ripples modulation 
+Used to make figure 1
+
+'''
 
 import numpy as np
 import pandas as pd
@@ -19,21 +30,10 @@ allthetamod = []
 session_index = []
 count = 0
 for session in datasets:
-# for session in Hcorr.keys():
-	###############################################################################################################
-	# GENERAL INFO
-	###############################################################################################################
-	generalinfo = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/GeneralInfo.mat')
 
-	###############################################################################################################
-	# SHANK INFO
-	###############################################################################################################
-	shankStructure = {}
-	for k,i in zip(generalinfo['shankStructure'][0][0][0][0],range(len(generalinfo['shankStructure'][0][0][0][0]))):
-		if len(generalinfo['shankStructure'][0][0][1][0][i]):
-			shankStructure[k[0]] = generalinfo['shankStructure'][0][0][1][0][i][0]
-		else :
-			shankStructure[k[0]] = []
+	generalinfo = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/GeneralInfo.mat')
+	shankStructure = loadShankStructure(generalinfo)
+	
 
 	spikedata = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/SpikeData.mat')
 	shank = spikedata['shank']

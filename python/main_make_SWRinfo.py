@@ -1,160 +1,77 @@
+#!/usr/bin/env python
+'''
+    File name: main_ripp_mod.py
+    Author: Guillaume Viejo
+    Date created: 16/08/2017    
+    Python Version: 3.5.2
+
+Sharp-waves ripples modulation 
+Used to make figure 1
+# TODO ASK ADRIEN ABOUT THE RESTRICTION BY SLEEP_EP
+'''
 import numpy as np
 import pandas as pd
-# from matplotlib.pyplot import plot,show,draw
 import scipy.io
 from functions import *
-# from pylab import *
+from pylab import *
 import ipyparallel
-import os
+import os, sys
+import neuroseries as nts
+import time
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
 
+start2 = time.time()
+for session in datasets:	
+	start = time.time()
 
-for session in datasets:
+	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
+	shankStructure 	= loadShankStructure(generalinfo)
+	spikes 			= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])
+	wake_ep 		= loadEpoch(data_directory+session, 'wake')
+	sleep_ep 		= loadEpoch(data_directory+session, 'sleep')
+	sws_ep 			= loadEpoch(data_directory+session, 'sws')
+	rem_ep 			= loadEpoch(data_directory+session, 'rem')
+	sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
+	sws_ep 			= sleep_ep.intersect(sws_ep)
+	sws_ep			= sws_ep
+	rem_ep 			= sleep_ep.intersect(rem_ep)
+	rip_ep,rip_tsd 	= loadRipples(data_directory+session)
+	rip_ep			= sws_ep.intersect(rip_ep)	
+	rip_tsd 		= rip_tsd.restrict(sws_ep)
+	
+	spikes_sws 		= {n:spikes[n].restrict(sws_ep) for n in spikes.keys()}
+	
+	# plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, spikes_sws)	
+	clients = ipyparallel.Client()	
+	dview = clients.direct_view()
 
-	###############################################################################################################
-	# GENERAL INFO
-	###############################################################################################################
-	generalinfo = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/GeneralInfo.mat')
+	def cross_correlation(tsd):
+		spike_tsd, rip_tsd = tsd
+		import numpy as np
+		from functions import xcrossCorr
+		bin_size 	= 5 # ms 
+		nb_bins 	= 200
+		confInt 	= 0.95
+		nb_iter 	= 2
+		jitter  	= 150 # ms			
+		# return len(spikes_tsd)
+		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
 
-	###############################################################################################################
-	# SHANK INFO
-	###############################################################################################################
-	shankStructure = {}
-	for k,i in zip(generalinfo['shankStructure'][0][0][0][0],range(len(generalinfo['shankStructure'][0][0][0][0]))):
-		if len(generalinfo['shankStructure'][0][0][1][0][i]):
-			shankStructure[k[0]] = generalinfo['shankStructure'][0][0][1][0][i][0]
-		else :
-			shankStructure[k[0]] = []
+	spikes_list = [spikes_sws[i].as_units('ms').index.values for i in spikes_sws.keys()]
 
-	###############################################################################################################
-	# SPIKE
-	###############################################################################################################
-	spikedata = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/SpikeData.mat')
-	shank = spikedata['shank']
-	shankIndex = np.where(shank == shankStructure['thalamus'])[0]
+	Hcorr = dview.map_sync(cross_correlation, zip(spikes_list, [rip_tsd.as_units('ms').index.values for i in spikes_sws.keys()]))
 
-	nb_channels = len(spikedata['S'][0][0][0])
-	spikes = []
-	# for i in range(nb_channels):
-	for i in shankIndex:	
-		spikes.append(spikedata['S'][0][0][0][i][0][0][0][1][0][0][2])
-		
+	Hcorr = np.array(Hcorr)
 
-	###############################################################################################################
-	# BEHAVIORAL EPOCHS
-	###############################################################################################################
-	behepochs = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/BehavEpochs.mat')
-	sleep_pre_ep = behepochs['sleepPreEp'][0][0]
-	sleep_pre_ep = np.hstack([sleep_pre_ep[1],sleep_pre_ep[2]])
-	sleep_pre_ep_index = behepochs['sleepPreEpIx'][0]
-	sleep_post_ep = behepochs['sleepPostEp'][0][0]
-	sleep_post_ep = np.hstack([sleep_post_ep[1],sleep_post_ep[2]])
-	sleep_post_ep_index = behepochs['sleepPostEpIx'][0]
-	sleep_ep = np.vstack((sleep_pre_ep, sleep_post_ep))
+	stop = time.time()
+	print(stop - start, ' s')
+	
+	datatosave[session] = {'Hcorr':Hcorr}
 
-	if session.split("/")[1]+'-states.mat' in os.listdir(data_directory+'/'+session+'/'):
-		sws = scipy.io.loadmat(data_directory+'/'+session+'/'+session.split("/")[1]+'-states.mat')['states'][0]
-		# need to create an interval set from sws.
-		# sws = {2,3}
-		# rem = 5
-		# is = 4
-		# wake = 1
-		index = np.logical_or(sws == 2, sws == 3)*1.0
-		index = index[1:] - index[0:-1]
-		sws_ep = np.hstack((np.vstack(np.where(index == 1)[0]),
-							np.vstack(np.where(index == -1)[0])))
-
-		# merge sleep ep
-		corresp = sleep_ep[1:,0].astype('int') == sleep_ep[0:-1,1].astype('int')
-		start = sleep_ep[0,0]
-		tmp = []
-		for i,j in zip(corresp,range(len(corresp))):
-			if not i:
-				stop = sleep_ep[j,1]
-				tmp.append([start, stop])
-				start = sleep_ep[j+1,0]
-		tmp.append([start, sleep_ep[-1,1]])
-		sleep_ep = np.array(tmp)
-
-		# restrict sleep_ep by sws_ep
-		tmp = []
-		for e in sleep_ep:
-			start, stop = e
-			for s in sws_ep:
-				substart, substop = s
-				if substart > start and substop < stop:
-					tmp.append(s)
-		sws_ep = np.array(tmp)
-
-		###############################################################################################################
-		# RIPPLES 
-		###############################################################################################################
-		ripples = np.genfromtxt(data_directory+'/'+session+'/'+session.split("/")[1]+'.sts.RIPPLES')
-		# create interval set from ripples
-		# 0 : debut
-		# 1 : milieu
-		# 2 : fin
-		# 3 : amplitude nombre de sd au dessus de bruit
-		# 4 : frequence instantané
-		ripples_ep = ripples[:,(0,2)]
-		# restrict ripples_ep to sws_ep
-		tmp = []
-		for e in sws_ep:
-			start, stop = e
-			for s in ripples_ep:
-				substart, substop = s
-				if substart > start and substop < stop:
-					tmp.append(s)
-		ripples_ep = np.array(tmp)
-		# create time stamp from ripples
-		ripples_tsd = ripples[:,(1,3,4)]
-		# restrict rip_tsd to sws_ep
-		tmp = []
-		for e in sws_ep:
-			start, stop = e
-			for s in ripples_tsd:
-				middle = s[0]
-				if middle > start and middle < stop:
-					tmp.append(s)
-		ripples_tsd = np.array(tmp)
-
-		###############################################################################################################
-		# JITTERED CROSS-CORRELATION FOR EACH NEURON
-		###############################################################################################################
-		clients = ipyparallel.Client()
-		print(clients.ids)
-		dview = clients.direct_view()
-
-		rip_tsd = ripples_tsd[:,0]
-
-		def cross_correlation(tsd):
-			spike_tsd, rip_tsd = tsd
-			import numpy as np
-			from functions import xcrossCorr
-			bin_size 	= 5 # ms 
-			nb_bins 	= 200
-			confInt 	= 0.95
-			nb_iter 	= 2
-			jitter  	= 150 # ms			
-			# return len(spikes_tsd)
-			return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
-
-		for i in range(len(spikes)):
-			spikes[i] = spikes[i].flatten()
-
-
-		Hcorr = dview.map_sync(cross_correlation, zip(spikes, [rip_tsd for i in range(len(spikes))]))
-
-		Hcorr = np.array(Hcorr)
-
-		datatosave[session] = {'Hcorr':Hcorr,
-							}
-
-	else:
-		print(session)
+print("Total ", time.time() - start2, ' s')
 
 import _pickle as cPickle
 cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', 'wb'))

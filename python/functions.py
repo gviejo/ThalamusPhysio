@@ -221,9 +221,9 @@ def crossCorr(t1, t2, binsize, nbins):
 
 	for i1 in range(nt1):
 		lbound = t1[i1] - w
-		while t2[i2] < lbound and i2 < nt2:
+		while i2 < nt2 and t2[i2] < lbound:
 			i2 = i2+1
-		while t2[i2-1] > lbound and i2 > 1:
+		while i2 > 1 and t2[i2-1] > lbound:
 			i2 = i2-1
 
 		rbound = lbound
@@ -231,7 +231,7 @@ def crossCorr(t1, t2, binsize, nbins):
 		for j in range(nbins):
 			k = 0
 			rbound = rbound+binsize
-			while t2[l] < rbound and l < nt2:
+			while l < nt2 and t2[l] < rbound:
 				l = l+1
 				k = k+1
 
@@ -257,7 +257,7 @@ def crossCorr2(t1, t2, binsize, nbins):
 		# count each occurences 
 		count = np.array([np.sum(index == i) for i in range(2,mwind.shape[0]-1)])
 		allcount += np.array(count)
-	allcount = allcount/(float(len(t1))*binsize)
+	# allcount = allcount/(float(len(t1))*binsize / 10000)
 	return allcount
 
 def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):	
@@ -287,3 +287,122 @@ def corr_circular_(alpha1, alpha2):
 	pval = 2.0 * (1.0 - norm.cdf(np.abs(ts)))
 
 	return rho, pval
+
+#########################################################
+# WRAPPERS
+#########################################################
+def loadShankStructure(generalinfo):
+	shankStructure = {}
+	for k,i in zip(generalinfo['shankStructure'][0][0][0][0],range(len(generalinfo['shankStructure'][0][0][0][0]))):
+		if len(generalinfo['shankStructure'][0][0][1][0][i]):
+			shankStructure[k[0]] = generalinfo['shankStructure'][0][0][1][0][i][0]
+		else :
+			shankStructure[k[0]] = []
+	
+	return shankStructure	
+
+def loadSpikeData(path, index):
+	import scipy.io
+	import neuroseries as nts
+	spikedata = scipy.io.loadmat(path)
+	shank = spikedata['shank']
+	shankIndex = np.where(shank == index)[0]
+
+	spikes = {}	
+	for i in shankIndex:	
+		spikes[i] = nts.Ts(spikedata['S'][0][0][0][i][0][0][0][1][0][0][2], time_units = 's')
+
+	return spikes
+
+def loadEpoch(path, epoch):
+	import scipy.io
+	import neuroseries as nts
+	sampling_freq = 1250	
+	behepochs = scipy.io.loadmat(path+'/Analysis/BehavEpochs.mat')
+
+	if epoch == 'wake':
+		wake_ep = np.hstack([behepochs['wakeEp'][0][0][1],behepochs['wakeEp'][0][0][2]])
+		return nts.IntervalSet(wake_ep[:,0], wake_ep[:,1], time_units = 's')
+
+	elif epoch == 'sleep':
+		sleep_pre_ep, sleep_post_ep = [], []
+		if 'sleepPreEp' in behepochs.keys():
+			sleep_pre_ep = behepochs['sleepPreEp'][0][0]
+			sleep_pre_ep = np.hstack([sleep_pre_ep[1],sleep_pre_ep[2]])
+			sleep_pre_ep_index = behepochs['sleepPreEpIx'][0]
+		if 'sleepPostEp' in behepochs.keys():
+			sleep_post_ep = behepochs['sleepPostEp'][0][0]
+			sleep_post_ep = np.hstack([sleep_post_ep[1],sleep_post_ep[2]])
+			sleep_post_ep_index = behepochs['sleepPostEpIx'][0]
+		if len(sleep_pre_ep) and len(sleep_post_ep):
+			sleep_ep = np.vstack((sleep_pre_ep, sleep_post_ep))
+		elif len(sleep_pre_ep):
+			sleep_ep = sleep_pre_ep
+		elif len(sleep_post_ep):
+			sleep_ep = sleep_post_ep						
+		return nts.IntervalSet(sleep_ep[:,0], sleep_ep[:,1], time_units = 's')
+
+	elif epoch == 'sws':
+		import os
+		file1 = path.split("/")[-1]+'.sts.SWS'
+		file2 = path.split("/")[-1]+'-states.mat'
+		listdir = os.listdir(path)
+		if file1 in listdir:
+			sws = np.genfromtxt(path+'/'+file1)/float(sampling_freq)
+			return nts.IntervalSet.drop_short_intervals(nts.IntervalSet(sws[:,0], sws[:,1], time_units = 's'), 0.0)
+
+		elif file2 in listdir:
+			sws = scipy.io.loadmat(path+'/'+file2)['states'][0]
+			index = np.logical_or(sws == 2, sws == 3)*1.0
+			index = index[1:] - index[0:-1]
+			start = np.where(index == 1)[0]+1
+			stop = np.where(index == -1)[0]
+			return nts.IntervalSet.drop_short_intervals(nts.IntervalSet(start, stop, time_units = 's', expect_fix=True), 0.0)
+
+	elif epoch == 'rem':
+		import os
+		file1 = path.split("/")[-1]+'.sts.REM'
+		file2 = path.split("/")[-1]+'-states.mat'
+		listdir = os.listdir(path)	
+		if file1 in listdir:
+			rem = np.genfromtxt(path+'/'+file1)/float(sampling_freq)
+			return nts.IntervalSet(rem[:,0], rem[:,1], time_units = 's')
+
+		elif file2 in listdir:
+			rem = scipy.io.loadmat(path+'/'+file2)['states'][0]
+			index = (rem == 5)*1.0
+			index = index[1:] - index[0:-1]
+			start = np.where(index == 1)[0]+1
+			stop = np.where(index == -1)[0]
+			return nts.IntervalSet(start, stop, time_units = 's', expect_fix=True)
+
+def loadRipples(path):	
+	# 0 : debut
+	# 1 : milieu
+	# 2 : fin
+	# 3 : amplitude nombre de sd au dessus de bruit
+	# 4 : frequence instantan
+	import neuroseries as nts
+	ripples = np.genfromtxt(path+'/'+path.split("/")[-1]+'.sts.RIPPLES')
+	return (nts.IntervalSet(ripples[:,0], ripples[:,2], time_units = 's'), 
+			nts.Ts(ripples[:,1], time_units = 's'))
+
+def plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, ripples_ep, spikes_sws):
+	from pylab import figure, plot, legend, show
+	figure()
+	plot([wake_ep['start'][0], wake_ep['end'][0]], np.zeros(2), '-', color = 'blue', label = 'wake')
+	[plot([wake_ep['start'][i], wake_ep['end'][i]], np.zeros(2), '-', color = 'blue') for i in range(len(wake_ep))]
+	plot([sleep_ep['start'][0], sleep_ep['end'][0]], np.zeros(2), '-', color = 'green', label = 'sleep')
+	[plot([sleep_ep['start'][i], sleep_ep['end'][i]], np.zeros(2), '-', color = 'green') for i in range(len(sleep_ep))]	
+	plot([rem_ep['start'][0], rem_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'orange', label = 'rem')
+	[plot([rem_ep['start'][i], rem_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'orange') for i in range(len(rem_ep))]
+	plot([sws_ep['start'][0], sws_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'red', label = 'sws')
+	[plot([sws_ep['start'][i], sws_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'red') for i in range(len(sws_ep))]	
+	plot([ripples_ep['start'][0], ripples_ep['end'][0]],  np.zeros(2)+0.2, '-', color = 'black', label = 'ripples')
+	[plot([ripples_ep['start'][i], ripples_ep['end'][i]], np.zeros(2)+0.2, '-', color = 'black') for i in range(len(ripples_ep))]	
+	for n in spikes_sws.keys():
+		plot(spikes_sws[n].index.values, np.zeros(spikes_sws[n].size)+0.4, 'o')
+
+
+	legend()
+	show()
