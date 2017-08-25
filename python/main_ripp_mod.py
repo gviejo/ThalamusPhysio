@@ -23,6 +23,18 @@ import _pickle as cPickle
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
+tmp = cPickle.load(open('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', 'rb'))
+z = []
+
+for session in tmp.keys():
+	z.append(tmp[session]['Hcorr'])
+
+
+z = np.vstack(z)
+sys.exit()
+
+
+
 allz = []
 allthetamod = []
 
@@ -33,7 +45,7 @@ for session in datasets:
 
 	generalinfo = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/GeneralInfo.mat')
 	shankStructure = loadShankStructure(generalinfo)
-	
+
 
 	spikedata = scipy.io.loadmat(data_directory+'/'+session+'/Analysis/SpikeData.mat')
 	shank = spikedata['shank']
