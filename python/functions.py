@@ -302,6 +302,7 @@ def loadShankStructure(generalinfo):
 	return shankStructure	
 
 def loadSpikeData(path, index):
+	# units shoud be the value to convert in s 
 	import scipy.io
 	import neuroseries as nts
 	spikedata = scipy.io.loadmat(path)
@@ -311,6 +312,12 @@ def loadSpikeData(path, index):
 	spikes = {}	
 	for i in shankIndex:	
 		spikes[i] = nts.Ts(spikedata['S'][0][0][0][i][0][0][0][1][0][0][2], time_units = 's')
+
+	a = spikes[0].as_units('s').index.values	
+	if ((a[-1]-a[0])/60.)/60. > 20. : # VERY BAD
+		spikes = {}	
+		for i in shankIndex:	
+			spikes[i] = nts.Ts(spikedata['S'][0][0][0][i][0][0][0][1][0][0][2]*0.0001, time_units = 's')
 
 	return spikes
 

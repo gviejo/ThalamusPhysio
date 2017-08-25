@@ -38,16 +38,15 @@ for session in datasets:
 	sws_ep 			= loadEpoch(data_directory+session, 'sws')
 	rem_ep 			= loadEpoch(data_directory+session, 'rem')
 	sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
-	sws_ep 			= sleep_ep.intersect(sws_ep)
-	sws_ep			= sws_ep
+	sws_ep 			= sleep_ep.intersect(sws_ep)	
 	rem_ep 			= sleep_ep.intersect(rem_ep)
 	rip_ep,rip_tsd 	= loadRipples(data_directory+session)
 	rip_ep			= sws_ep.intersect(rip_ep)	
 	rip_tsd 		= rip_tsd.restrict(sws_ep)
-	
+
 	spikes_sws 		= {n:spikes[n].restrict(sws_ep) for n in spikes.keys()}
-	
-	# plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, spikes_sws)	
+
+	plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, {0:spikes[0]})	
 
 
 	def cross_correlation(tsd):
@@ -57,7 +56,7 @@ for session in datasets:
 		bin_size 	= 5 # ms 
 		nb_bins 	= 200
 		confInt 	= 0.95
-		nb_iter 	= 1000
+		nb_iter 	= 10
 		jitter  	= 150 # ms			
 		# return len(spikes_tsd)
 		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
@@ -67,11 +66,14 @@ for session in datasets:
 	Hcorr = dview.map_sync(cross_correlation, zip(spikes_list, [rip_tsd.as_units('ms').index.values for i in spikes_sws.keys()]))
 
 	Hcorr = np.array(Hcorr)
-
+	
 	stop = time.time()
 	print(stop - start, ' s')
-	
+		
 	datatosave[session] = {'Hcorr':Hcorr}
+
+
+
 
 print("Total ", time.time() - start2, ' s')
 
