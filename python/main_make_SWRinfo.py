@@ -47,7 +47,7 @@ for session in datasets:
 	spikes_sws 		= {n:spikes[n].restrict(sws_ep) for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
 
 	# plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, {0:spikes[27]})	
-
+	
 	def cross_correlation(tsd):
 		spike_tsd, rip_tsd = tsd
 		import numpy as np
@@ -55,11 +55,12 @@ for session in datasets:
 		bin_size 	= 5 # ms 
 		nb_bins 	= 200
 		confInt 	= 0.95
-		nb_iter 	= 6
+		nb_iter 	= 1000
 		jitter  	= 150 # ms					
 		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
 
 	spikes_list = [spikes_sws[i].as_units('ms').index.values for i in spikes_sws.keys()]
+	
 
 	Hcorr = dview.map_sync(cross_correlation, zip(spikes_list, [rip_tsd.as_units('ms').index.values for i in spikes_sws.keys()]))
 	Hcorr = np.array(Hcorr)	

@@ -16,7 +16,10 @@ def gaussFilt(X, wdim = (1,)):
 		gw = gaussian(N1, S1)
 		gw = gw/gw.sum()
 		#convolution
-		filtered_X = convolve1d(X, gw)
+		if len(X.shape) == 2:
+			filtered_X = convolve1d(X, gw, axis = 1)
+		elif len(X.shape) == 1:
+			filtered_X = convolve1d(X, gw)
 		return filtered_X	
 	elif len(wdim) == 2:
 		from scipy.signal import convolve2d
@@ -201,6 +204,86 @@ def quartiles(data, times, n_fold = 4, dims = (6,2)):
 	index = np.array([np.arange(indexdata[i],indexdata[i+1]) for i in range(len(indexdata)-1)])
 	return np.array(scorecv), np.array(phicv), index, np.array(jpca)
 
+def downsample(tsd, up, down):
+	import scipy.signal
+	import neuroseries as nts
+	dtsd = scipy.signal.resample_poly(tsd.values, up, down)
+	dt = tsd.as_units('s').index.values[np.arange(0, tsd.size, down)]
+	return nts.Tsd(dt, dtsd, time_units = 's')
+
+def getPhase(lfp, fmin, fmax, nbins, fsamp, power = False):
+	""" Continuous Wavelets Transform
+		return phase of lfp in a Tsd array
+	"""
+	import neuroseries as nts
+	from Wavelets import MyMorlet as Morlet
+	cw 				= Morlet(lfp.values, fmin, fmax, nbins, fsamp)
+	cwt 			= cw.getdata()
+	cwt 			= np.flip(cwt, axis = 0)
+	wave 			= np.abs(cwt)**2.0
+	phases 			= np.arctan2(np.imag(cwt), np.real(cwt)).transpose()	
+	cwt 			= None
+	index 			= np.argmax(wave, 0)
+	# memory problem here, need to loop
+	phase 			= np.zeros(len(index))	
+	for i in range(len(index)) : phase[i] = phases[i,index[i]]
+	phases 			= None
+	if power: 
+		pwrs 		= cw.getpower()		
+		pwr 		= np.zeros(len(index))		
+		for i in range(len(index)):
+			pwr[i] = pwrs[index[i],i]	
+		return nts.Tsd(lfp.index.values, phase), nts.Tsd(lfp.index.values, pwr)
+	else:
+		return nts.Tsd(lfp.index.values, phase)
+
+def getPeaksandTroughs(lfp, min_points):
+	"""	 
+		At 250Hz (1250/5), 2 troughs cannont be closer than 20 (min_points) points (if theta reaches 12Hz);		
+	"""
+	import neuroseries as nts
+	import scipy.signal
+	troughs 		= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmin(lfp.values, order =min_points)[0]], time_units = 'us')
+	peaks 			= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmax(lfp.values, order =min_points)[0]], time_units = 'us')
+	tmp 			= nts.Tsd(troughs.realign(peaks, align = 'next').as_series().drop_duplicates('first')) # eliminate double peaks
+	peaks			= peaks[tmp.index]
+	tmp 			= nts.Tsd(peaks.realign(troughs, align = 'prev').as_series().drop_duplicates('first')) # eliminate double troughs
+	troughs 		= troughs[tmp.index]
+	return (peaks, troughs)
+
+def getCircularMean(theta, high = np.pi, low = -np.pi):
+	""" 
+	see CircularMean.m in TSToolbox_Utils/Stats/CircularMean.m
+	or Fisher N.I. Analysis of Circular Data p. 30-35
+	"""
+	from scipy.stats import circmean
+	n 			= float(len(theta))
+	alpha 		= 0.05	
+	S 			= np.sum(np.sin(theta))
+	C 			= np.sum(np.cos(theta))
+	mu 			= circmean(theta, high, low)
+	Rmean		= np.sqrt(S**2.0 + C**2.0) / n
+	rho2 		= np.sum(np.cos(2*(theta - mu)))/n
+	delta		= (1 - rho2) / (2* Rmean**2)
+	sigma		= np.sqrt(-2.0*np.log(Rmean))
+	Z 			= n * Rmean**2.0
+	pval 		= np.exp(-Z)*(1+(2*Z-Z**2.0)/(4*n) - (24*Z - 132*Z**2.0 + 76*Z**3.0 - 9*Z**4.0)/(288.0*n**2.0))
+	if Rmean < 0.5:
+		Kappa 	= 2.0*Rmean + Rmean**3.0 + 5*(Rmean**5.0)/6.0
+	elif Rmean >= 0.53 and Rmean < 0.85:
+		Kappa 	= -0.4 + 1.39*Rmean + 0.43/(1-Rmean)
+	else:
+		Kappa 	= 1/(Rmean**3.0 - 4*Rmean**2.0 + 3*Rmean)
+	if n < 15:
+		if Kappa < 2:
+			Kappa = np.max([Kappa-2/(n*Kappa),0])
+		else:
+			Kappa = (((n-1)**3) * Kappa)/(n**3 + n)
+	return (mu, Kappa, pval)
+
+#########################################################
+# CORRELATION
+#########################################################
 def crossCorr(t1, t2, binsize, nbins):
 	''' 
 		Fast crossCorr 
@@ -262,14 +345,20 @@ def crossCorr2(t1, t2, binsize, nbins):
 
 def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):	
 	allcount = crossCorr(t1, t2, binsize, nbins)
-	# JITTERING 
+	# JITTERING by randomizing the interval position
 	jitter_count = np.zeros((nbiter,nbins+1))
-	for i in range(nbiter):		
-		t1_jitter = t1+np.random.uniform(-jitter,+jitter,len(t1))
-		jitter_count[i,:] = crossCorr(t1_jitter, t2, binsize, nbins)
+	t0 = t2[0]
+	iset = np.hstack((np.vstack(t2[0:-1]),np.vstack(t2[1:])))		
+	length = iset[:,1] - iset[:,0]
+	t2_shuffle = np.zeros(len(t2))
+	t2_shuffle[0] = t0
+	for i in range(nbiter):				
+		shuff = np.random.permutation(length)		
+		t2_shuffle[1:] = t0+np.cumsum(shuff)		
+		jitter_count[i,:] = crossCorr(t1, t2_shuffle, binsize, nbins)
 	mean_jitter_count = jitter_count.mean(0)		
-	
-	return (allcount - mean_jitter_count)/np.std(allcount)
+	std_jitter_count = jitter_count.std(0)
+	return (allcount - mean_jitter_count)/std_jitter_count
 
 def corr_circular_(alpha1, alpha2):
 	axis = None
@@ -329,7 +418,7 @@ def loadEpoch(path, epoch):
 
 	if epoch == 'wake':
 		wake_ep = np.hstack([behepochs['wakeEp'][0][0][1],behepochs['wakeEp'][0][0][2]])
-		return nts.IntervalSet(wake_ep[:,0], wake_ep[:,1], time_units = 's')
+		return nts.IntervalSet(wake_ep[:,0], wake_ep[:,1], time_units = 's').drop_short_intervals(0.0)
 
 	elif epoch == 'sleep':
 		sleep_pre_ep, sleep_post_ep = [], []
@@ -373,7 +462,7 @@ def loadEpoch(path, epoch):
 		listdir = os.listdir(path)	
 		if file1 in listdir:
 			rem = np.genfromtxt(path+'/'+file1)/float(sampling_freq)
-			return nts.IntervalSet(rem[:,0], rem[:,1], time_units = 's')
+			return nts.IntervalSet(rem[:,0], rem[:,1], time_units = 's').drop_short_intervals(0.0)
 
 		elif file2 in listdir:
 			rem = scipy.io.loadmat(path+'/'+file2)['states'][0]
@@ -381,7 +470,7 @@ def loadEpoch(path, epoch):
 			index = index[1:] - index[0:-1]
 			start = np.where(index == 1)[0]+1
 			stop = np.where(index == -1)[0]
-			return nts.IntervalSet(start, stop, time_units = 's', expect_fix=True)
+			return nts.IntervalSet(start, stop, time_units = 's', expect_fix=True).drop_short_intervals(0.0)
 
 def loadRipples(path):	
 	# 0 : debut
@@ -393,6 +482,72 @@ def loadRipples(path):
 	ripples = np.genfromtxt(path+'/'+path.split("/")[-1]+'.sts.RIPPLES')
 	return (nts.IntervalSet(ripples[:,0], ripples[:,2], time_units = 's'), 
 			nts.Ts(ripples[:,1], time_units = 's'))
+
+def loadTheta(path):
+	import scipy.io
+	import neuroseries as nts
+	thetaInfo = scipy.io.loadmat(path)
+	troughs = nts.Tsd(thetaInfo['thetaTrghs'][0][0][2].flatten(), thetaInfo['thetaTrghs'][0][0][3].flatten(), time_units = 's')
+	peaks = nts.Tsd(thetaInfo['thetaPks'][0][0][2].flatten(), thetaInfo['thetaPks'][0][0][3].flatten(), time_units = 's')
+	good_ep = nts.IntervalSet(thetaInfo['goodEp'][0][0][1], thetaInfo['goodEp'][0][0][2], time_units = 's')	
+	tmp = (good_ep.as_units('s')['end'].iloc[-1] - good_ep.as_units('s')['start'].iloc[0])	
+	if (tmp/60.)/60. > 20. : # VERY BAD
+		good_ep = nts.IntervalSet(	good_ep.as_units('s')['start']*0.0001, 
+									good_ep.as_units('s')['end']*0.0001,
+									time_units = 's'
+								)
+	return good_ep	
+	# troughs = troughs.restrict(good_ep)
+	# peaks = peaks.restrict(good_ep)
+	# return troughs, peaks
+
+def loadSWRMod(path):
+	import _pickle as cPickle
+	tmp = cPickle.load(open(path, 'rb'))
+	z = []
+	for session in tmp.keys():
+		z.append(tmp[session]['Hcorr'])
+	z = np.vstack(z)
+	return z
+
+def loadThetaMod(path):
+	import _pickle as cPickle	
+	tmp = cPickle.load(open(path, 'rb'))
+	z = {'wake':[],'rem':[]}
+	for k in z.keys():
+		for session in tmp.keys():
+			z[k].append(tmp[session]['theta_mod'][k])
+		z[k] = np.vstack(z[k])
+	return z	
+
+def loadXML(path):
+	from xml.dom import minidom
+	xmldoc = minidom.parse(path)
+	nChannels = xmldoc.getElementsByTagName('acquisitionSystem')[0].getElementsByTagName('nChannels')[0].firstChild.data
+	fs = xmldoc.getElementsByTagName('fieldPotentials')[0].getElementsByTagName('lfpSamplingRate')[0].firstChild.data
+	return int(nChannels), int(fs)
+
+def loadLFP(path, n_channels=90, channel=64, frequency=1250.0, precision='int16'):
+	import neuroseries as nts
+
+	f = open(path, 'rb')
+	startoffile = f.seek(0, 0)
+	endoffile = f.seek(0, 2)
+	bytes_size = 2
+	
+	n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
+	duration = n_samples/frequency
+	f.close()
+	with open(path, 'rb') as f:
+		data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
+	timestep = np.arange(0, len(data))/frequency
+	return nts.Tsd(timestep, data, time_units = 's')
+
+def loadSpeed(path):
+	import neuroseries as nts
+	import scipy.io
+	raw = scipy.io.loadmat(path)
+	return nts.Tsd(raw['speed'][:,0], raw['speed'][:,1], time_units = 's')
 
 def plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, ripples_ep, spikes_sws):
 	from pylab import figure, plot, legend, show
@@ -413,3 +568,25 @@ def plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, ripples_ep, spikes_sws):
 
 	legend()
 	show()
+
+def plotThetaEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rem_peaks, rem_troughs, wake_peaks, wake_troughs):
+	from pylab import figure, plot, legend, show
+	figure()
+	plot([wake_ep['start'][0], wake_ep['end'][0]], np.zeros(2), '-', color = 'blue', label = 'wake')
+	[plot([wake_ep['start'][i], wake_ep['end'][i]], np.zeros(2), '-', color = 'blue') for i in range(len(wake_ep))]
+	plot([sleep_ep['start'][0], sleep_ep['end'][0]], np.zeros(2), '-', color = 'green', label = 'sleep')
+	[plot([sleep_ep['start'][i], sleep_ep['end'][i]], np.zeros(2), '-', color = 'green') for i in range(len(sleep_ep))]	
+	plot([rem_ep['start'][0], rem_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'orange', label = 'rem')
+	[plot([rem_ep['start'][i], rem_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'orange') for i in range(len(rem_ep))]
+	plot([sws_ep['start'][0], sws_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'red', label = 'sws')
+	[plot([sws_ep['start'][i], sws_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'red') for i in range(len(sws_ep))]	
+
+	plot(rem_peaks.index.values, np.zeros(rem_peaks.size)+0.4, 'o')
+	plot(wake_peaks.index.values, np.zeros(wake_peaks.size)+0.4, 'o')
+	plot(rem_troughs.index.values, np.zeros(rem_troughs.size)+0.3, '+')
+	plot(wake_troughs.index.values, np.zeros(wake_troughs.size)+0.3, '+')
+
+	legend()
+	show()
+
+

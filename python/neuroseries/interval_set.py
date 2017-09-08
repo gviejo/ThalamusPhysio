@@ -89,8 +89,9 @@ class IntervalSet(pd.DataFrame):
         Time span of the interval set.
 
         :return:  an IntervalSet with a single interval encompassing the whole IntervalSet
+        @G.Viejo : bug here, should index both self with iloc otherwise bug in some case        
         """
-        s = self['start'][0]
+        s = self['start'].iloc[0]
         e = self['end'].iloc[-1]
         return IntervalSet(s, e)
 
@@ -219,6 +220,21 @@ class IntervalSet(pd.DataFrame):
         """
         threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.int64).ravel(), time_units)[0]
         return self.ix[(self['end']-self['start']) > threshold]
+
+    def drop_long_intervals(self, threshold, time_units=None):
+        """
+        Drops the long intervals in the interval set.
+        ADDED BY G Viejo, 28/08/2017
+        :param threshold: time threshold for "long" intervals
+        :type threshold: numeric
+        :param time_units: the time units for the threshold
+        :type time_units: str
+        :return: a copied IntervalSet with the dropped intervals
+        :rtype: neuroseries.interval_set.IntervalSet
+        """
+        threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.int64).ravel(), time_units)[0]
+        return self.ix[(self['end']-self['start']) < threshold]
+
 
     def as_units(self, units=None):
         """
