@@ -19,37 +19,25 @@ import neuroseries as nts
 import time
 from Wavelets import MyMorlet as Morlet
 
-clients = ipyparallel.Client()
-print(clients.ids)
-dview = clients.direct_view()
+# clients = ipyparallel.Client()
+# print(clients.ids)
+# dview = clients.direct_view()
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
 
-def compute_spindle_feedback(session):
-	import numpy as np
-	import pandas as pd
-	import scipy.io
-	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadXML, loadLFP, downsample, getPhase
-	# from pylab import *
-	import ipyparallel
-	import os, sys
-	import neuroseries as nts
-	import time
-	from Wavelets import MyMorlet as Morlet
-	data_directory = '/mnt/DataGuillaume/MergedData/'
-# allkappa = []
-# meankappa = []
+allkappa = []
+meankappa = []
 
-# session_rip_in_thl_spind_mod = []
-# session_rip_in_thl_spind_phase = {}
-# session_rip_in_hpc_spind_mod = []
-# session_rip_in_hpc_spind_phase = {}
-# phase = {}
+session_rip_in_thl_spind_mod = []
+session_rip_in_thl_spind_phase = {}
+session_rip_in_hpc_spind_mod = []
+session_rip_in_hpc_spind_phase = {}
+phase = {}
 
-# for session in datasets:
-	# print("session"+session)	
+for session in datasets:
+	print("session"+session)	
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
 	shankStructure 	= loadShankStructure(generalinfo)	
 	if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
@@ -69,50 +57,50 @@ def compute_spindle_feedback(session):
 ##################################################################################################
 # LOAD THALAMIC SPINDLES
 ##################################################################################################		
-	# tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.thl")[:,0]
-	# tmp 			= tmp.reshape(len(tmp)//2,2)
-	# spind_thl_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')
+	tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.thl")[:,0]
+	tmp 			= tmp.reshape(len(tmp)//2,2)
+	spind_thl_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')
 ##################################################################################################
 # LOAD HIPP SPINDLES
 ##################################################################################################		
-	# tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.hpc")[:,0]
-	# tmp 			= tmp.reshape(len(tmp)//2,2)
-	# spind_hpc_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')	
+	tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.hpc")[:,0]
+	tmp 			= tmp.reshape(len(tmp)//2,2)
+	spind_hpc_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')	
 ##################################################################################################
 # PHASE KAPPA
 ##################################################################################################		
-	# spind_ep 		= spind_hpc_ep.intersect(spind_thl_ep).drop_short_intervals(0.0)
+	spind_ep 		= spind_hpc_ep.intersect(spind_thl_ep).drop_short_intervals(0.0)
 	phase_hpc 		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = False)
 	phase_hpc		= phase_hpc.restrict(sws_ep)
 	phase_thl 		= getPhase(lfp_thl, 8, 18, 16, fs/5., power = False)
 	phase_thl		= phase_thl.restrict(sws_ep)
 
-	# spind_mod1 		= computePhaseModulation(phase_hpc, spikes, spind_hpc_ep)
-	# spind_mod2 		= computePhaseModulation(phase_thl[0], spikes, spind_thl_ep)
-	# spind_mod3 		= computePhaseModulation(phase_hpc, spikes, spind_ep)
-	# spind_mod4 		= computePhaseModulation(phase_thl[0], spikes, spind_ep)
+	spind_mod1 		= computePhaseModulation(phase_hpc, spikes, spind_hpc_ep)
+	spind_mod2 		= computePhaseModulation(phase_thl[0], spikes, spind_thl_ep)
+	spind_mod3 		= computePhaseModulation(phase_hpc, spikes, spind_ep)
+	spind_mod4 		= computePhaseModulation(phase_thl[0], spikes, spind_ep)
 	
-	# kappa 			= np.vstack([spind_mod1[:,2], spind_mod3[:,2], spind_mod2[:,2], spind_mod4[:,2]]).transpose()
+	kappa 			= np.vstack([spind_mod1[:,2], spind_mod3[:,2], spind_mod2[:,2], spind_mod4[:,2]]).transpose()
 
-	# kappa[np.isnan(kappa)] = 0.0
+	kappa[np.isnan(kappa)] = 0.0
 
-	# allkappa.append(kappa)
-	# meankappa.append(kappa.mean(0))
+	allkappa.append(kappa)
+	meankappa.append(kappa.mean(0))
 
 ##################################################################################################
 # Phase of RIPPLES in SPINDLES
 ##################################################################################################		
-	# rip_ep,rip_tsd 	= loadRipples(data_directory+session)
-	# rip_ep			= sws_ep.intersect(rip_ep)	
-	# rip_tsd 		= rip_tsd.restrict(sws_ep)		
+	rip_ep,rip_tsd 	= loadRipples(data_directory+session)
+	rip_ep			= sws_ep.intersect(rip_ep)	
+	rip_tsd 		= rip_tsd.restrict(sws_ep)		
 
-	# rip_in_thl_spind_mod, rip_in_thl_spind_phase = computePhaseModulation(phase_thl, {0:rip_tsd}, spind_thl_ep, True)
-	# rip_in_hpc_spind_mod, rip_in_hpc_spind_phase = computePhaseModulation(phase_hpc, {0:rip_tsd}, spind_hpc_ep, True)
+	rip_in_thl_spind_mod, rip_in_thl_spind_phase = computePhaseModulation(phase_thl, {0:rip_tsd}, spind_thl_ep, True)
+	rip_in_hpc_spind_mod, rip_in_hpc_spind_phase = computePhaseModulation(phase_hpc, {0:rip_tsd}, spind_hpc_ep, True)
 
-	# session_rip_in_thl_spind_mod.append(rip_in_thl_spind_mod)
-	# session_rip_in_hpc_spind_mod.append(rip_in_hpc_spind_mod)
-	# session_rip_in_thl_spind_phase[session] = rip_in_thl_spind_phase
-	# session_rip_in_hpc_spind_phase[session] = rip_in_hpc_spind_phase
+	session_rip_in_thl_spind_mod.append(rip_in_thl_spind_mod)
+	session_rip_in_hpc_spind_mod.append(rip_in_hpc_spind_mod)
+	session_rip_in_thl_spind_phase[session] = rip_in_thl_spind_phase
+	session_rip_in_hpc_spind_phase[session] = rip_in_hpc_spind_phase
 
 
 ##################################################################################################
@@ -122,9 +110,13 @@ def compute_spindle_feedback(session):
 	store['lfp_thl'] = lfp_thl.as_dataframe()
 	store['lfp_hpc'] = lfp_hpc.as_series()
 	store.close()	
+	
+	store_spike 	= pd.HDFStore("../data/spikes_thalamus/"+session.split("/")[1]+".spk")
+	for n in spikes.keys(): store_spike[str(n)] = spikes[n].as_series()
+	store_spike.close()
 
 
-a = dview.map_sync(compute_spindle_feedback, datasets)
+
 
 
 
