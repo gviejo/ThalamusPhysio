@@ -60,8 +60,8 @@ for session in datasets:
 		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
 
 	spikes_list = [spikes_sws[i].as_units('ms').index.values for i in spikes_sws.keys()]
-	
 
+	sys.exit()
 	Hcorr = dview.map_sync(cross_correlation, zip(spikes_list, [rip_tsd.as_units('ms').index.values for i in spikes_sws.keys()]))
 	Hcorr = np.array(Hcorr)	
 	stop = time.time()

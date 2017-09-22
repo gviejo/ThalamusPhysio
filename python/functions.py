@@ -208,8 +208,11 @@ def downsample(tsd, up, down):
 	import scipy.signal
 	import neuroseries as nts
 	dtsd = scipy.signal.resample_poly(tsd.values, up, down)
-	dt = tsd.as_units('s').index.values[np.arange(0, tsd.size, down)]
-	return nts.Tsd(dt, dtsd, time_units = 's')
+	dt = tsd.as_units('s').index.values[np.arange(0, tsd.shape[0], down)]
+	if len(tsd.shape) == 1:		
+		return nts.Tsd(dt, dtsd, time_units = 's')
+	elif len(tsd.shape) == 2:
+		return nts.TsdFrame(dt, dtsd, time_units = 's')
 
 def getPhase(lfp, fmin, fmax, nbins, fsamp, power = False):
 	""" Continuous Wavelets Transform
@@ -217,25 +220,36 @@ def getPhase(lfp, fmin, fmax, nbins, fsamp, power = False):
 	"""
 	import neuroseries as nts
 	from Wavelets import MyMorlet as Morlet
-	cw 				= Morlet(lfp.values, fmin, fmax, nbins, fsamp)
-	cwt 			= cw.getdata()
-	cwt 			= np.flip(cwt, axis = 0)
-	wave 			= np.abs(cwt)**2.0
-	phases 			= np.arctan2(np.imag(cwt), np.real(cwt)).transpose()	
-	cwt 			= None
-	index 			= np.argmax(wave, 0)
-	# memory problem here, need to loop
-	phase 			= np.zeros(len(index))	
-	for i in range(len(index)) : phase[i] = phases[i,index[i]]
-	phases 			= None
-	if power: 
-		pwrs 		= cw.getpower()		
-		pwr 		= np.zeros(len(index))		
-		for i in range(len(index)):
-			pwr[i] = pwrs[index[i],i]	
-		return nts.Tsd(lfp.index.values, phase), nts.Tsd(lfp.index.values, pwr)
-	else:
-		return nts.Tsd(lfp.index.values, phase)
+	if isinstance(lfp, nts.time_series.TsdFrame):
+		allphase 		= nts.TsdFrame(lfp.index.values, np.zeros(lfp.shape))
+		allpwr 			= nts.TsdFrame(lfp.index.values, np.zeros(lfp.shape))
+		for i in lfp.keys():
+			allphase[i], allpwr[i] = getPhase(lfp[i], fmin, fmax, nbins, fsamp, power = True)
+		if power:
+			return allphase, allpwr
+		else:
+			return allphase			
+
+	elif isinstance(lfp, nts.time_series.Tsd):
+		cw 				= Morlet(lfp.values, fmin, fmax, nbins, fsamp)
+		cwt 			= cw.getdata()
+		cwt 			= np.flip(cwt, axis = 0)
+		wave 			= np.abs(cwt)**2.0
+		phases 			= np.arctan2(np.imag(cwt), np.real(cwt)).transpose()	
+		cwt 			= None
+		index 			= np.argmax(wave, 0)
+		# memory problem here, need to loop
+		phase 			= np.zeros(len(index))	
+		for i in range(len(index)) : phase[i] = phases[i,index[i]]
+		phases 			= None
+		if power: 
+			pwrs 		= cw.getpower()		
+			pwr 		= np.zeros(len(index))		
+			for i in range(len(index)):
+				pwr[i] = pwrs[index[i],i]	
+			return nts.Tsd(lfp.index.values, phase), nts.Tsd(lfp.index.values, pwr)
+		else:
+			return nts.Tsd(lfp.index.values, phase)
 
 def getPeaksandTroughs(lfp, min_points):
 	"""	 
@@ -243,13 +257,20 @@ def getPeaksandTroughs(lfp, min_points):
 	"""
 	import neuroseries as nts
 	import scipy.signal
-	troughs 		= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmin(lfp.values, order =min_points)[0]], time_units = 'us')
-	peaks 			= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmax(lfp.values, order =min_points)[0]], time_units = 'us')
-	tmp 			= nts.Tsd(troughs.realign(peaks, align = 'next').as_series().drop_duplicates('first')) # eliminate double peaks
-	peaks			= peaks[tmp.index]
-	tmp 			= nts.Tsd(peaks.realign(troughs, align = 'prev').as_series().drop_duplicates('first')) # eliminate double troughs
-	troughs 		= troughs[tmp.index]
-	return (peaks, troughs)
+	if isinstance(lfp, nts.time_series.Tsd):
+		troughs 		= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmin(lfp.values, order =min_points)[0]], time_units = 'us')
+		peaks 			= nts.Tsd(lfp.as_series().iloc[scipy.signal.argrelmax(lfp.values, order =min_points)[0]], time_units = 'us')
+		tmp 			= nts.Tsd(troughs.realign(peaks, align = 'next').as_series().drop_duplicates('first')) # eliminate double peaks
+		peaks			= peaks[tmp.index]
+		tmp 			= nts.Tsd(peaks.realign(troughs, align = 'prev').as_series().drop_duplicates('first')) # eliminate double troughs
+		troughs 		= troughs[tmp.index]
+		return (peaks, troughs)
+	elif isinstance(lfp, nts.time_series.TsdFrame):
+		peaks 			= nts.TsdFrame(lfp.index.values, np.zeros(lfp.shape))
+		troughs			= nts.TsdFrame(lfp.index.values, np.zeros(lfp.shape))
+		for i in lfp.keys():
+			peaks[i], troughs[i] = getPeaksandTroughs(lfp[i], min_points)
+		return (peaks, troughs)
 
 def getCircularMean(theta, high = np.pi, low = -np.pi):
 	""" 
@@ -281,6 +302,55 @@ def getCircularMean(theta, high = np.pi, low = -np.pi):
 			Kappa = (((n-1)**3) * Kappa)/(n**3 + n)
 	return (mu, Kappa, pval)
 
+def butter_bandpass(lowcut, highcut, fs, order=5):
+	from scipy.signal import butter
+	nyq = 0.5 * fs
+	low = lowcut / nyq
+	high = highcut / nyq
+	b, a = butter(order, [low, high], btype='band')
+	return b, a
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+	from scipy.signal import lfilter
+	b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+	y = lfilter(b, a, data)
+	return y
+
+def getFiringRate(tsd_spike, bins):
+	"""bins shoud be in us
+	"""
+	import neuroseries as nts
+	frate 		= nts.Tsd(bins, np.zeros(len(bins)))
+	bins_size 	= (bins[1] - bins[0])*1.e-6 # convert to s for Hz
+	if type(tsd_spike) is dict:
+		for n in tsd_spike.keys():
+			index = np.digitize(tsd_spike[n].index.values, bins)
+			for i in index:
+				frate[bins[i]] += 1.0
+		frate = nts.Tsd(bins+(bins[1]-bins[0])/2, frate.values/len(tsd_spike)/bins_size)
+		return frate
+	else:
+		index 	= np.digitize(tsd_spike.index.values, bins)
+		for i in index:
+			frate[bins[i]] += 1.0
+		frate = nts.Tsd(bins+(bins[1]-bins[0])/2, frate.values/bins_size)
+		return frate	
+
+def computePhaseModulation(phase, spikes, ep, get_phase = False):
+	n_neuron 		= len(spikes)
+	spikes_evt		= {n:spikes[n].restrict(ep) for n in spikes.keys()}
+	spikes_phase	= {n:phase.realign(spikes_evt[n], align = 'closest') for n in spikes_evt.keys()}
+	evt_mod 		= np.ones((n_neuron,3))*np.nan	
+	for n in range(len(spikes_phase.keys())):
+		neuron = list(spikes_phase.keys())[n]
+		ph = spikes_phase[neuron]
+		mu, kappa, pval = getCircularMean(ph.values)
+		evt_mod[n] = np.array([mu, pval, kappa])
+	if get_phase:
+		return evt_mod, spikes_phase
+	else:
+		return evt_mod
+	
 #########################################################
 # CORRELATION
 #########################################################
@@ -320,8 +390,9 @@ def crossCorr(t1, t2, binsize, nbins):
 
 			C[j] += k
 
-	for j in range(nbins):
-		C[j] = C[j] / (nt1 * binsize)
+	# for j in range(nbins):
+	# C[j] = C[j] / (nt1 * binsize)
+	C = C/(nt1 * binsize/1000)
 
 	return C
 
@@ -340,7 +411,7 @@ def crossCorr2(t1, t2, binsize, nbins):
 		# count each occurences 
 		count = np.array([np.sum(index == i) for i in range(2,mwind.shape[0]-1)])
 		allcount += np.array(count)
-	# allcount = allcount/(float(len(t1))*binsize / 10000)
+	allcount = allcount/(float(len(t1))*binsize / 1000)
 	return allcount
 
 def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):	
@@ -384,7 +455,7 @@ def loadShankStructure(generalinfo):
 	shankStructure = {}
 	for k,i in zip(generalinfo['shankStructure'][0][0][0][0],range(len(generalinfo['shankStructure'][0][0][0][0]))):
 		if len(generalinfo['shankStructure'][0][0][1][0][i]):
-			shankStructure[k[0]] = generalinfo['shankStructure'][0][0][1][0][i][0]
+			shankStructure[k[0]] = generalinfo['shankStructure'][0][0][1][0][i][0]-1
 		else :
 			shankStructure[k[0]] = []
 	
@@ -408,7 +479,7 @@ def loadSpikeData(path, index):
 		for i in shankIndex:	
 			spikes[i] = nts.Ts(spikedata['S'][0][0][0][i][0][0][0][1][0][0][2]*0.0001, time_units = 's')
 
-	return spikes
+	return spikes, shank
 
 def loadEpoch(path, epoch):
 	import scipy.io
@@ -522,32 +593,57 @@ def loadThetaMod(path):
 
 def loadXML(path):
 	from xml.dom import minidom
-	xmldoc = minidom.parse(path)
-	nChannels = xmldoc.getElementsByTagName('acquisitionSystem')[0].getElementsByTagName('nChannels')[0].firstChild.data
-	fs = xmldoc.getElementsByTagName('fieldPotentials')[0].getElementsByTagName('lfpSamplingRate')[0].firstChild.data
-	return int(nChannels), int(fs)
+	xmldoc 		= minidom.parse(path)
+	nChannels 	= xmldoc.getElementsByTagName('acquisitionSystem')[0].getElementsByTagName('nChannels')[0].firstChild.data
+	fs 			= xmldoc.getElementsByTagName('fieldPotentials')[0].getElementsByTagName('lfpSamplingRate')[0].firstChild.data	
+	shank_to_channel = {}
+	groups 		= xmldoc.getElementsByTagName('anatomicalDescription')[0].getElementsByTagName('channelGroups')[0].getElementsByTagName('group')
+	for i in range(len(groups)):
+		shank_to_channel[i] = np.sort([int(child.firstChild.data) for child in groups[i].getElementsByTagName('channel')])
+	return int(nChannels), int(fs), shank_to_channel
 
 def loadLFP(path, n_channels=90, channel=64, frequency=1250.0, precision='int16'):
 	import neuroseries as nts
-
-	f = open(path, 'rb')
-	startoffile = f.seek(0, 0)
-	endoffile = f.seek(0, 2)
-	bytes_size = 2
-	
-	n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
-	duration = n_samples/frequency
-	f.close()
-	with open(path, 'rb') as f:
-		data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
-	timestep = np.arange(0, len(data))/frequency
-	return nts.Tsd(timestep, data, time_units = 's')
+	if type(channel) is not list:
+		f = open(path, 'rb')
+		startoffile = f.seek(0, 0)
+		endoffile = f.seek(0, 2)
+		bytes_size = 2
+		
+		n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
+		duration = n_samples/frequency
+		f.close()
+		with open(path, 'rb') as f:
+			data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
+		timestep = np.arange(0, len(data))/frequency
+		return nts.Tsd(timestep, data, time_units = 's')
+	elif type(channel) is list:
+		f = open(path, 'rb')
+		startoffile = f.seek(0, 0)
+		endoffile = f.seek(0, 2)
+		bytes_size = 2
+		
+		n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
+		duration = n_samples/frequency
+		f.close()
+		with open(path, 'rb') as f:
+			data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
+		timestep = np.arange(0, len(data))/frequency
+		return nts.TsdFrame(timestep, data, time_units = 's')
 
 def loadSpeed(path):
 	import neuroseries as nts
 	import scipy.io
 	raw = scipy.io.loadmat(path)
 	return nts.Tsd(raw['speed'][:,0], raw['speed'][:,1], time_units = 's')
+
+def writeNeuroscopeEvents(path, ep, name):
+	f = open(path, 'w')
+	for i in range(len(ep)):
+		f.writelines(str(ep.as_units('ms').iloc[i]['start']) + " "+name+" start "+ str(1)+"\n")
+		f.writelines(str(ep.as_units('ms').iloc[i]['end']) + " "+name+" end "+ str(1)+"\n")
+	f.close()		
+	return
 
 def plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, ripples_ep, spikes_sws):
 	from pylab import figure, plot, legend, show
