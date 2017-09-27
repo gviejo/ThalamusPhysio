@@ -217,8 +217,9 @@ class IntervalSet(pd.DataFrame):
         :type time_units: str
         :return: a copied IntervalSet with the dropped intervals
         :rtype: neuroseries.interval_set.IntervalSet
+        @G VIEJO : Changed Int to float64
         """
-        threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.int64).ravel(), time_units)[0]
+        threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.float64).ravel(), time_units)[0]
         return self.ix[(self['end']-self['start']) > threshold]
 
     def drop_long_intervals(self, threshold, time_units=None):
@@ -231,8 +232,9 @@ class IntervalSet(pd.DataFrame):
         :type time_units: str
         :return: a copied IntervalSet with the dropped intervals
         :rtype: neuroseries.interval_set.IntervalSet
+        @G VIEJO : Changed Int to float64
         """
-        threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.int64).ravel(), time_units)[0]
+        threshold = TimeUnits.format_timestamps(np.array((threshold,), dtype=np.float64).ravel(), time_units)[0]
         return self.ix[(self['end']-self['start']) < threshold]
 
 

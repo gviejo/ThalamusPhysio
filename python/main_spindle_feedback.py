@@ -19,9 +19,6 @@ import neuroseries as nts
 import time
 from Wavelets import MyMorlet as Morlet
 
-# clients = ipyparallel.Client()
-# print(clients.ids)
-# dview = clients.direct_view()
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
@@ -35,50 +32,49 @@ session_rip_in_thl_spind_phase = {}
 session_rip_in_hpc_spind_mod = []
 session_rip_in_hpc_spind_phase = {}
 phase = {}
+session_kappa_around_swr = []
+session_hpc_kappa_around_swr = []
+session_spind_mod1 = {}
+session_spind_mod2 = {}
+session_spind_mod3 = {}
+session_spind_mod4 = {}
+session_spind_mod5 = {}
+session_spind_mod6 = {}
+session_cross_corr = {}
+session_cross_corr_swr_spikes_in_thl_spindles = {}
+session_cross_corr_swr_spikes_out_thl_spindles = {}
 
-for session in datasets:
+for session in datasets: 
 	print("session"+session)	
-	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
-	shankStructure 	= loadShankStructure(generalinfo)	
-	if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
-		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][1][0][0] - 1
-	else:
-		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][0][0][0] - 1	
-	spikes,shank	= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
 	sws_ep 			= loadEpoch(data_directory+session, 'sws')
-	spikes 			= {n:spikes[n] for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
-	n_neuron 		= len(spikes)
-	n_channel,fs, shank_to_channel = loadXML(data_directory+session+"/"+session.split("/")[1]+'.xml')
-	lfp_hpc 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
-	lfp_hpc 		= downsample(lfp_hpc, 1, 5)
-	thl_channels 	= list(np.sort([shank_to_channel[k][0] for k in shankStructure['thalamus']]))		
-	lfp_thl 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, thl_channels, float(fs), 'int16')	
-	lfp_thl 		= downsample(lfp_thl, 1, 5)
-##################################################################################################
-# LOAD THALAMIC SPINDLES
-##################################################################################################		
 	tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.thl")[:,0]
 	tmp 			= tmp.reshape(len(tmp)//2,2)
 	spind_thl_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')
-##################################################################################################
-# LOAD HIPP SPINDLES
-##################################################################################################		
 	tmp 			= np.genfromtxt("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.hpc")[:,0]
 	tmp 			= tmp.reshape(len(tmp)//2,2)
 	spind_hpc_ep 	= nts.IntervalSet(tmp[:,0], tmp[:,1], time_units = 'ms')	
-##################################################################################################
-# PHASE KAPPA
-##################################################################################################		
 	spind_ep 		= spind_hpc_ep.intersect(spind_thl_ep).drop_short_intervals(0.0)
-	phase_hpc 		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = False)
-	phase_hpc		= phase_hpc.restrict(sws_ep)
-	phase_thl 		= getPhase(lfp_thl, 8, 18, 16, fs/5., power = False)
-	phase_thl		= phase_thl.restrict(sws_ep)
+	spind_thl_no_hpc = spind_thl_ep.set_diff(spind_hpc_ep).drop_short_intervals(0.0)
+	spind_hpc_no_thl = spind_hpc_ep.set_diff(spind_thl_ep).drop_short_intervals(0.0)
+	store 			= pd.HDFStore("../data/phase_spindles/"+session.split("/")[1]+".lfp")
+	phase_hpc 		= nts.Tsd(store['phase_hpc_spindles'])
+	phase_thl 		= nts.Tsd(store['phase_thl_spindles'][0])	
+	store.close()	
+	spikes 			= {}
+	store_spike 	= pd.HDFStore("../data/spikes_thalamus/"+session.split("/")[1]+".spk")
+	for n in store_spike.keys(): spikes[int(n[1:])] = nts.Ts(store_spike[n])
+	store_spike.close()	
+
+##################################################################################################
+# SPINDLES MODULATION
+##################################################################################################		
 
 	spind_mod1 		= computePhaseModulation(phase_hpc, spikes, spind_hpc_ep)
-	spind_mod2 		= computePhaseModulation(phase_thl[0], spikes, spind_thl_ep)
+	spind_mod2 		= computePhaseModulation(phase_thl, spikes, spind_thl_ep)
 	spind_mod3 		= computePhaseModulation(phase_hpc, spikes, spind_ep)
-	spind_mod4 		= computePhaseModulation(phase_thl[0], spikes, spind_ep)
+	spind_mod4 		= computePhaseModulation(phase_thl, spikes, spind_ep)
+	spind_mod5 		= computePhaseModulation(phase_thl, spikes, spind_thl_no_hpc)
+	spind_mod6 		= computePhaseModulation(phase_hpc, spikes, spind_hpc_no_thl)
 	
 	kappa 			= np.vstack([spind_mod1[:,2], spind_mod3[:,2], spind_mod2[:,2], spind_mod4[:,2]]).transpose()
 
@@ -86,6 +82,13 @@ for session in datasets:
 
 	allkappa.append(kappa)
 	meankappa.append(kappa.mean(0))
+	session_spind_mod1[session] = spind_mod1
+	session_spind_mod2[session] = spind_mod2
+	session_spind_mod3[session] = spind_mod3
+	session_spind_mod4[session] = spind_mod4
+	session_spind_mod5[session] = spind_mod5
+	session_spind_mod6[session] = spind_mod6
+
 
 ##################################################################################################
 # Phase of RIPPLES in SPINDLES
@@ -102,57 +105,629 @@ for session in datasets:
 	session_rip_in_thl_spind_phase[session] = rip_in_thl_spind_phase
 	session_rip_in_hpc_spind_phase[session] = rip_in_hpc_spind_phase
 
+##################################################################################################
+# Phase of Spindles between ripples
+##################################################################################################		
+	rip_in_spind_tsd = rip_tsd.restrict(spind_thl_ep)
+	times = np.arange(0, 1005, 5) - 500
+	phase_around_swr = np.zeros((len(rip_in_spind_tsd), len(times)))
+	for rip_time, i in zip(rip_in_spind_tsd.as_units('ms').index.values, range(len(rip_in_spind_tsd))):
+		phase_around_swr[i,:] = phase_thl.realign(nts.Ts(rip_time+times, time_units = 'ms'))
+
+	kappa_around_swr = np.zeros(len(times))
+	for t in range(len(times)):
+		mu, kappa, pval = getCircularMean(phase_around_swr[:,t])
+		kappa_around_swr[t] = kappa
+
+	session_kappa_around_swr.append(kappa_around_swr)
+
 
 ##################################################################################################
-# STORING
+# Phase of  hpc Spindles between ripples
 ##################################################################################################		
-	store 			= pd.HDFStore("../data/phase_spindles/"+session.split("/")[1]+".lfp")
-	store['lfp_thl'] = lfp_thl.as_dataframe()
-	store['lfp_hpc'] = lfp_hpc.as_series()
-	store.close()	
+	rip_in_spind_tsd = rip_tsd.restrict(spind_hpc_ep)
+	times = np.arange(0, 1005, 5) - 500
+	phase_around_swr = np.zeros((len(rip_in_spind_tsd), len(times)))
+	for rip_time, i in zip(rip_in_spind_tsd.as_units('ms').index.values, range(len(rip_in_spind_tsd))):
+		phase_around_swr[i,:] = phase_hpc.realign(nts.Ts(rip_time+times, time_units = 'ms'))
+
+	kappa_around_swr = np.zeros(len(times))
+	for t in range(len(times)):
+		mu, kappa, pval = getCircularMean(phase_around_swr[:,t])
+		kappa_around_swr[t] = kappa
+
+	session_hpc_kappa_around_swr.append(kappa_around_swr)
+
+
+##################################################################################################
+# CROSS CORR of hippocampal and thalamic spindles 
+##################################################################################################		
+	start_spindles_hpc = spind_hpc_ep.as_units('ms')['start']
+	end_spindles_hpc = spind_hpc_ep.as_units('ms')['end']
+	mid_spindles_hpc = start_spindles_hpc + (end_spindles_hpc - start_spindles_hpc)/2.
+	start_spindles_thl = spind_thl_ep.as_units('ms')['start']
+	end_spindles_thl = spind_thl_ep.as_units('ms')['end']
+	mid_spindles_thl = start_spindles_thl + (end_spindles_thl - start_spindles_thl)/2.	
+
+	bin_size 	= 5 # ms 
+	nb_bins 	= 200 
+	session_cross_corr[session] = np.array([
+		crossCorr(start_spindles_thl, start_spindles_hpc, bin_size, nb_bins),
+		crossCorr(mid_spindles_thl, mid_spindles_hpc, bin_size, nb_bins),
+		crossCorr(end_spindles_thl, end_spindles_hpc, bin_size, nb_bins)
+		])
 	
-	store_spike 	= pd.HDFStore("../data/spikes_thalamus/"+session.split("/")[1]+".spk")
-	for n in spikes.keys(): store_spike[str(n)] = spikes[n].as_series()
-	store_spike.close()
+##################################################################################################
+# CROSS CORR swr/spikes  for swr in and out of spindle
+##################################################################################################		
+	swr_in_thl_spindle = rip_tsd.restrict(spind_thl_ep)
+	swr_out_thl_spindle = rip_tsd.restrict(sws_ep.set_diff(spind_thl_ep).drop_short_intervals(0.0))
+		
+	bin_size 	= 5 # ms 
+	nb_bins 	= 200 	
+	session_cross_corr_swr_spikes_in_thl_spindles[session] = np.array([crossCorr(swr_in_thl_spindle.as_units('ms').index.values, spikes[i].as_units('ms').index.values, bin_size, nb_bins) for i in spikes.keys()])
+	session_cross_corr_swr_spikes_out_thl_spindles[session] = np.array([crossCorr(swr_out_thl_spindle.as_units('ms').index.values, spikes[i].as_units('ms').index.values, bin_size, nb_bins) for i in spikes.keys()])		
 
 
 
 
+##################################################################################################
+# THETA MODULATION
+##################################################################################################		
+import _pickle as cPickle	
+theta_mod = cPickle.load(open('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', 'rb'))
 
 
-sys.exit()
 
-allkappa = np.vstack(allkappa)	
+from pylab import *
+mouses = ['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']
 
-a = allkappa[np.sum(allkappa > 0.0, 1) == 4]
-meankappa = np.array(meankappa)
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')	
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	subplot(3,4,j+1)
+	ylabel("start thl(hpc)")
+	for k, ses, i in zip(index, names, range(len(index))):
+		plot(times, session_cross_corr[ses][0], color = colors[i])	
+	axvline(0)
+	title(mouses[j])
+	subplot(3,4,j+5)
+	ylabel("middle thl(hpc)")
+	for k, ses, i in zip(index, names, range(len(index))):
+		plot(times, session_cross_corr[ses][1], color = colors[i])	
+	axvline(0)
+	subplot(3,4,j+9)
+	ylabel("end thl(hpc)")
+	for k, ses, i in zip(index, names, range(len(index))):
+		plot(times, session_cross_corr[ses][2], color = colors[i])	
+	axvline(0)
 
-plot(allkappa.transpose(), 'o-')
+savefig("../figures/spindle_feedback/fig1.pdf")
 
-plot(meankappa.transpose())
-xticks([0,1,2,3], ['Hpc phase(spind Hpc)', 'Hpc phase(spind Hpc^THL)', 'Thl phase(spind THL)', 'THL phase (spind HPC^THL)'])
-ylabel(" mean kappa per session")
 
-show()
+def set_lines(ax):
+	ax.axhline(0.0, color = 'grey', alpha = 0.5)
+	ax.axhline(2*np.pi, color = 'grey', alpha = 0.5)
+	ax.axhline(np.pi, linestyle = '--', color = 'grey', alpha = 0.5)
+	ax.axhline(-np.pi, linestyle = '--', color = 'grey', alpha = 0.5)
+	ax.set_xticks([-np.pi, 0, np.pi, 2*np.pi])	
+	ax.set_xticklabels(['-pi', '0', 'pi', '2pi'])
+	ax.axvline(0.0, color = 'grey', alpha = 0.5)
+	ax.axvline(2*np.pi, color = 'grey', alpha = 0.5)
+	ax.axvline(np.pi, linestyle = '--', color = 'grey', alpha = 0.5)
+	ax.axvline(-np.pi, linestyle = '--', color = 'grey', alpha = 0.5)
+	ax.set_yticks([-np.pi, 0, np.pi, 2*np.pi])
+	ax.set_yticklabels(['-pi', '0', 'pi', '2pi'])
+	return 
 
-figure()
-subplot(211)
-for session in datasets:
-	hist, bin_edges = np.histogram(session_rip_in_hpc_spind_phase[session][0].values, 100, density = True)
-	y = gaussFilt(hist, (5,))
-	x = bin_edges[0:-1] + (bin_edges[1] - bin_edges[0])/2
-	kappa = session_rip_in_hpc_spind_mod[np.where(datasets == session)[0][0]][0][-1]
-	print(kappa)
-	plot(x, y, '-', linewidth = kappa*2)
-title("Ripples phase in hippocampal spindles per session")	
-subplot(212)
-for session in datasets:
-	hist, bin_edges = np.histogram(session_rip_in_thl_spind_phase[session][0].values, 100, density = True)
-	y = gaussFilt(hist, (5,))
-	x = bin_edges[0:-1] + (bin_edges[1] - bin_edges[0])/2
-	kappa = session_rip_in_thl_spind_mod[np.where(datasets == session)[0][0]][0][-1]
-	print(kappa)
-	plot(x, y, '-', linewidth = kappa*2)
-title("Ripples phase in thalamic spindles per session")		
-show()
+figure(figsize = (20,10))
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
 
+	subplot(4,4,j+1)	
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['wake'][:,0]
+		spindles_mod_toplot = session_spind_mod1[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['wake'][:,2] + session_spind_mod1[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., color = colors[i], label = 'theta wake')
+	title(mouses[j])	
+	set_lines(gca())
+	if j == 0:
+		ylabel('Hippocampal \n Spindle phase (rad)')		
+	subplot(4,4,j+5)
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['rem'][:,0]
+		spindles_mod_toplot = session_spind_mod1[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['rem'][:,2] + session_spind_mod1[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., marker = '^', color = colors[i], label = 'theta rem')	
+	set_lines(gca())
+	if j == 0:
+		ylabel('Hippocampal \n Spindle phase (rad)')
+	
+
+	subplot(4,4,j+9)
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['wake'][:,0]
+		spindles_mod_toplot = session_spind_mod2[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['wake'][:,2] + session_spind_mod2[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., color = colors[i], label = 'theta wake')
+	set_lines(gca())		
+	if j == 0:
+		ylabel('Thalamus \n Spindle phase (rad)')				
+	subplot(4,4,j+13)
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['rem'][:,0]
+		spindles_mod_toplot = session_spind_mod2[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['rem'][:,2] + session_spind_mod2[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., marker = '^', color = colors[i], label = 'theta rem')
+		xlabel('Theta phase (rad)')
+	set_lines(gca())
+	if j == 0:
+		ylabel('Thalamus \n Spindle phase (rad)')
+
+savefig("../figures/spindle_feedback/fig2.pdf")
+
+
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in range(4):
+	subplot(4,1,j+1)
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]
+	for k in range(len(index)):
+		plot(times, session_kappa_around_swr[index[k]], color = colors[k])
+	title(mouses[j]+" Kappa around SWR for thalamus phases")	
+	xlabel('times (ms)')
+	ylabel("kappa")
+
+savefig("../figures/spindle_feedback/fig3.pdf")
+
+
+figure(figsize = (20,10))
+meankappa = np.vstack(meankappa)	
+for j in range(4):
+	subplot(4,1,j+1)
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]
+	for k in range(len(index)):
+		plot(meankappa[index[k]], color = colors[k])
+	title(mouses[j])	
+	xticks([0,1,2,3], ['Hpc phase(spind Hpc)', 'Hpc phase(spind Hpc^THL)', 'Thl phase(spind THL)', 'THL phase (spind HPC^THL)'])
+	ylabel(" mean kappa per session")	
+	ylim(0, 1)
+
+savefig("../figures/spindle_feedback/fig4.pdf")
+
+rip_prefered_phase_in_thl_spindle = {}
+rip_prefered_phase_in_hpc_spindle = {}
+
+figure(figsize = (20,10))
+for j in range(4):
+	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1, projection = 'polar')	
+	for k in range(len(index)):
+		hist, bin_edges = np.histogram(session_rip_in_hpc_spind_phase[datasets[index[k]]][0].values, 100, density = True)
+		y = gaussFilt(hist, (5,))
+		x = bin_edges[0:-1] + (bin_edges[1] - bin_edges[0])/2
+		rip_prefered_phase_in_hpc_spindle[datasets[index[k]]] = x[np.argmax(y)] 
+		x = list(x)
+		y = list(y)
+		x = x+[x[0]]
+		y = y+[y[0]]
+		kappa = session_rip_in_hpc_spind_mod[index[k]][0][-1]		
+		plot(x, y, '-', linewidth = kappa*2, color=colors[k])		
+		print(np.max(y), kappa, k)
+
+	title(mouses[j] + "\n Ripples phase in hippocampal spindles per session")	
+
+	subplot(2,4,j+1+4, projection = 'polar')
+	for k in range(len(index)):
+		hist, bin_edges = np.histogram(session_rip_in_thl_spind_phase[datasets[index[k]]][0].values, 100, density = True)
+		y = gaussFilt(hist, (5,))
+		x = bin_edges[0:-1] + (bin_edges[1] - bin_edges[0])/2
+		rip_prefered_phase_in_thl_spindle[datasets[index[k]]] = x[np.argmax(y)] 
+		x = list(x)
+		y = list(y)
+		x = x+[x[0]]
+		y = y+[y[0]]	
+		kappa = session_rip_in_thl_spind_mod[index[k]][0][-1]		
+		plot(x, y, '-', linewidth = kappa*2, color=colors[k])		
+	title("Ripples phase in thalamic spindles per session")		
+
+savefig("../figures/spindle_feedback/fig5.pdf")
+	
+
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in range(4):
+	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index)
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1)	
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = []
+		for n in range(len(session_cross_corr_swr_spikes_in_thl_spindles[ses])):
+			y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n]
+			# y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n] - np.mean(session_cross_corr_swr_spikes_in_thl_spindles[ses][n])
+			# y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n] / np.std(session_cross_corr_swr_spikes_in_thl_spindles[ses][n])
+			yf = gaussFilt(y, (10,))
+			tmp.append(yf)
+
+		plot(times, np.mean(tmp, 0) , color = colors[i])
+	title(mouses[j] + "\n Cross-corr swr(spikes) IN THL SPINDLE")	
+
+	subplot(2,4,j+1+4)
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = []
+		for n in range(len(session_cross_corr_swr_spikes_out_thl_spindles[ses])):
+			y = session_cross_corr_swr_spikes_out_thl_spindles[ses][n]
+			# y = session_cross_corr_swr_spikes_out_thl_spindles[ses][n] - np.mean(session_cross_corr_swr_spikes_out_thl_spindles[ses][n])
+			# y = session_cross_corr_swr_spikes_out_thl_spindles[ses][n] / np.std(session_cross_corr_swr_spikes_out_thl_spindles[ses][n])
+			yf = gaussFilt(y, (10,))
+			tmp.append(yf)
+		plot(times, np.mean(tmp, 0) , color = colors[i])		
+	title(mouses[j] + "\n Cross-corr swr(spikes) OUT THL SPINDLE")	
+
+savefig("../figures/spindle_feedback/fig6.pdf")
+	
+
+
+
+figure(figsize = (20,10))
+
+for j in [0]:	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	count = 1	
+	for k, ses,i in zip(index, names, range(len(index))):
+		subplot(4,4,count)	
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['wake'][:,0]
+		spindles_mod_toplot = session_spind_mod2[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['wake'][:,2] + session_spind_mod2[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., color = colors[i], label = 'theta wake')
+
+		theta_mod_toplot = theta_mod[ses]['theta_mod']['rem'][:,0]
+		spindles_mod_toplot = session_spind_mod2[ses][:,0]
+		force = theta_mod[ses]['theta_mod']['rem'][:,2] + session_spind_mod2[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., marker = '^', color = colors[i], label = 'theta rem')
+		if count in np.arange(1,16,4):
+			ylabel('Thalamus \n Spindle phase (rad)')			
+		if count >= 13:
+			xlabel('Theta phase (rad)')
+		if count == 2:
+			title(mouses[j])
+		count += 1
+savefig("../figures/spindle_feedback/fig7.pdf")
+
+
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in range(4):
+	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index)
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(1,4,j+1)	
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = []
+		for n in range(len(session_cross_corr_swr_spikes_in_thl_spindles[ses])):
+			# y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n] - np.mean(session_cross_corr_swr_spikes_in_thl_spindles[ses][n])
+			# y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n] / np.std(session_cross_corr_swr_spikes_in_thl_spindles[ses][n])
+			# x = session_cross_corr_swr_spikes_out_thl_spindles[ses][n] - np.mean(session_cross_corr_swr_spikes_out_thl_spindles[ses][n])
+			# x = session_cross_corr_swr_spikes_out_thl_spindles[ses][n] / np.std(session_cross_corr_swr_spikes_out_thl_spindles[ses][n])
+			y = session_cross_corr_swr_spikes_in_thl_spindles[ses][n] 
+			x = session_cross_corr_swr_spikes_out_thl_spindles[ses][n]			
+			yf = gaussFilt(y, (10,))
+			xf = gaussFilt(x, (10,))
+			tmp.append(yf - xf)
+		
+		plot(times, np.mean(tmp, 0), '-o', color = colors[i])
+	
+	ylabel("in - out cross corr")	
+	title(mouses[j] + "\n Cross-corr swr(spikes) IN - OUT THL SPINDLE")	
+	
+savefig("../figures/spindle_feedback/fig8.pdf")
+
+
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in range(4):
+	subplot(4,1,j+1)
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]
+	for k in range(len(index)):
+		plot(times, session_hpc_kappa_around_swr[index[k]], color = colors[k])
+	title(mouses[j]+" Kappa around SWR for hippocampus phases")	
+	xlabel('times (ms)')
+	ylabel("kappa")
+
+savefig("../figures/spindle_feedback/fig9.pdf")
+	
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in [0]:	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	count = 1	
+	for k, ses,i in zip(index, names, range(len(index))):
+		subplot(4,4,count)	
+		plot(times, session_kappa_around_swr[index[i]], '-', color = 'blue', label = 'spdl thl')
+		plot(times, session_hpc_kappa_around_swr[index[i]], '-', color = 'green', label = 'spdl hpc')
+		axvline(0.0)
+		xlabel("times")
+		ylabel("kappa")
+		legend()
+		if count == 1:
+			title("kappa around swr for "+mouses[j])
+		count+=1
+savefig("../figures/spindle_feedback/fig10.pdf")
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in [1]:	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	count = 1	
+	for k, ses,i in zip(index, names, range(len(index))):
+		subplot(4,5,count)	
+		plot(times, session_kappa_around_swr[index[i]], '-', color = 'blue', label = 'spdl thl')
+		plot(times, session_hpc_kappa_around_swr[index[i]], '-', color = 'green', label = 'spdl hpc')
+		axvline(0.0)
+		xlabel("times")
+		ylabel("kappa")
+		legend()
+		if count == 1:
+			title("kappa around swr for "+mouses[j])
+		count+=1
+savefig("../figures/spindle_feedback/fig11.pdf")
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in [2]:	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	count = 1	
+	for k, ses,i in zip(index, names, range(len(index))):
+		subplot(4,5,count)	
+		plot(times, session_kappa_around_swr[index[i]], '-', color = 'blue', label = 'spdl thl')
+		plot(times, session_hpc_kappa_around_swr[index[i]], '-', color = 'green', label = 'spdl hpc')
+		axvline(0.0)
+		xlabel("times")
+		ylabel("kappa")
+		legend()
+		if count == 1:
+			title("kappa around swr for "+mouses[j])
+		count+=1
+savefig("../figures/spindle_feedback/fig12.pdf")
+
+figure(figsize = (20,10))
+times = np.arange(0, 1005, 5) - 500
+for j in [3]:	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+	count = 1	
+	for k, ses,i in zip(index, names, range(len(index))):
+		subplot(4,5,count)	
+		plot(times, session_kappa_around_swr[index[i]], '-', color = 'blue', label = 'spdl thl')
+		plot(times, session_hpc_kappa_around_swr[index[i]], '-', color = 'green', label = 'spdl hpc')
+		axvline(0.0)
+		xlabel("times")
+		ylabel("kappa")
+		legend()
+		if count == 1:
+			title("kappa around swr for "+mouses[j])
+		count+=1
+savefig("../figures/spindle_feedback/fig13.pdf")
+
+
+figure(figsize = (20,10))
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1)	
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = session_spind_mod3[ses][:,0]
+		spindles_mod_toplot = session_spind_mod4[ses][:,0]
+		force = session_spind_mod3[ses][:,2] + session_spind_mod4[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., color = colors[i], label = 'theta wake')
+		title(mouses[j])	
+		xlabel("Hippocampl spindles phase")
+		ylabel("Thalamic spindles phase")
+		title("HPC == THL")
+	set_lines(gca())
+
+	subplot(2,4,j+5)
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = session_spind_mod6[ses][:,0]
+		spindles_mod_toplot = session_spind_mod5[ses][:,0]
+		force = session_spind_mod5[ses][:,2] + session_spind_mod6[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., marker = '^', color = colors[i], label = 'theta rem')	
+		xlabel("Hippocampl spindles phase")
+		ylabel("Thalamic spindles phase")
+		title("HPC != THL")
+	set_lines(gca())
+
+savefig("../figures/spindle_feedback/fig14.pdf")
+
+
+figure(figsize = (20,10))
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1)	
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = session_spind_mod3[ses][:,0]
+		spindles_mod_toplot = session_spind_mod6[ses][:,0]
+		force = session_spind_mod3[ses][:,2] + session_spind_mod6[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., color = colors[i])
+		title(mouses[j])	
+		xlabel("(HPC == THL)")
+		ylabel("(HPC != THL)")
+		title("Hippocampal spindle phase")
+	set_lines(gca())
+
+	subplot(2,4,j+5)
+	for k, ses,i in zip(index, names, range(len(index))):
+		theta_mod_toplot = session_spind_mod4[ses][:,0]
+		spindles_mod_toplot = session_spind_mod5[ses][:,0]
+		force = session_spind_mod4[ses][:,2] + session_spind_mod5[ses][:,2]
+		x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+		y = np.concatenate([spindles_mod_toplot, spindles_mod_toplot + 2*np.pi, spindles_mod_toplot, spindles_mod_toplot + 2*np.pi])
+		scatter(x, y, s = force*10., marker = '^', color = colors[i])	
+		xlabel("(HPC == THL)")
+		ylabel("(HPC != THL)")
+		title("Thalamus spindle phase")
+	set_lines(gca())
+
+savefig("../figures/spindle_feedback/fig15.pdf")
+
+
+
+figure(figsize = (20,10))
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1)	
+	count = 0
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = (session_spind_mod5[ses][:,0] - session_spind_mod4[ses][:,0])
+		y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
+		x = np.vstack((np.zeros(len(tmp)),tmp))
+		plot(x, y, color = colors[i])
+		print(count)
+		count += len(tmp)
+	title("OUT - IN THL PHASE")
+	
+	subplot(2,4,j+5)
+	count = 0
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = (session_spind_mod6[ses][:,0] - session_spind_mod3[ses][:,0])
+		y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
+		x = np.vstack((np.zeros(len(tmp)),tmp))
+		plot(x, y, color = colors[i])
+		count += len(tmp)	
+	title("OUT - IN HPC PHASE")
+	
+savefig("../figures/spindle_feedback/fig16.pdf")
+
+figure(figsize = (20,10))
+for j in range(4):	
+	index = [i for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	names = [datasets[i] for i in range(len(datasets)) if mouses[j] in datasets[i]]
+	print(index, names)
+	cmap = plt.get_cmap('autumn')
+	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
+
+	subplot(2,4,j+1, projection = 'polar')	
+	count = 0
+	for k, ses,i in zip(index, names, range(len(index))):
+		tmp = (session_spind_mod5[ses][:,0] - session_spind_mod4[ses][:,0])%(2*np.pi)
+		out = session_spind_mod5[ses][:,0]
+		inn = session_spind_mod4[ses][:,0]
+		r = np.arange(len(tmp)) + count		
+		for n in range(len(tmp)):
+			phase = np.linspace(out[n], inn[n], 100)	
+			plot(phase, r, color = colors[i])
+
+		
+		# plot(out, r, 'o', color = 'blue')
+		# plot(inn, r, '^', color = 'green')
+
+		# y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
+		# x = np.vstack((np.zeros(len(tmp)),tmp))
+		# plot(x, y, color = colors[i])
+		# print(count)
+		count += len(out)
+	title("OUT - IN THL PHASE")
+	
+	subplot(2,4,j+5, projection = 'polar')
+	count = 0
+	for k, ses,i in zip(index, names, range(len(index))):
+		out = session_spind_mod6[ses][:,0]
+		inn = session_spind_mod3[ses][:,0]
+		r = np.arange(len(out)) + count
+		plot(out, r, 'o', color = 'blue')
+		plot(inn, r, '^', color = 'green')
+
+		# tmp = (session_spind_mod6[ses][:,0] - session_spind_mod3[ses][:,0])
+		# y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
+		# x = np.vstack((np.zeros(len(tmp)),tmp))
+		# plot(x, y, color = colors[i])
+		# count += len(tmp)	
+	title("OUT - IN HPC PHASE")
+	
+savefig("../figures/spindle_feedback/fig17.pdf")

@@ -34,24 +34,32 @@ for session in datasets:
 		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][1][0][0] - 1
 	else:
 		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][0][0][0] - 1	
+	print("Hpc channel ", hpc_channel)
 	spikes,shank	= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
-	wake_ep 		= loadEpoch(data_directory+session, 'wake')
+	# wake_ep 		= loadEpoch(data_directory+session, 'wake')
 	sleep_ep 		= loadEpoch(data_directory+session, 'sleep')
 	sws_ep 			= loadEpoch(data_directory+session, 'sws')
-	rem_ep 			= loadEpoch(data_directory+session, 'rem')
+	# rem_ep 			= loadEpoch(data_directory+session, 'rem')
 	sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
 	sws_ep 			= sleep_ep.intersect(sws_ep)	
-	rem_ep 			= sleep_ep.intersect(rem_ep)
-	speed 			= loadSpeed(data_directory+session+'/Analysis/linspeed.mat').restrict(wake_ep)	
-	speed_ep 		= nts.IntervalSet(speed[speed>2.5].index.values[0:-1], speed[speed>2.5].index.values[1:]).drop_long_intervals(26000).merge_close_intervals(50000)
-	wake_ep 		= wake_ep.intersect(speed_ep)
-	good_ep 		= loadTheta(data_directory+session+'/Analysis/ThetaInfo.mat') # TODO
+	# rem_ep 			= sleep_ep.intersect(rem_ep)
+	# speed 			= loadSpeed(data_directory+session+'/Analysis/linspeed.mat').restrict(wake_ep)	
+	# speed_ep 		= nts.IntervalSet(speed[speed>2.5].index.values[0:-1], speed[speed>2.5].index.values[1:]).drop_long_intervals(26000).merge_close_intervals(50000)
+	# wake_ep 		= wake_ep.intersect(speed_ep)
+	# good_ep 		= loadTheta(data_directory+session+'/Analysis/ThetaInfo.mat') # TODO
 	# to match main_make_SWRinfo.py
 	spikes 			= {n:spikes[n] for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
 	n_neuron 		= len(spikes)
 	n_channel,fs, shank_to_channel = loadXML(data_directory+session+"/"+session.split("/")[1]+'.xml')
-	lfp_hpc 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
-	lfp_hpc 		= downsample(lfp_hpc, 1, 5)
+	# lfp_hpc 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
+	# lfp_hpc 		= downsample(lfp_hpc, 1, 5)
+
+	store 			= pd.HDFStore("../data/phase_spindles/"+session.split("/")[1]+".lfp")
+	phase_hpc 		= nts.Tsd(store['phase_hpc_spindles'])
+	phase_thl 		= nts.Tsd(store['phase_thl_spindles'])
+	lfp_hpc 		= nts.Tsd(store['lfp_hpc'])
+	lfp_thl			= nts.TsdFrame(store['lfp_thl'])
+	store.close()		
 	
 ##################################################################################################
 # DETECTION UP/DOWN States
@@ -96,8 +104,8 @@ for session in datasets:
 	# print("spindles")
 	# thl_channels 	= list(np.sort([ch for k in shankStructure['thalamus'] for ch in shank_to_channel[k]]))	
 	thl_channels 	= list(np.sort([shank_to_channel[k][0] for k in shankStructure['thalamus']]))		
-	lfp_thl 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, thl_channels, float(fs), 'int16')	
-	lfp_thl 		= downsample(lfp_thl, 1, 5)	
+	# lfp_thl 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, thl_channels, float(fs), 'int16')	
+	# lfp_thl 		= downsample(lfp_thl, 1, 5)	
 	# filter of each shank	
 	lfp_filt 		= nts.TsdFrame(lfp_thl.index.values, np.zeros(lfp_thl.shape))
 	for i in lfp_thl.keys():
@@ -106,7 +114,7 @@ for session in datasets:
 	lfp_mean 		= nts.Tsd(lfp_filt.mean(1))	
 	power	 		= nts.Tsd(lfp_mean.index.values, np.abs(lfp_mean.values))
 	enveloppe,dummy	= getPeaksandTroughs(power, 5)	
-	index 			= (enveloppe > np.percentile(enveloppe, 60)).values*1.0
+	index 			= (enveloppe > np.percentile(enveloppe, 50)).values*1.0
 	start_cand 		= np.where((index[1:] - index[0:-1]) == 1)[0]+1
 	end_cand 		= np.where((index[1:] - index[0:-1]) == -1)[0]
 	if end_cand[0] < start_cand[0]:	end_cand = end_cand[1:]
@@ -115,7 +123,7 @@ for session in datasets:
 	start_cand 		= enveloppe.index.values[start_cand[tmp]]
 	end_cand	 	= enveloppe.index.values[end_cand[tmp]]
 	spind_ep_thl	= nts.IntervalSet(start_cand, end_cand)
-	spind_ep_thl	= spind_ep_thl.drop_short_intervals(100000).drop_long_intervals(3000000)
+	spind_ep_thl	= spind_ep_thl.drop_short_intervals(200000).drop_long_intervals(3000000)
 	#count number of cycle, shoulb be superior to five peaks and troughs
 	peaks, troughs 	= getPeaksandTroughs(lfp_mean, 5)
 	index 		 	= np.zeros(len(spind_ep_thl))
@@ -127,8 +135,9 @@ for session in datasets:
 
 	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.thl", spind_ep_thl, "Spindles")
 
-	phase, pwr		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = True)
-	phase 			= phase.restrict(sws_ep)
+	# phase, pwr		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = True)
+	# phase 			= phase.restrict(sws_ep)
+	phase 			= phase_hpc
 
 	spikes_spind	= {n:spikes[n].restrict(spind_ep_thl) for n in spikes.keys()}
 	spikes_phase	= {n:phase.realign(spikes_spind[n], align = 'closest') for n in spikes_spind.keys()}
@@ -149,7 +158,7 @@ for session in datasets:
 	lfp_filt_hpc	= lfp_filt_hpc.restrict(sws_ep)	
 	power	 		= nts.Tsd(lfp_filt_hpc.index.values, np.abs(lfp_filt_hpc.values))
 	enveloppe,dummy	= getPeaksandTroughs(power, 5)	
-	index 			= (enveloppe > np.percentile(enveloppe, 60)).values*1.0
+	index 			= (enveloppe > np.percentile(enveloppe, 50)).values*1.0
 	start_cand 		= np.where((index[1:] - index[0:-1]) == 1)[0]+1
 	end_cand 		= np.where((index[1:] - index[0:-1]) == -1)[0]
 	if end_cand[0] < start_cand[0]:	end_cand = end_cand[1:]
@@ -158,7 +167,7 @@ for session in datasets:
 	start_cand 		= enveloppe.index.values[start_cand[tmp]]
 	end_cand	 	= enveloppe.index.values[end_cand[tmp]]
 	spind_ep_hpc	= nts.IntervalSet(start_cand, end_cand)
-	spind_ep_hpc	= spind_ep_hpc.drop_short_intervals(100000).drop_long_intervals(3000000)
+	spind_ep_hpc	= spind_ep_hpc.drop_short_intervals(200000).drop_long_intervals(3000000)
 	#count number of cycle, shoulb be superior to six peaks and troughs
 	peaks, troughs 	= getPeaksandTroughs(lfp_filt_hpc, 5)
 	index 		 	= np.zeros(len(spind_ep_hpc))
@@ -170,8 +179,9 @@ for session in datasets:
 
 	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".evt.spd.hpc", spind_ep_hpc, "Spindles")
 
-	phase, pwr		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = True)
-	phase 			= phase.restrict(sws_ep)
+	# phase, pwr		= getPhase(lfp_hpc, 8, 18, 16, fs/5., power = True)
+	# phase 			= phase.restrict(sws_ep)
+	phase 			= phase_hpc
 
 	spikes_spind	= {n:spikes[n].restrict(spind_ep_hpc) for n in spikes.keys()}
 	spikes_phase	= {n:phase.realign(spikes_spind[n], align = 'closest') for n in spikes_spind.keys()}
@@ -213,6 +223,21 @@ for session in datasets:
 	# 	spind_ep_thl	= nts.IntervalSet(start_cand, end_cand)		
 	# 	spind_ep_thl	= spind_ep_thl.drop_short_intervals(50000).drop_long_intervals(3000000)
 	# 	spind_shank_ep[i] = spind_ep_thl
+	
+
+# ##################################################################################################
+# # STORING
+# ##################################################################################################		
+# 	store 			= pd.HDFStore("../data/phase_spindles/"+session.split("/")[1]+".lfp")
+# 	store['lfp_thl'] = lfp_thl.as_dataframe()
+# 	store['lfp_hpc'] = lfp_hpc.as_series()
+# 	store['phase_hpc_spindles'] = phase_hpc.as_series()
+# 	store['phase_thl_spindles'] = phase_thl.as_dataframe()
+# 	store.close()	
+	
+# 	store_spike 	= pd.HDFStore("../data/spikes_thalamus/"+session.split("/")[1]+".spk")
+# 	for n in spikes.keys(): store_spike[str(n)] = spikes[n].as_series()
+# 	store_spike.close()
 	
 
 

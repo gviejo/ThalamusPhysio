@@ -74,7 +74,8 @@ for session in datasets:
 	theta_wake_ep = wake_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
 	theta_rem_ep = rem_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
 
-	# writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_wake.evt.theta", theta_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_wake.evt.theta", theta_wake_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_rem.evt.theta", theta_rem_ep, "Theta")
 
 	# sys.exit()
 
