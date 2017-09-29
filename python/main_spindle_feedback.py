@@ -25,8 +25,8 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 datatosave = {}
 
 allkappa = []
-meankappa = []
 
+meankappa = []
 session_rip_in_thl_spind_mod = []
 session_rip_in_thl_spind_phase = {}
 session_rip_in_hpc_spind_mod = []
@@ -168,7 +168,26 @@ for session in datasets:
 	session_cross_corr_swr_spikes_in_thl_spindles[session] = np.array([crossCorr(swr_in_thl_spindle.as_units('ms').index.values, spikes[i].as_units('ms').index.values, bin_size, nb_bins) for i in spikes.keys()])
 	session_cross_corr_swr_spikes_out_thl_spindles[session] = np.array([crossCorr(swr_out_thl_spindle.as_units('ms').index.values, spikes[i].as_units('ms').index.values, bin_size, nb_bins) for i in spikes.keys()])		
 
-
+##################################################################################################
+# SAVING
+##################################################################################################		
+np.save("../data/spindle_feedback/meankappa.npy", meankappa)
+np.save("../data/spindle_feedback/session_rip_in_thl_spind_mod.npy", np.array(session_rip_in_thl_spind_mod))
+np.save("../data/spindle_feedback/session_rip_in_hpc_spind_mod.npy", np.array(session_rip_in_hpc_spind_mod))
+np.save("../data/spindle_feedback/session_kappa_around_swr.npy", np.array(session_kappa_around_swr))
+np.save("../data/spindle_feedback/session_hpc_kappa_around_swr.npy", np.array(session_hpc_kappa_around_swr))
+cPickle.dump(session_rip_in_thl_spind_phase 					, open('../data/spindle_feedback/session_rip_in_thl_spind_phase.pickle', 'wb'))
+cPickle.dump(session_rip_in_hpc_spind_phase 					, open('../data/spindle_feedback/session_rip_in_hpc_spind_phase.pickle', 'wb'))
+cPickle.dump(phase 												, open('../data/spindle_feedback/phase.pickle', 'wb'))
+cPickle.dump(session_spind_mod1 								, open('../data/spindle_feedback/session_spind_mod1.pickle', 'wb'))
+cPickle.dump(session_spind_mod2 								, open('../data/spindle_feedback/session_spind_mod2.pickle', 'wb'))
+cPickle.dump(session_spind_mod3 								, open('../data/spindle_feedback/session_spind_mod3.pickle', 'wb'))
+cPickle.dump(session_spind_mod4 								, open('../data/spindle_feedback/session_spind_mod4.pickle', 'wb'))
+cPickle.dump(session_spind_mod5 								, open('../data/spindle_feedback/session_spind_mod5.pickle', 'wb'))
+cPickle.dump(session_spind_mod6 								, open('../data/spindle_feedback/session_spind_mod6.pickle', 'wb'))
+cPickle.dump(session_cross_corr 								, open('../data/spindle_feedback/session_cross_corr.pickle', 'wb'))
+cPickle.dump(session_cross_corr_swr_spikes_in_thl_spindles 		, open('../data/spindle_feedback/session_cross_corr_swr_spikes_in_thl_spindles ', 'wb'))
+cPickle.dump(session_cross_corr_swr_spikes_out_thl_spindles 	, open('../data/spindle_feedback/session_cross_corr_swr_spikes_out_thl_spindles', 'wb'))
 
 
 ##################################################################################################
@@ -663,26 +682,46 @@ for j in range(4):
 
 	subplot(2,4,j+1)	
 	count = 0
+	tmp2 = []	
 	for k, ses,i in zip(index, names, range(len(index))):
 		tmp = (session_spind_mod5[ses][:,0] - session_spind_mod4[ses][:,0])
+		tmp = np.abs(tmp)
+		tmp[tmp > np.pi] = 2*np.pi - tmp[tmp > np.pi]
 		y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
 		x = np.vstack((np.zeros(len(tmp)),tmp))
 		plot(x, y, color = colors[i])
-		print(count)
+		tmp2.append(tmp)
 		count += len(tmp)
 	title("OUT - IN THL PHASE")
-	
+	tmp2 = np.hstack(tmp2)
+	tmp2 = tmp2[~np.isnan(tmp2)]
+	print(np.mean(tmp2[0:500]))
+
 	subplot(2,4,j+5)
 	count = 0
+	tmp2 = []
 	for k, ses,i in zip(index, names, range(len(index))):
 		tmp = (session_spind_mod6[ses][:,0] - session_spind_mod3[ses][:,0])
+		tmp = np.abs(tmp)
+		tmp[tmp > np.pi] = 2*np.pi - tmp[tmp > np.pi]
 		y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
 		x = np.vstack((np.zeros(len(tmp)),tmp))
 		plot(x, y, color = colors[i])
 		count += len(tmp)	
+		tmp2.append(tmp)
 	title("OUT - IN HPC PHASE")
+	tmp2 = np.hstack(tmp2)
+	tmp2 = tmp2[~np.isnan(tmp2)]
+	print(np.mean(tmp2[0:500]))
 	
 savefig("../figures/spindle_feedback/fig16.pdf")
+
+sess_out = []
+sess_inn = []
+sess_diff = []
+sess_kappa = []
+sess_phase = []
+sess_pvalue = []
 
 figure(figsize = (20,10))
 for j in range(4):	
@@ -692,42 +731,76 @@ for j in range(4):
 	cmap = plt.get_cmap('autumn')
 	colors = [cmap(i) for i in np.linspace(0, 1, len(index))]	
 
-	subplot(2,4,j+1, projection = 'polar')	
+	subplot(2,4,j+1, projection = 'polar')		
 	count = 0
 	for k, ses,i in zip(index, names, range(len(index))):
-		tmp = (session_spind_mod5[ses][:,0] - session_spind_mod4[ses][:,0])%(2*np.pi)
 		out = session_spind_mod5[ses][:,0]
 		inn = session_spind_mod4[ses][:,0]
-		r = np.arange(len(tmp)) + count		
-		for n in range(len(tmp)):
-			phase = np.linspace(out[n], inn[n], 100)	
-			plot(phase, r, color = colors[i])
+		out[out<0.0] += 2*np.pi
+		inn[inn<0.0] += 2*np.pi
+		tmp = out - inn
+		tmp[np.abs(tmp)<np.pi] *= -1.0
+		tmp[tmp>np.pi] = 2*np.pi - tmp[tmp>np.pi] 
+		tmp[tmp<-np.pi] = -2*np.pi - tmp[tmp<-np.pi]
 
+		r = np.arange(len(tmp)) + count	+ 1
+		for n in range(len(tmp)):					
+			phase = np.linspace(out[n], out[n] + tmp[n], 100)
+			plot(phase, np.ones(100)*r[n], color = colors[i])
+
+			sess_out.append(out[n])
+			sess_inn.append(inn[n])
+			sess_diff.append(tmp[n])
+			sess_kappa.append(session_spind_mod5[ses][n,2]+session_spind_mod4[ses][n,2])
+			sess_phase.append(phase)
+			sess_pvalue.append([session_spind_mod5[ses][n,1],session_spind_mod4[ses][n,1]])
+			# plot(out[n], r[n], 'o')
+			# plot(inn[n], r[n], '^')
+		count += len(tmp)
 		
-		# plot(out, r, 'o', color = 'blue')
-		# plot(inn, r, '^', color = 'green')
-
-		# y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
-		# x = np.vstack((np.zeros(len(tmp)),tmp))
-		# plot(x, y, color = colors[i])
-		# print(count)
-		count += len(out)
 	title("OUT - IN THL PHASE")
 	
 	subplot(2,4,j+5, projection = 'polar')
 	count = 0
-	for k, ses,i in zip(index, names, range(len(index))):
+	for k, ses,i in zip(index, names, range(len(index))):				
 		out = session_spind_mod6[ses][:,0]
 		inn = session_spind_mod3[ses][:,0]
-		r = np.arange(len(out)) + count
-		plot(out, r, 'o', color = 'blue')
-		plot(inn, r, '^', color = 'green')
+		out[out<0.0] += 2*np.pi
+		inn[inn<0.0] += 2*np.pi
+		tmp = out - inn
+		tmp[np.abs(tmp)<np.pi] *= -1.0
+		tmp[tmp>np.pi] = 2*np.pi - tmp[tmp>np.pi] 
+		tmp[tmp<-np.pi] = -2*np.pi - tmp[tmp<-np.pi]
 
-		# tmp = (session_spind_mod6[ses][:,0] - session_spind_mod3[ses][:,0])
-		# y = np.vstack((np.arange(len(tmp)),np.arange(len(tmp))))+count
-		# x = np.vstack((np.zeros(len(tmp)),tmp))
-		# plot(x, y, color = colors[i])
-		# count += len(tmp)	
+		r = np.arange(len(tmp)) + count	+ 1
+		for n in range(len(tmp)):					
+			phase = np.linspace(out[n], out[n] + tmp[n], 100)
+
+			plot(phase, np.ones(100)*r[n], color = colors[i])
+			# plot(out[n], r[n], 'o')
+			# plot(inn[n], r[n], '^')
+		count += len(tmp)
 	title("OUT - IN HPC PHASE")
 	
+sess_out 	= np.array(sess_out )
+sess_inn 	= np.array(sess_inn )
+sess_diff 	= np.array(sess_diff )
+sess_kappa 	= np.array(sess_kappa)
+sess_phase 	= np.array(sess_phase)
+sess_pvalue = np.array(sess_pvalue)
 savefig("../figures/spindle_feedback/fig17.pdf")
+
+figure()
+subplot(1,1,1, projection = 'polar')
+# index = np.arange(len(sess_kappa))[np.logical_and(sess_kappa>0.4, sess_kappa<1.0)]
+index = np.arange(len(sess_pvalue))[np.prod((sess_pvalue < 0.0001)*1.0, axis = 1) == 1.]
+
+r = np.arange(len(index)) + 100
+for n,i in zip(index,range(len(index))):
+	phase = sess_phase[n]
+	plot(phase, np.ones(100)*r[i])
+	# plot(out[n], r[n], 'o')
+	# plot(inn[n], r[n], '^')
+count += len(tmp)
+title("OUT - IN THL PHASE")
+

@@ -414,22 +414,21 @@ def crossCorr2(t1, t2, binsize, nbins):
 	allcount = allcount/(float(len(t1))*binsize / 1000)
 	return allcount
 
-def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter):	
-	allcount = crossCorr(t1, t2, binsize, nbins)
-	# JITTERING by randomizing the interval position
-	jitter_count = np.zeros((nbiter,nbins+1))
-	t0 = t2[0]
-	iset = np.hstack((np.vstack(t2[0:-1]),np.vstack(t2[1:])))		
-	length = iset[:,1] - iset[:,0]
-	t2_shuffle = np.zeros(len(t2))
-	t2_shuffle[0] = t0
-	for i in range(nbiter):				
-		shuff = np.random.permutation(length)		
-		t2_shuffle[1:] = t0+np.cumsum(shuff)		
-		jitter_count[i,:] = crossCorr(t1, t2_shuffle, binsize, nbins)
-	mean_jitter_count = jitter_count.mean(0)		
-	std_jitter_count = jitter_count.std(0)
-	return (allcount - mean_jitter_count)/std_jitter_count
+def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter, confInt):		
+	times = np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+	H0 				= crossCorr(t1, t2, binsize, nbins)	
+	H1 				= np.zeros((nbiter,nbins+1))
+	t2j	 			= t2 + 2*10*jitter*(np.random.rand(nbiter, len(t2)) - 0.5)
+	t2j 			= np.sort(t2j, 1)
+	for i in range(nbiter):			
+		H1[i] 		= crossCorr(t1, t2j[i], binsize, nbins)
+	Hm 				= H1.mean(0)
+	tmp 			= np.sort(H1, 0)
+	HeI 			= tmp[int((1-confInt)/2*nbiter),:]
+	HeS 			= tmp[int((confInt + (1-confInt)/2)*nbiter)]
+	Hstd 			= np.std(tmp, 0)
+
+	return (H0, Hm, HeI, HeS, Hstd, times)
 
 def corr_circular_(alpha1, alpha2):
 	axis = None
@@ -572,24 +571,52 @@ def loadTheta(path):
 	# peaks = peaks.restrict(good_ep)
 	# return troughs, peaks
 
-def loadSWRMod(path):
+def loadSWRMod(path, return_session = False):
 	import _pickle as cPickle
 	tmp = cPickle.load(open(path, 'rb'))
 	z = []
+	sessions = []
 	for session in tmp.keys():
 		z.append(tmp[session]['Hcorr'])
+		sessions += [session]*len(tmp[session]['Hcorr'])
+	sessions = np.array(sessions)
 	z = np.vstack(z)
-	return z
+	if return_session:
+		return (z, sessions)
+	else:
+		return z
 
-def loadThetaMod(path):
+def loadSpindMod(path, return_session = False):
+	import _pickle as cPickle
+	tmp = cPickle.load(open(path, 'rb'))
+	z = {'hpc':[], 'thl':[]}
+	sessions = {'hpc':[], 'thl':[]}
+	for k in z.keys():
+		for session in tmp.keys():
+			z[k].append(tmp[session][k])
+			sessions[k] += [session]*len(tmp[session][k])
+		sessions[k] = np.array(sessions[k])
+		z[k] = np.vstack(z[k])
+	if return_session:
+		return (z, sessions)
+	else:
+		return z
+
+def loadThetaMod(path, return_session = False):
 	import _pickle as cPickle	
 	tmp = cPickle.load(open(path, 'rb'))
 	z = {'wake':[],'rem':[]}
+	sessions = {'wake':[], 'rem':[]}
 	for k in z.keys():
 		for session in tmp.keys():
 			z[k].append(tmp[session]['theta_mod'][k])
+			sessions[k] += [session]*len(tmp[session]['theta_mod'][k])
 		z[k] = np.vstack(z[k])
-	return z	
+		sessions[k] = np.array(sessions[k])
+	if return_session:
+		return (z, sessions)
+	else:
+		return z
 
 def loadXML(path):
 	from xml.dom import minidom

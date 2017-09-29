@@ -55,8 +55,7 @@ for session in datasets:
 
 ##################################################################################################
 # DETECTION THETA
-##################################################################################################	
-	# good_ep 		= loadTheta(data_directory+session+'/Analysis/ThetaInfo.mat') # TODO	
+##################################################################################################		
 	lfp_filt_hpc	= nts.Tsd(lfp_hpc.index.values, butter_bandpass_filter(lfp_hpc, 6, 14, fs/5, 2))	
 	power	 		= nts.Tsd(lfp_filt_hpc.index.values, np.abs(lfp_filt_hpc.values))
 	enveloppe,dummy	= getPeaksandTroughs(power, 5)	
@@ -68,40 +67,35 @@ for session in datasets:
 	tmp 			= np.where(end_cand != start_cand)
 	start_cand 		= enveloppe.index.values[start_cand[tmp]]
 	end_cand	 	= enveloppe.index.values[end_cand[tmp]]
-	good_ep	= nts.IntervalSet(start_cand, end_cand)
-	good_ep	= good_ep.drop_short_intervals(300000)
+	good_ep			= nts.IntervalSet(start_cand, end_cand)
+	good_ep			= good_ep.drop_short_intervals(300000)
 
-	theta_wake_ep = wake_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
-	theta_rem_ep = rem_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
+	theta_wake_ep 	= wake_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
+	theta_rem_ep 	= rem_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
 
 	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_wake.evt.theta", theta_wake_ep, "Theta")
 	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_rem.evt.theta", theta_rem_ep, "Theta")
-
-	# sys.exit()
-
-	# peaks, troughs 	= getPeaksandTroughs(lfp, 20)
-	phase 			= getPhase(lfp_hpc, 6, 14, 16, fs/5.)
 	
-	# ep 				= {	'wake'	: wake_ep.intersect(good_ep).drop_short_intervals(2.0, 's'),
-	# 					'rem'	: rem_ep.intersect(good_ep).drop_short_intervals(2.0, 's')}	
+	
+	phase 			= getPhase(lfp_hpc, 6, 14, 16, fs/5.)	
 	ep 				= { 'wake'	: theta_wake_ep,
 						'rem'	: theta_rem_ep}
 	theta_mod 		= {}
 	
 	for e in ep.keys():		
 		spikes_phase	= {n:phase.realign(spikes[n], align = 'closest') for n in spikes.keys()}
-		theta_mod[e] 	= np.ones((n_neuron,3))*np.nan
+		# theta_mod[e] 	= np.ones((n_neuron,3))*np.nan
+		theta_mod[e] 	= {}
 		for n in range(len(spikes_phase.keys())):
 			neuron = list(spikes_phase.keys())[n]
 			ph = spikes_phase[neuron].restrict(ep[e])
 			mu, kappa, pval = getCircularMean(ph.values)
-			theta_mod[e][n] = np.array([mu, pval, kappa])
+			theta_mod[e][session.split("/")[1]+"_"+str(neuron)] = np.array([mu, pval, kappa])
+
 	
-
-
 	stop = time.time()
 	print(stop - start, ' s')		
-	datatosave[session] = {'theta_mod':theta_mod}
+	datatosave[session] = theta_mod
 
 
 

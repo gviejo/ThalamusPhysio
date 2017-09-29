@@ -7,8 +7,9 @@
 
 Sharp-waves ripples modulation 
 Used to make figure 1
-# TODO ASK ADRIEN ABOUT THE RESTRICTION BY SLEEP_EP
+
 '''
+
 import numpy as np
 import pandas as pd
 import scipy.io
@@ -26,13 +27,14 @@ datatosave = {}
 clients = ipyparallel.Client()	
 dview = clients.direct_view()
 
-start2 = time.time()
 for session in datasets:	
-	start = time.time()
-
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
 	shankStructure 	= loadShankStructure(generalinfo)
-	spikes 			= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])
+	if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
+		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][1][0][0] - 1
+	else:
+		hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][0][0][0] - 1		
+	spikes,shank	= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
 	wake_ep 		= loadEpoch(data_directory+session, 'wake')
 	sleep_ep 		= loadEpoch(data_directory+session, 'sleep')
 	sws_ep 			= loadEpoch(data_directory+session, 'sws')
@@ -57,16 +59,19 @@ for session in datasets:
 		confInt 	= 0.95
 		nb_iter 	= 1000
 		jitter  	= 150 # ms					
-		return xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter)
+		H0, Hm, HeI, HeS, Hstd, times = xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter, confInt)		
+		return (H0, Hm, Hstd)
+		# return (H0 - Hm)/Hstd
 
 	spikes_list = [spikes_sws[i].as_units('ms').index.values for i in spikes_sws.keys()]
-
-	sys.exit()
+	
 	Hcorr = dview.map_sync(cross_correlation, zip(spikes_list, [rip_tsd.as_units('ms').index.values for i in spikes_sws.keys()]))
-	Hcorr = np.array(Hcorr)	
-	stop = time.time()
-	print(stop - start, ' s')	
-	datatosave[session] = {'Hcorr':Hcorr}
+		
+	datatosave[session] = {}
+	for n,i in zip(spikes_sws.keys(), range(len(spikes_sws.keys()))):
+		datatosave[session][session.split("/")[1]+"_"+str(n)] = Hcorr[i]
+		
+	
 
 
 print("Total ", time.time() - start2, ' s')

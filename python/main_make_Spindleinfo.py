@@ -142,12 +142,13 @@ for session in datasets:
 	spikes_spind	= {n:spikes[n].restrict(spind_ep_thl) for n in spikes.keys()}
 	spikes_phase	= {n:phase.realign(spikes_spind[n], align = 'closest') for n in spikes_spind.keys()}
 
-	spind_thl_mod 		= np.ones((n_neuron,3))*np.nan
+	# spind_thl_mod 		= np.ones((n_neuron,3))*np.nan
+	spind_thl_mod 		= {}
 	for n in range(len(spikes_phase.keys())):
 		neuron = list(spikes_phase.keys())[n]
 		ph = spikes_phase[neuron]
 		mu, kappa, pval = getCircularMean(ph.values)
-		spind_thl_mod[n] = np.array([mu, pval, kappa])
+		spind_thl_mod[session.split("/")[1]+"_"+str(neuron)] = np.array([mu, pval, kappa])
 
 
 ##################################################################################################
@@ -191,7 +192,7 @@ for session in datasets:
 		neuron = list(spikes_phase.keys())[n]
 		ph = spikes_phase[neuron]
 		mu, kappa, pval = getCircularMean(ph.values)
-		spind_hpc_mod[n] = np.array([mu, pval, kappa])
+		spind_hpc_mod[session.split("/")[1]+"_"+str(neuron)] = np.array([mu, pval, kappa])
 	
 ##################################################################################################
 # DETECTION Spindles in thalamus FOR EACH SHANK
