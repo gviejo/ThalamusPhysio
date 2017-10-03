@@ -20,34 +20,62 @@ from pylab import *
 from sklearn.decomposition import PCA
 import _pickle as cPickle
 
+###############################################################################################################
+# LOADING DATA
+###############################################################################################################
 data_directory 	= '/mnt/DataGuillaume/MergedData/'
 datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
-# neuron should be aligned from previous scripts
-swr_mod 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle')
-theta_mod 		= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle')
+theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
+swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
+spind_mod, spind_ses 	= loadSpindMod('/mnt/DataGuillaume/MergedData/SPINDLE_mod.pickle', datasets, return_index=True)
+
+swr 					= pd.DataFrame(	index = swr_ses, 
+										columns = np.arange(-500, 505, 5),
+										data = swr_mod)
+
+phase 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
+phase.loc[theta_ses['wake'],'theta_wake'] = theta_mod['wake'][:,0]
+phase.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,0]
+phase.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,0]
+phase.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,0]
+
+pvalue 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
+pvalue.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,1]
+pvalue.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,1]
+pvalue.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,1]
+pvalue.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,1]
+
+kappa 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
+kappa.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,2]
+kappa.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,2]
+kappa.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,2]
+kappa.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,2]
 
 # filtering swr_mod
-swr_mod 		= gaussFilt(swr_mod, (10,))
+swr 				= pd.DataFrame(	index = swr.index, 
+									columns = swr.columns,
+									data = gaussFilt(swr.values, (10,)))
+
 
 # CHECK FOR NAN
-tmp1 			= np.unique(np.where(np.isnan(swr_mod))[0])
-tmp2 			= np.unique(np.where(np.isnan(theta_mod['wake'][:,0]))[0])
-tmp3 			= np.unique(np.where(np.isnan(theta_mod['rem'][:,0]))[0])
-
+tmp1 			= swr.index[np.unique(np.where(np.isnan(swr_mod))[0])]
+tmp2 			= phase.index[phase.isnull().any(1)]
 # CHECK P-VALUE 
-tmp4 			= np.unique(np.where(theta_mod['wake'][:,1]>0.001))
-tmp5 			= np.unique(np.where(theta_mod['rem'][:,1]>0.001))
-tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3,tmp4,tmp5]))
-
-# Delete
+tmp3	 		= pvalue.index[(pvalue['theta_rem'] > 0.1).values]
+tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3]))
+# copy and delete 
 if len(tmp):
-	swr_modth 	= np.delete(swr_mod, tmp, axis = 0)
-	theta_modth = {	'wake'	:	np.delete(theta_mod['wake'], tmp, axis = 0),
-					'rem' 	: 	np.delete(theta_mod['rem'], tmp, axis = 0)
-				}
+	swr_modth 	= swr.drop(tmp)
+	theta_modth = np.zeros((len(swr_modth),3))	
+	theta_modth[:,0] = phase.loc[swr_modth.index,	'theta_rem']
+	theta_modth[:,1] = pvalue.loc[swr_modth.index,	'theta_rem']
+	theta_modth[:,2] = kappa.loc[swr_modth.index,	'theta_rem']
 
-theta_modth = theta_modth['rem']
+
+neuron_index = swr_modth.index
+swr_modth = swr_modth.values
+
 
 ###############################################################################################################
 # PCA
@@ -115,8 +143,8 @@ dynamical_system = {	'x'		:	X,
 						'Msym'	:	Msym,
 						'times'	:	times 	}
 
-import _pickle as cPickle
-cPickle.dump(dynamical_system, open('../data/dynamical_system.pickle', 'wb'))
+# import _pickle as cPickle
+# cPickle.dump(dynamical_system, open('../data/dynamical_system.pickle', 'wb'))
 
 ###############################################################################################################
 # CROSS-VALIDATION
@@ -167,7 +195,7 @@ datatosave = {	'swr_modth'		:	swr_modth,
 
 				}	
 
-cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
+# cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
 
 ###############################################################################################################
 # PLOT

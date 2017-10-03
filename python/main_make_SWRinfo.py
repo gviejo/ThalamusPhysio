@@ -53,15 +53,16 @@ for session in datasets:
 	def cross_correlation(tsd):
 		spike_tsd, rip_tsd = tsd
 		import numpy as np
-		from functions import xcrossCorr
+		from functions import xcrossCorr_fast
 		bin_size 	= 5 # ms 
 		nb_bins 	= 200
 		confInt 	= 0.95
 		nb_iter 	= 1000
 		jitter  	= 150 # ms					
-		H0, Hm, HeI, HeS, Hstd, times = xcrossCorr(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter, confInt)		
-		return (H0, Hm, Hstd)
-		# return (H0 - Hm)/Hstd
+		H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter, confInt)		
+		
+		return (H0 - Hm)/Hstd
+
 
 	spikes_list = [spikes_sws[i].as_units('ms').index.values for i in spikes_sws.keys()]
 	
@@ -70,11 +71,9 @@ for session in datasets:
 	datatosave[session] = {}
 	for n,i in zip(spikes_sws.keys(), range(len(spikes_sws.keys()))):
 		datatosave[session][session.split("/")[1]+"_"+str(n)] = Hcorr[i]
-		
+
+	print(session)		
 	
-
-
-print("Total ", time.time() - start2, ' s')
 
 import _pickle as cPickle
 cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', 'wb'))

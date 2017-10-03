@@ -414,11 +414,11 @@ def crossCorr2(t1, t2, binsize, nbins):
 	allcount = allcount/(float(len(t1))*binsize / 1000)
 	return allcount
 
-def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter, confInt):		
-	times = np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+def xcrossCorr_slow(t1, t2, binsize, nbins, nbiter, jitter, confInt):		
+	times 			= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 	H0 				= crossCorr(t1, t2, binsize, nbins)	
 	H1 				= np.zeros((nbiter,nbins+1))
-	t2j	 			= t2 + 2*10*jitter*(np.random.rand(nbiter, len(t2)) - 0.5)
+	t2j	 			= t2 + 2*jitter*(np.random.rand(nbiter, len(t2)) - 0.5)
 	t2j 			= np.sort(t2j, 1)
 	for i in range(nbiter):			
 		H1[i] 		= crossCorr(t1, t2j[i], binsize, nbins)
@@ -429,6 +429,20 @@ def xcrossCorr(t1, t2, binsize, nbins, nbiter, jitter, confInt):
 	Hstd 			= np.std(tmp, 0)
 
 	return (H0, Hm, HeI, HeS, Hstd, times)
+
+def xcrossCorr_fast(t1, t2, binsize, nbins, nbiter, jitter, confInt):		
+	times 			= np.arange(0, binsize*(nbins*2+1), binsize) - (nbins*2*binsize)/2
+	# need to do a cross-corr of double size to convolve after and avoid boundary effect
+	H0 				= crossCorr(t1, t2, binsize, nbins*2)	
+	window_size 	= 2*jitter//binsize
+	window 			= np.ones(window_size)*(1/window_size)
+	Hm 				= np.convolve(H0, window, 'same')
+	Hstd			= np.sqrt(np.var(Hm))	
+	HeI 			= np.NaN
+	HeS 			= np.NaN	
+	n 				= len(H0)//4
+	return (H0[n:3*n+1], Hm[n:3*n+1], HeI, HeS, Hstd, times[n:3*n+1])
+
 
 def corr_circular_(alpha1, alpha2):
 	axis = None
@@ -459,6 +473,13 @@ def loadShankStructure(generalinfo):
 			shankStructure[k[0]] = []
 	
 	return shankStructure	
+
+def loadShankMapping(path):	
+	import scipy.io	
+	spikedata = scipy.io.loadmat(path)
+	shank = spikedata['shank']
+	return shank
+
 
 def loadSpikeData(path, index):
 	# units shoud be the value to convert in s 
@@ -571,50 +592,63 @@ def loadTheta(path):
 	# peaks = peaks.restrict(good_ep)
 	# return troughs, peaks
 
-def loadSWRMod(path, return_session = False):
+def loadSWRMod(path, datasets, return_index = False):
 	import _pickle as cPickle
 	tmp = cPickle.load(open(path, 'rb'))
 	z = []
-	sessions = []
-	for session in tmp.keys():
-		z.append(tmp[session]['Hcorr'])
-		sessions += [session]*len(tmp[session]['Hcorr'])
-	sessions = np.array(sessions)
+	index = []
+	for session in datasets:
+		neurons = np.array(list(tmp[session].keys()))
+		sorte = np.array([int(n.split("_")[1]) for n in neurons])
+		ind = np.argsort(sorte)			
+		for n in neurons[ind]:
+			z.append(tmp[session][n])						
+		index += list(neurons[ind])
 	z = np.vstack(z)
-	if return_session:
-		return (z, sessions)
+	index = np.array(index)
+	if return_index:
+		return (z, index)
 	else:
 		return z
 
-def loadSpindMod(path, return_session = False):
+def loadSpindMod(path, datasets, return_index = False):
 	import _pickle as cPickle
 	tmp = cPickle.load(open(path, 'rb'))
 	z = {'hpc':[], 'thl':[]}
-	sessions = {'hpc':[], 'thl':[]}
+	index = {'hpc':[], 'thl':[]}
 	for k in z.keys():
-		for session in tmp.keys():
-			z[k].append(tmp[session][k])
-			sessions[k] += [session]*len(tmp[session][k])
-		sessions[k] = np.array(sessions[k])
+		for session in datasets:
+			neurons = np.array(list(tmp[session][k].keys()))
+			sorte = np.array([int(n.split("_")[1]) for n in neurons])
+			ind = np.argsort(sorte)			
+			for n in neurons[ind]:
+				z[k].append(tmp[session][k][n])				
+			index[k] += list(neurons[ind])
 		z[k] = np.vstack(z[k])
-	if return_session:
-		return (z, sessions)
+		index[k] = np.array(index[k])
+	if return_index:
+		return (z, index)
 	else:
 		return z
 
-def loadThetaMod(path, return_session = False):
+def loadThetaMod(path, datasets, return_index = False):
 	import _pickle as cPickle	
 	tmp = cPickle.load(open(path, 'rb'))
 	z = {'wake':[],'rem':[]}
-	sessions = {'wake':[], 'rem':[]}
+	index = {'wake':[], 'rem':[]}
+
 	for k in z.keys():
-		for session in tmp.keys():
-			z[k].append(tmp[session]['theta_mod'][k])
-			sessions[k] += [session]*len(tmp[session]['theta_mod'][k])
+		for session in datasets:
+			neurons = np.array(list(tmp[session][k].keys()))
+			sorte = np.array([int(n.split("_")[1]) for n in neurons])
+			ind = np.argsort(sorte)			
+			for n in neurons[ind]:
+				z[k].append(tmp[session][k][n])				
+			index[k] += list(neurons[ind])
 		z[k] = np.vstack(z[k])
-		sessions[k] = np.array(sessions[k])
-	if return_session:
-		return (z, sessions)
+		index[k] = np.array(index[k])
+	if return_index:
+		return (z, index)
 	else:
 		return z
 

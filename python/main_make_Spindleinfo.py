@@ -187,7 +187,8 @@ for session in datasets:
 	spikes_spind	= {n:spikes[n].restrict(spind_ep_hpc) for n in spikes.keys()}
 	spikes_phase	= {n:phase.realign(spikes_spind[n], align = 'closest') for n in spikes_spind.keys()}
 
-	spind_hpc_mod 	= np.ones((n_neuron,3))*np.nan
+	# spind_hpc_mod 	= np.ones((n_neuron,3))*np.nan
+	spind_hpc_mod 	= {}
 	for n in range(len(spikes_phase.keys())):
 		neuron = list(spikes_phase.keys())[n]
 		ph = spikes_phase[neuron]
