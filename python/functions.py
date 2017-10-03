@@ -1,5 +1,62 @@
 import numpy as np
 
+def jPCA(data, times):
+	#PCA
+	from sklearn.decomposition import PCA
+	n 		= 6
+	pca 	= PCA(n_components = n)
+	zpca 	= pca.fit_transform(data)
+	pc 		= zpca[:,0:2]
+	eigen 	= pca.components_
+	phi 	= np.mod(np.arctan2(zpca[:,1], zpca[:,0]), 2*np.pi)
+	#jPCA
+	X 		= pca.components_.transpose()
+	dX 		= np.hstack([np.vstack(derivative(times, X[:,i])) for i in range(X.shape[1])])
+	#build the H mapping for a given n
+	# work by lines but H is made for column based
+	n 		= X.shape[1]
+	H 		= buildHMap(n)
+	# X tilde
+	Xtilde 	= np.zeros( (X.shape[0]*X.shape[1], X.shape[1]*X.shape[1]) )
+	for i, j in zip( (np.arange(0,n**2,n) ), np.arange(0, n*X.shape[0], X.shape[0]) ):
+		Xtilde[j:j+X.shape[0],i:i+X.shape[1]] = X
+	# put dx in columns
+	dXv 	= np.vstack(dX.transpose().reshape(X.shape[0]*X.shape[1]))
+	# multiply Xtilde by H
+	XtH 	= np.dot(Xtilde, H)
+	# solve XtH k = dXv
+	k, residuals, rank, s = np.linalg.lstsq(XtH, dXv)
+	# multiply by H to get m then M
+	m 		= np.dot(H, k)
+	Mskew = m.reshape(n,n).transpose()
+	# Contruct the two vectors for projection with MSKEW
+	evalues, evectors = np.linalg.eig(Mskew)
+	# index = np.argsort(evalues).reshape(5,2)[:,1]
+	index 	= np.argsort(np.array([np.linalg.norm(i) for i in evalues]).reshape(int(n/2),2)[:,0])
+	evectors = evectors.transpose().reshape(int(n/2),2,n)
+	u 		= np.vstack([
+					np.real(evectors[index[-1]][0] + evectors[index[-1]][1]),
+					np.imag(evectors[index[-1]][0] - evectors[index[-1]][1])
+				]).transpose()
+	# PRoject X
+	rX 		= np.dot(X, u)
+	rX 		= rX*-1.0
+	score 	= np.dot(data, rX)
+	phi2 	= np.mod(np.arctan2(score[:,1], score[:,0]), 2*np.pi)
+	# Construct the two vectors for projection with MSYM
+	Msym 	= np.copy(Mskew)
+	Msym[np.triu_indices(n)] *= -1.0
+	evalues2, evectors2 = np.linalg.eig(Msym)
+	v 		= evectors2[:,0:2]
+	rY 		= np.dot(X, v)
+	score2 	= np.dot(data, rY)
+	phi3 	= np.mod(np.arctan2(score2[:,1], score2[:,0]), 2*np.pi)
+	dynamical_system = {	'x'		:	X,
+							'dx'	:	dX,
+							'Mskew'	:	Mskew,
+							'Msym'	:	Msym,
+														}
+	return (rX, dynamical_system)
 
 def gaussFilt(X, wdim = (1,)):
 	'''
@@ -440,9 +497,7 @@ def xcrossCorr_fast(t1, t2, binsize, nbins, nbiter, jitter, confInt):
 	Hstd			= np.sqrt(np.var(Hm))	
 	HeI 			= np.NaN
 	HeS 			= np.NaN	
-	n 				= len(H0)//4
-	return (H0[n:3*n+1], Hm[n:3*n+1], HeI, HeS, Hstd, times[n:3*n+1])
-
+	return (H0, Hm, HeI, HeS, Hstd, times)	
 
 def corr_circular_(alpha1, alpha2):
 	axis = None
@@ -479,7 +534,6 @@ def loadShankMapping(path):
 	spikedata = scipy.io.loadmat(path)
 	shank = spikedata['shank']
 	return shank
-
 
 def loadSpikeData(path, index):
 	# units shoud be the value to convert in s 

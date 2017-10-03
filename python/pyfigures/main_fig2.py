@@ -14,11 +14,11 @@ import os
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-data = cPickle.load(open('../data/to_plot.pickle', 'rb'))
-allzth 			= 	data['allzth'		]		
+data = cPickle.load(open('../../data/to_plot.pickle', 'rb'))
+allzth 			= 	data['swr_modth'	]		
 eigen 			= 	data['eigen'		]		
 times 			= 	data['times' 		]		
-allthetamodth 	= 	data['allthetamodth']		
+allthetamodth 	= 	data['theta_modth'	]		
 phi 			= 	data['phi' 			]		
 zpca 			= 	data['zpca'			]		
 phi2			= 	data['phi2' 		]	 	
@@ -202,6 +202,6 @@ cbaxes.yaxis.set_ticks_position('left')
 r, p = corr_circular_(theta_mod_toplot, phi2)
 print(r, p)
 
-savefig("../figures/fig2.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
-os.system("evince ../figures/fig2.pdf &")
+savefig("../../figures/fig2.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+os.system("evince ../../figures/fig2.pdf &")
 

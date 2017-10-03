@@ -59,7 +59,7 @@ swr 				= pd.DataFrame(	index = swr.index,
 
 
 # CHECK FOR NAN
-tmp1 			= swr.index[np.unique(np.where(np.isnan(swr_mod))[0])]
+tmp1 			= swr.index[np.unique(np.where(np.isnan(swr))[0])]
 tmp2 			= phase.index[phase.isnull().any(1)]
 # CHECK P-VALUE 
 tmp3	 		= pvalue.index[(pvalue['theta_rem'] > 0.1).values]
@@ -176,7 +176,7 @@ scorerip, phirip, indexrip, jpca_rip = quartiles(swr_modth_sorted2, times, n_fol
 datatosave = {	'swr_modth'		:	swr_modth,
 				'eigen'			:	eigen,
 				'times' 		: 	times,
-				'theta_modth' :	theta_modth,
+				'theta_modth' 	:	theta_modth,
 				'phi' 			: 	phi,
 				'zpca'			: 	zpca,
 				'phi2' 			: 	phi2,
@@ -191,11 +191,10 @@ datatosave = {	'swr_modth'		:	swr_modth,
 				'indextheta'	:	indextheta,
 				'indexrip'		:	indexrip,
 				'jpca_theta'	: 	jpca_theta,
-				'jpca_rip'		: 	jpca_rip
-
+				'jpca_rip'		: 	jpca_rip				
 				}	
 
-# cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
+cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
 
 ###############################################################################################################
 # PLOT

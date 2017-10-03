@@ -24,8 +24,8 @@ data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
 
-clients = ipyparallel.Client()	
-dview = clients.direct_view()
+# clients = ipyparallel.Client()	
+# dview = clients.direct_view()
 
 for session in datasets:	
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -59,8 +59,7 @@ for session in datasets:
 		confInt 	= 0.95
 		nb_iter 	= 1000
 		jitter  	= 150 # ms					
-		H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter, confInt)		
-		
+		H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(rip_tsd, spike_tsd, bin_size, nb_bins, nb_iter, jitter, confInt)				
 		return (H0 - Hm)/Hstd
 
 
