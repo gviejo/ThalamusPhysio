@@ -56,7 +56,7 @@ def jPCA(data, times):
 							'Mskew'	:	Mskew,
 							'Msym'	:	Msym,
 														}
-	return (rX, dynamical_system)
+	return (rX, phi2, dynamical_system)
 
 def gaussFilt(X, wdim = (1,)):
 	'''
@@ -408,6 +408,10 @@ def computePhaseModulation(phase, spikes, ep, get_phase = False):
 	else:
 		return evt_mod
 	
+def getPhaseCoherence(phase):
+	r = np.sqrt(np.sum([np.power(np.sum(np.cos(phase)),2), np.power(np.sum(np.sin(phase)),2)]))/len(phase)	
+	return r
+
 #########################################################
 # CORRELATION
 #########################################################
@@ -629,6 +633,7 @@ def loadRipples(path):
 			nts.Ts(ripples[:,1], time_units = 's'))
 
 def loadTheta(path):
+	
 	import scipy.io
 	import neuroseries as nts
 	thetaInfo = scipy.io.loadmat(path)

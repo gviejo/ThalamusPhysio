@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 '''
-	File name: main_make_map.py
+	File name: main_make_movie.py
 	Author: Guillaume Viejo
-	Date created: 28/09/2017    
+	Date created: 09/10/2017    
 	Python Version: 3.5.2
 
 To make shank mapping
@@ -18,6 +18,7 @@ from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
 import _pickle as cPickle
+import neuroseries as nts
 
 ###############################################################################################################
 # LOADING DATA
@@ -29,30 +30,12 @@ theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_m
 swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
 spind_mod, spind_ses 	= loadSpindMod('/mnt/DataGuillaume/MergedData/SPINDLE_mod.pickle', datasets, return_index=True)
 
-nbins 				= 400
+nbins 					= 400
 binsize					= 5
 times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 swr 					= pd.DataFrame(	index = swr_ses, 
 										columns = times,
 										data = swr_mod)
-
-phase 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-phase.loc[theta_ses['wake'],'theta_wake'] = theta_mod['wake'][:,0]
-phase.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,0]
-phase.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,0]
-phase.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,0]
-
-pvalue 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-pvalue.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,1]
-pvalue.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,1]
-pvalue.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,1]
-pvalue.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,1]
-
-kappa 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-kappa.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,2]
-kappa.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,2]
-kappa.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,2]
-kappa.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,2]
 
 # filtering swr_mod
 swr 				= pd.DataFrame(	index = swr.index, 
@@ -106,22 +89,6 @@ for m in mouses:
 	theta_shank 	= np.zeros((len(sessions),8,nb_bins)) # that's radian bins here
 	spindle_shank 	= np.zeros((len(sessions),8,nb_bins)) # that's radian bins here
 	bins_phase 		= np.linspace(-np.pi, np.pi+0.00001, nb_bins+1)
-	# positive and negative modulation for each mouse
-	# bornsup 		= np.percentile(swr_modth.loc[neurons], 70)
-	# borninf 		= np.percentile(swr_modth.loc[neurons], 30)
-	bornsup 		= 1.0
-	borninf 		= -0.5
-	neurons_pos  	= np.array([n for n in swr_modth.index if m in n and swr_modth.loc[n,0] > bornsup])
-	neurons_neg  	= np.array([n for n in swr_modth.index if m in n and swr_modth.loc[n,0] < borninf])	
-	count_positive 	= np.zeros((len(sessions),8))
-	count_negative 	= np.zeros((len(sessions),8))
-	count_total 	= np.zeros((len(sessions),8))	
-	hd_neurons 		= np.zeros((len(sessions),8))
-	amplitute		= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	phase_shank		= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	kappa_shank 	= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	coherence_shank	= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	# map neuron to a session and a shank with a dual index
 	for s in sessions:				
 		shank				= loadShankMapping(data_directory+m+'/'+s+'/Analysis/SpikeData.mat').flatten()
 		shankIndex 			= np.array([shank[int(n.split("_")[1])]-1 for n in neurons if s in n])		
@@ -133,33 +100,37 @@ for m in mouses:
 ###########################################################################################################			
 # SWR MOD
 ###########################################################################################################					
-		for k in shank_to_neurons.keys(): 
-			count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])
-			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])						
-			amplitute['swr'][np.where(sessions==s)[0][0],k] = np.mean(swr_modth.loc[shank_to_neurons[k]].max(1) - swr_modth.loc[shank_to_neurons[k]].min(1))
-			mu_, kappa_, pval_ = getCircularMean(phi_swr.loc[shank_to_neurons[k]].values.flatten(), 2*np.pi, 0.0)
-			phase_shank['swr'][np.where(sessions==s)[0][0],k] = mu_
-			if np.isnan(mu_): sys.exit("mu_")			
-			kappa_shank['swr'][np.where(sessions==s)[0][0],k] = kappa_
-			coherence_shank['swr'][np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi_swr.loc[shank_to_neurons[k]].values.flatten())
-			for t in range(len(times)):
-				swr_shank[np.where(sessions== s)[0][0],k,t] = np.mean(swr_modth.loc[shank_to_neurons[k],times[t]])
+		# for k in shank_to_neurons.keys(): 
+		# 	count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])
+		# 	hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])						
+		# 	amplitute['swr'][np.where(sessions==s)[0][0],k] = np.mean(swr_modth.loc[shank_to_neurons[k]].max(1) - swr_modth.loc[shank_to_neurons[k]].min(1))
+		# 	mu_, kappa_, pval_ = getCircularMean(phi_swr.loc[shank_to_neurons[k]].values.flatten(), 2*np.pi, 0.0)
+		# 	phase_shank['swr'][np.where(sessions==s)[0][0],k] = mu_
+		# 	if np.isnan(mu_): sys.exit("mu_")			
+		# 	kappa_shank['swr'][np.where(sessions==s)[0][0],k] = kappa_
+		# 	coherence_shank['swr'][np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi_swr.loc[shank_to_neurons[k]].values.flatten())
+		# 	for t in range(len(times)):
+		# 		swr_shank[np.where(sessions== s)[0][0],k,t] = np.mean(swr_modth.loc[shank_to_neurons[k],times[t]])
 		
-		# positive swr mod
-		neurons_pos_in_session = np.array([n for n in neurons_pos if s in n])
-		shankIndex_pos		= np.array([shank[int(n.split("_")[1])]-1 for n in neurons_pos_in_session])
-		shank_to_neurons_pos = {k:[n for n in neurons_pos_in_session[shankIndex_pos == k]] for k in np.unique(shankIndex_pos)}
-		for k in shank_to_neurons_pos.keys():
-			count_positive[np.where(sessions== s)[0][0],k] = float(len(shank_to_neurons_pos[k]))
-		# negative swr mod
-		neurons_neg_in_session = np.array([n for n in neurons_neg if s in n])
-		shankIndex_neg		= np.array([shank[int(n.split("_")[1])]-1 for n in neurons_neg_in_session])
-		shank_to_neurons_neg = {k:[n for n in neurons_neg_in_session[shankIndex_neg == k]] for k in np.unique(shankIndex_neg)}
-		for k in shank_to_neurons_neg.keys():
-			count_negative[np.where(sessions== s)[0][0],k] = float(len(shank_to_neurons_neg[k]))
+		# # positive swr mod
+		# neurons_pos_in_session = np.array([n for n in neurons_pos if s in n])
+		# shankIndex_pos		= np.array([shank[int(n.split("_")[1])]-1 for n in neurons_pos_in_session])
+		# shank_to_neurons_pos = {k:[n for n in neurons_pos_in_session[shankIndex_pos == k]] for k in np.unique(shankIndex_pos)}
+		# for k in shank_to_neurons_pos.keys():
+		# 	count_positive[np.where(sessions== s)[0][0],k] = float(len(shank_to_neurons_pos[k]))
+		# # negative swr mod
+		# neurons_neg_in_session = np.array([n for n in neurons_neg if s in n])
+		# shankIndex_neg		= np.array([shank[int(n.split("_")[1])]-1 for n in neurons_neg_in_session])
+		# shank_to_neurons_neg = {k:[n for n in neurons_neg_in_session[shankIndex_neg == k]] for k in np.unique(shankIndex_neg)}
+		# for k in shank_to_neurons_neg.keys():
+		# 	count_negative[np.where(sessions== s)[0][0],k] = float(len(shank_to_neurons_neg[k]))
 ###########################################################################################################			
 # THETA MOD
 ###########################################################################################################			
+		# loading theta episodes		
+		theta_ep = np.genfromtxt(data_directory+m+'/'+s+'/'+s+'_rem.evt.theta')[:,0]
+		theta_ep = theta_ep.reshape(len(theta_ep)//2,2)
+		theta_ep = nts.IntervalSet(theta_ep[:,0], theta_ep[:,1])
 		for k in shank_to_neurons.keys():
 			phi = phase.loc[shank_to_neurons[k],'theta_rem'].values.astype(np.float)
 			phi = phi[~np.isnan(phi)]

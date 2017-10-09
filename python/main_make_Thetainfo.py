@@ -24,7 +24,7 @@ from Wavelets import MyMorlet as Morlet
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
-
+spikes_theta_phase = {'wake':{},'rem':{}}
 
 for session in datasets:	
 	start = time.time()
@@ -82,15 +82,19 @@ for session in datasets:
 						'rem'	: theta_rem_ep}
 	theta_mod 		= {}
 	
+
+
 	for e in ep.keys():		
 		spikes_phase	= {n:phase.realign(spikes[n], align = 'closest') for n in spikes.keys()}
+
 		# theta_mod[e] 	= np.ones((n_neuron,3))*np.nan
 		theta_mod[e] 	= {}
-		for n in range(len(spikes_phase.keys())):
+		for n in range(len(spikes_phase.keys())):			
 			neuron = list(spikes_phase.keys())[n]
 			ph = spikes_phase[neuron].restrict(ep[e])
 			mu, kappa, pval = getCircularMean(ph.values)
 			theta_mod[e][session.split("/")[1]+"_"+str(neuron)] = np.array([mu, pval, kappa])
+			spikes_theta_phase[e][session.split("/")[1]+"_"+str(neuron)] = ph.values
 
 	
 	stop = time.time()
@@ -101,7 +105,7 @@ for session in datasets:
 
 import _pickle as cPickle
 cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', 'wb'))
-
+cPickle.dump(spikes_theta_phase, open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'wb'))
 
 
 

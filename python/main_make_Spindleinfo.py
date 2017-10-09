@@ -22,7 +22,7 @@ from Wavelets import MyMorlet as Morlet
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
-
+spikes_spindle_phase = {'hpc':{}, 'thl':{}}
 
 for session in datasets:
 	print("session"+session)

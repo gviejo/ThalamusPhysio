@@ -30,8 +30,11 @@ theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_m
 swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
 spind_mod, spind_ses 	= loadSpindMod('/mnt/DataGuillaume/MergedData/SPINDLE_mod.pickle', datasets, return_index=True)
 
+nbins 					= 400
+binsize					= 5
+times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 swr 					= pd.DataFrame(	index = swr_ses, 
-										columns = np.arange(-500, 505, 5),
+										columns = times,
 										data = swr_mod)
 
 phase 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
@@ -57,6 +60,11 @@ swr 				= pd.DataFrame(	index = swr.index,
 									columns = swr.columns,
 									data = gaussFilt(swr.values, (10,)))
 
+# Cut swr_mod from -500 to 500
+nbins 				= 200
+binsize				= 5
+times 				= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+swr 				= swr.loc[:,times]
 
 # CHECK FOR NAN
 tmp1 			= swr.index[np.unique(np.where(np.isnan(swr))[0])]
@@ -88,7 +96,7 @@ eigen = pca.components_
 
 phi = np.mod(np.arctan2(zpca[:,1], zpca[:,0]), 2*np.pi)
 
-times = np.arange(0, 1005, 5) - 500 # BAD
+# times = np.arange(0, 1005, 5) - 500 # BAD
 
 ###############################################################################################################
 # jPCA
