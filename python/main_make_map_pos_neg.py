@@ -81,7 +81,7 @@ interval_to_cut = {	'Mouse12':[89,128],
 					'Mouse17':[84,123],
 					'Mouse20':[92,131],
 					'Mouse32':[80,125]}
-movies 	= dict.fromkeys(mouses)
+
 rXX 	= dict.fromkeys(mouses)
 maps 	= dict.fromkeys(mouses)
 headdir = dict.fromkeys(mouses)
@@ -109,18 +109,18 @@ for m in mouses:
 	# positive and negative modulation for each mouse
 	# bornsup 		= np.percentile(swr_modth.loc[neurons], 70)
 	# borninf 		= np.percentile(swr_modth.loc[neurons], 30)
-	bornsup 		= 1.0
-	borninf 		= -0.5
+	bornsup 		= 0.0
+	borninf 		= 0.0
 	neurons_pos  	= np.array([n for n in swr_modth.index if m in n and swr_modth.loc[n,0] > bornsup])
 	neurons_neg  	= np.array([n for n in swr_modth.index if m in n and swr_modth.loc[n,0] < borninf])	
 	count_positive 	= np.zeros((len(sessions),8))
 	count_negative 	= np.zeros((len(sessions),8))
 	count_total 	= np.zeros((len(sessions),8))	
 	hd_neurons 		= np.zeros((len(sessions),8))
-	amplitute		= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	phase_shank		= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	kappa_shank 	= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
-	coherence_shank	= {k:np.zeros((len(sessions),8)) for k in ['swr','theta','spindle']}
+	amplitute		= np.zeros((len(sessions),8))
+	phase_shank		= np.zeros((len(sessions),8))
+	kappa_shank 	= np.zeros((len(sessions),8))
+	coherence_shank	= np.zeros((len(sessions),8))
 	# map neuron to a session and a shank with a dual index
 	for s in sessions:				
 		shank				= loadShankMapping(data_directory+m+'/'+s+'/Analysis/SpikeData.mat').flatten()
@@ -136,12 +136,12 @@ for m in mouses:
 		for k in shank_to_neurons.keys(): 
 			count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])
 			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])									
-			amplitute['swr'][np.where(sessions==s)[0][0],k] = (swr_modth.loc[shank_to_neurons[k]].var(1)).mean()
+			amplitute[np.where(sessions==s)[0][0],k] = (swr_modth.loc[shank_to_neurons[k]].var(1)).mean()
 			mu_, kappa_, pval_ = getCircularMean(phi_swr.loc[shank_to_neurons[k]].values.flatten(), 2*np.pi, 0.0)
-			phase_shank['swr'][np.where(sessions==s)[0][0],k] = mu_
+			phase_shank[np.where(sessions==s)[0][0],k] = mu_
 			if np.isnan(mu_): sys.exit("mu_")			
-			kappa_shank['swr'][np.where(sessions==s)[0][0],k] = kappa_
-			coherence_shank['swr'][np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi_swr.loc[shank_to_neurons[k]].values.flatten())
+			kappa_shank[np.where(sessions==s)[0][0],k] = kappa_
+			coherence_shank[np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi_swr.loc[shank_to_neurons[k]].values.flatten())
 			for t in range(len(times)):
 				swr_shank[np.where(sessions== s)[0][0],k,t] = np.mean(swr_modth.loc[shank_to_neurons[k],times[t]])
 		
@@ -157,49 +157,16 @@ for m in mouses:
 		shank_to_neurons_neg = {k:[n for n in neurons_neg_in_session[shankIndex_neg == k]] for k in np.unique(shankIndex_neg)}
 		for k in shank_to_neurons_neg.keys():
 			count_negative[np.where(sessions== s)[0][0],k] = float(len(shank_to_neurons_neg[k]))
-###########################################################################################################			
-# THETA MOD
-###########################################################################################################			
-		for k in shank_to_neurons.keys():
-			phi = phase.loc[shank_to_neurons[k],'theta_rem'].values.astype(np.float)
-			phi = phi[~np.isnan(phi)]
-			phi[phi<0.0] += 2*np.pi
-			mu_, kappa_, pval_ = getCircularMean(phi, 2*np.pi, 0.0)
-			phase_shank['theta'][np.where(sessions==s)[0][0],k] = mu_
-			if np.isnan(mu_): sys.exit("mu_")			
-			kappa_shank['theta'][np.where(sessions==s)[0][0],k] = kappa_
-			coherence_shank['theta'][np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi)									
-			index = np.digitize(phi, bins_phase)-1
-			# for t in index:
-			# 	theta_shank[np.where(sessions == s)[0][0],k,t] += 1.0
-				
-###########################################################################################################			
-# SPIND HPC MOD
-###########################################################################################################			
-		for k in shank_to_neurons.keys():
-			phi = phase.loc[shank_to_neurons[k],'spindle_hpc'].values.astype(np.float)
-			phi = phi[~np.isnan(phi)]
-			phi[phi<0.0] += 2*np.pi
-			mu_, kappa_, pval_ = getCircularMean(phi, 2*np.pi, 0.0)
-			phase_shank['spindle'][np.where(sessions==s)[0][0],k] = mu_
-			if np.isnan(mu_): sys.exit("mu_")			
-			kappa_shank['spindle'][np.where(sessions==s)[0][0],k] = kappa_
-			coherence_shank['spindle'][np.where(sessions==s)[0][0],k] = getPhaseCoherence(phi)									
-			index = np.digitize(phi, bins_phase)-1
-			# for t in index:
-			# 	spindle_shank[np.where(sessions == s)[0][0],k,t] += 1.0			
+		
 
-	for k in ['swr', 'theta', 'spindle']:
-		phase_shank[k] 	= np.flip(phase_shank[k], 1)
-		amplitute[k] 	= np.flip(amplitute[k], 1)
-		kappa_shank[k] 	= np.flip(kappa_shank[k], 1)
-		coherence_shank[k] = np.flip(coherence_shank[k], 1)
+	
+	phase_shank 	= np.flip(phase_shank, 1)
+	amplitute 	= np.flip(amplitute, 1)
+	kappa_shank 	= np.flip(kappa_shank, 1)
+	coherence_shank = np.flip(coherence_shank, 1)
 
 
-	# saving	
-	movies[m] = {	'swr'	:	np.flip(swr_shank	,1),
-					'theta'	:	np.flip(theta_shank	,1),
-					'spindle':	np.flip(spindle_shank,1)}
+
 	# normalize by number of neurons per shanks 
 	count_positive = count_positive/(count_total+1.0)
 	count_negative = count_negative/(count_total+1.0)
@@ -274,34 +241,25 @@ def get_rgb(mapH, mapV, mapS, bound, m):
 
 
 
+
 for m in mouses:
-	figure(figsize = (12,10))
-	for k, i in zip(['swr', 'theta', 'spindle'], range(3)):
-		subplot(1,3,i+1)
-		
-		xnew, ynew, amp = interpolate(maps[m]['amplitute'][k].copy(), maps[m]['x'], maps[m]['y'], 0.08)	
-		xnew, ynew, total = interpolate(maps[m]['total'].copy(), maps[m]['x'], maps[m]['y'], 0.08)	
-		xnew, ynew, sinn = interpolate(np.sin(maps[m]['phase'][k].copy()), maps[m]['x'], maps[m]['y'], 0.08)
-		xnew, ynew, coss = interpolate(np.cos(maps[m]['phase'][k].copy()), maps[m]['x'], maps[m]['y'], 0.08)	
-		xnew, ynew, coh = interpolate(maps[m]['coherence'][k].copy(), maps[m]['x'], maps[m]['y'], 0.08)	
-		# sinn = gaussFilt(sinn, (10,10))
-		# coss = gaussFilt(coss, (10,10))			
-		phi = np.arctan2(sinn, coss)	
-		phi[phi<0.0] += 2*np.pi
-		
-		# imshow(get_rgb(phi.copy(), total.copy(), coh.copy(), 1.0, m), aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]))
-
-		gca().invert_yaxis()
-		imshow(amp, interpolation = 'bilinear', aspect = 'equal', origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), cmap = 'jet')
-		X, Y = np.meshgrid(xnew, ynew)
-		coh = softmax(coh)
-		quiver(X, Y, coss, sinn, width = 0.01)
-
-		xnew, ynew, head = interpolate(headdir[m].copy(), maps[m]['x'], maps[m]['y'], 0.01)
-		head[head < np.percentile(head, 90)] = 0.0
-		contour(head, aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]))
-		title(k)
-	savefig("../figures/map_phase_"+m+"_quiver.pdf")
+	figure()
+	interval = 0.01
+	xnew, ynew, amp = interpolate(maps[m]['amplitute'].copy(), maps[m]['x'], maps[m]['y'], interval)	
+	xnew, ynew, total = interpolate(maps[m]['total'].copy(), maps[m]['x'], maps[m]['y'], interval)
+	xnew, ynew, sinn = interpolate(np.sin(maps[m]['phase'].copy()), maps[m]['x'], maps[m]['y'], interval)
+	xnew, ynew, coss = interpolate(np.cos(maps[m]['phase'].copy()), maps[m]['x'], maps[m]['y'], interval)	
+	xnew, ynew, coh = interpolate(maps[m]['coherence'].copy(), maps[m]['x'], maps[m]['y'], interval)	
+	xnew, ynew, pos = interpolate(maps[m]['positive'].copy(), maps[m]['x'], maps[m]['y'], interval)	
+	xnew, ynew, neg = interpolate(maps[m]['negative'].copy(), maps[m]['x'], maps[m]['y'], interval)
+	xnew, ynew, head = interpolate(headdir[m].copy(), maps[m]['x'], maps[m]['y'], inteval)
+	
+	imshow(get_rgb(phi.copy(), total.copy(), np.ones_like(pos), 0.83, m), aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]))
+	
+	head[head < np.percentile(head, 90)] = 0.0
+	contour(head, aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]))
+	
+	savefig("../figures/map_modulation_"+m+".pdf")
 	
 
 sys.exit()

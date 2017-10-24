@@ -37,23 +37,10 @@ swr 					= pd.DataFrame(	index = swr_ses,
 										columns = times,
 										data = swr_mod)
 
-phase 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-phase.loc[theta_ses['wake'],'theta_wake'] = theta_mod['wake'][:,0]
-phase.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,0]
-phase.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,0]
-phase.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,0]
+theta 				= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
 
-pvalue 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-pvalue.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,1]
-pvalue.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,1]
-pvalue.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,1]
-pvalue.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,1]
-
-kappa 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-kappa.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,2]
-kappa.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,2]
-kappa.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,2]
-kappa.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,2]
 
 # filtering swr_mod
 swr 				= pd.DataFrame(	index = swr.index, 
@@ -68,19 +55,16 @@ swr 				= swr.loc[:,times]
 
 # CHECK FOR NAN
 tmp1 			= swr.index[np.unique(np.where(np.isnan(swr))[0])]
-tmp2 			= phase.index[phase.isnull().any(1)]
+tmp2 			= theta.index[theta.isnull().any(1)]
 # CHECK P-VALUE 
-tmp3	 		= pvalue.index[(pvalue['theta_rem'] > 0.1).values]
+tmp3	 		= theta.index[(theta['pvalue'] > 0.01).values]
 tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3]))
 # copy and delete 
 if len(tmp):
 	swr_modth 	= swr.drop(tmp)
-	theta_modth = np.zeros((len(swr_modth),3))	
-	theta_modth[:,0] = phase.loc[swr_modth.index,	'theta_rem']
-	theta_modth[:,1] = pvalue.loc[swr_modth.index,	'theta_rem']
-	theta_modth[:,2] = kappa.loc[swr_modth.index,	'theta_rem']
+	theta_modth = theta.drop(tmp)
 
-
+swr_modth_copy 	= swr_modth.copy()
 neuron_index = swr_modth.index
 swr_modth = swr_modth.values
 
@@ -136,6 +120,31 @@ rX = np.dot(X, u)
 rX = rX*-1.0
 score = np.dot(swr_modth, rX)
 phi2 = np.mod(np.arctan2(score[:,1], score[:,0]), 2*np.pi)
+phase_swr = pd.DataFrame(index = neuron_index, data = phi2)
+phase = phase_swr.copy()
+phase[1] = theta_modth['phase']
+phase[1][phase[1] > 0.0] -= 2*np.pi
+
+
+# a = [n for n in neuron_index if 'Mouse12-120810' in n]
+# x = np.concatenate([phase[1].values, phase[1].values, phase[1].values+2*np.pi, phase[1].values+2*np.pi])
+# y = np.concatenate([phase[0].values, phase[0].values + 2*np.pi, phase[0].values, phase[0].values + 2*np.pi])
+
+# slope = 1.0
+# intercept = -2*np.pi
+# distance = np.abs(phase[0]*slope + phase[1]*-1.0 + intercept)/np.sqrt(slope**2.0 + 1)
+# distance_a = distance[a].sort_values()
+# index = distance_a.index.values
+# plot(np.arange(0, 2*np.pi, 0.01), np.arange(0, 2*np.pi, 0.01)*slope + intercept)
+# # scatter(phase[0], phase[1])
+# for i in index:
+# 	scatter(phase[0][i], phase[1][i], (list(index).index(i)+1)*10.0, label = str(i.split("_")[1]))
+# xlabel('swr')
+# ylabel('theta')
+# legend()
+# show()
+# sys.exit()
+
 # Construct the two vectors for projection with MSYM
 Msym = np.copy(Mskew)
 Msym[np.triu_indices(n)] *= -1.0
@@ -162,10 +171,10 @@ dynamical_system = {	'x'		:	X,
 ###############################################################################################################
 # QUARTILES OF THETA FORCES MODULATION
 ###############################################################################################################
-force = theta_modth[:,2]
+force = theta_modth['kappa'].values
 index = np.argsort(force)
-swr_modth_sorted = swr_modth[index,:]
-theta_modth_sorted = theta_modth[index,:]
+swr_modth_sorted = swr_modth[index]
+theta_modth_sorted = theta_modth.iloc[index]
 scoretheta, phitheta, indextheta, jpca_theta = quartiles(swr_modth_sorted, times, n_fold = 2, dims = (6,2))
 
 ###############################################################################################################
@@ -174,22 +183,22 @@ scoretheta, phitheta, indextheta, jpca_theta = quartiles(swr_modth_sorted, times
 variance = np.var(swr_modth, 1)
 index = np.argsort(variance)
 swr_modth_sorted2 = swr_modth[index,:]
-theta_modth_sorted2 = theta_modth[index,:]
+theta_modth_sorted2 = theta_modth.iloc[index]
 scorerip, phirip, indexrip, jpca_rip = quartiles(swr_modth_sorted2, times, n_fold = 2, dims = (6,2))
 
 
 ###############################################################################################################
 # TO SAVE
 ###############################################################################################################
-datatosave = {	'swr_modth'		:	swr_modth,
+datatosave = {	'swr_modth'		:	swr_modth_copy,
 				'eigen'			:	eigen,
 				'times' 		: 	times,
 				'theta_modth' 	:	theta_modth,
-				'phi' 			: 	phi,
-				'zpca'			: 	zpca,
-				'phi2' 			: 	phi2,
+				'phi' 			: 	pd.DataFrame(index = neuron_index, data = phi),
+				'zpca'			: 	pd.DataFrame(index = neuron_index, data =zpca),
+				'phi2' 			: 	pd.DataFrame(index = neuron_index, data = phi2),
 				'rX'			: 	rX,
-				'jscore'		:	score,
+				'jscore'		:	pd.DataFrame(index = neuron_index, data = score),
 				'variance'		:	variance,
 				'force'			: 	force,
 				'scoretheta'	:	scoretheta,
@@ -203,6 +212,7 @@ datatosave = {	'swr_modth'		:	swr_modth,
 				}	
 
 cPickle.dump(datatosave, open('../data/to_plot.pickle', 'wb'))
+cPickle.dump(datatosave, open('../figures/figures_articles/figure2/dict_fig2_article.pickle', 'wb'))
 
 ###############################################################################################################
 # PLOT
@@ -222,6 +232,7 @@ plot(times, eigen[0])
 plot(times, eigen[1])
 
 subplot(2,3,4)
+theta_modth = theta_modth.values
 idxColor = np.digitize(theta_modth[:,0], np.linspace(0, 2*np.pi+0.0001, 61))
 idxColor = idxColor-np.min(idxColor)
 idxColor = idxColor/float(np.max(idxColor))

@@ -544,7 +544,7 @@ def loadSpikeData(path, index):
 	import scipy.io
 	import neuroseries as nts
 	spikedata = scipy.io.loadmat(path)
-	shank = spikedata['shank']
+	shank = spikedata['shank'] - 1
 	shankIndex = np.where(shank == index)[0]
 
 	spikes = {}	
@@ -632,8 +632,7 @@ def loadRipples(path):
 	return (nts.IntervalSet(ripples[:,0], ripples[:,2], time_units = 's'), 
 			nts.Ts(ripples[:,1], time_units = 's'))
 
-def loadTheta(path):
-	
+def loadTheta(path):	
 	import scipy.io
 	import neuroseries as nts
 	thetaInfo = scipy.io.loadmat(path)
@@ -728,10 +727,10 @@ def loadLFP(path, n_channels=90, channel=64, frequency=1250.0, precision='int16'
 		f = open(path, 'rb')
 		startoffile = f.seek(0, 0)
 		endoffile = f.seek(0, 2)
-		bytes_size = 2
-		
+		bytes_size = 2		
 		n_samples = int((endoffile-startoffile)/n_channels/bytes_size)
 		duration = n_samples/frequency
+		interval = 1/frequency
 		f.close()
 		with open(path, 'rb') as f:
 			data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
@@ -750,6 +749,21 @@ def loadLFP(path, n_channels=90, channel=64, frequency=1250.0, precision='int16'
 			data = np.fromfile(f, np.int16).reshape((n_samples, n_channels))[:,channel]
 		timestep = np.arange(0, len(data))/frequency
 		return nts.TsdFrame(timestep, data, time_units = 's')
+
+def loadBunch_Of_LFP(path,  start, stop, n_channels=90, channel=64, frequency=1250.0, precision='int16'):
+	import neuroseries as nts	
+	bytes_size = 2		
+	start_index = int(start*frequency*n_channels*bytes_size)
+	stop_index = int(stop*frequency*n_channels*bytes_size)
+	fp = np.memmap(path, np.int16, 'r', start_index, shape = (stop_index - start_index)//bytes_size)
+	data = np.array(fp).reshape(len(fp)//n_channels, n_channels)
+
+	if type(channel) is not list:
+		timestep = np.arange(0, len(data))/frequency
+		return nts.Tsd(timestep, data[:,channel], time_units = 's')
+	elif type(channel) is list:
+		timestep = np.arange(0, len(data))/frequency		
+		return nts.TsdFrame(timestep, data[:,channel], time_units = 's')
 
 def loadSpeed(path):
 	import neuroseries as nts

@@ -27,6 +27,7 @@ datatosave = {}
 spikes_theta_phase = {'wake':{},'rem':{}}
 
 for session in datasets:	
+	print(session)
 	start = time.time()
 
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -49,14 +50,14 @@ for session in datasets:
 	# to match main_make_SWRinfo.py
 	spikes 			= {n:spikes[n] for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
 	n_neuron 		= len(spikes)
-	n_channel,fs, shank_to_channel = loadXML(data_directory+session+"/"+session.split("/")[1]+'.xml')
+	n_channel,fs, shank_to_channel = loadXML(data_directory+session+"/"+session.split("/")[1]+'.xml')	
 	lfp_hpc 		= loadLFP(data_directory+session+"/"+session.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
 	lfp_hpc 		= downsample(lfp_hpc, 1, 5)
 
 ##################################################################################################
 # DETECTION THETA
 ##################################################################################################		
-	lfp_filt_hpc	= nts.Tsd(lfp_hpc.index.values, butter_bandpass_filter(lfp_hpc, 6, 14, fs/5, 2))	
+	lfp_filt_hpc	= nts.Tsd(lfp_hpc.index.values, butter_bandpass_filter(lfp_hpc, 5, 15, fs/5, 2))	
 	power	 		= nts.Tsd(lfp_filt_hpc.index.values, np.abs(lfp_filt_hpc.values))
 	enveloppe,dummy	= getPeaksandTroughs(power, 5)	
 	index 			= (enveloppe > np.percentile(enveloppe, 50)).values*1.0
@@ -72,9 +73,10 @@ for session in datasets:
 
 	theta_wake_ep 	= wake_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
 	theta_rem_ep 	= rem_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
+	
 
-	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_wake.evt.theta", theta_wake_ep, "Theta")
-	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+"_rem.evt.theta", theta_rem_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".wake.evt.theta", theta_wake_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".rem.evt.theta", theta_rem_ep, "Theta")
 	
 	
 	phase 			= getPhase(lfp_hpc, 6, 14, 16, fs/5.)	
@@ -106,30 +108,4 @@ for session in datasets:
 import _pickle as cPickle
 cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', 'wb'))
 cPickle.dump(spikes_theta_phase, open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'wb'))
-
-
-
-# z = {'wake':[],'rem':[]}
-# for k in z.keys():
-# 	for session in datatosave.keys():
-# 		z[k].append(datatosave[session]['theta_mod'][k])
-# 	z[k] = np.vstack(z[k])
-	
-# figure()
-# theta_mod_toplot = z['wake'][:,0]
-# phi_toplot = zz[:,0]
-# force = z['wake'][:,2] + zz[:,2] 
-# x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
-# y = np.concatenate([phi_toplot, phi_toplot + 2*np.pi, phi_toplot, phi_toplot + 2*np.pi])
-# scatter(x, y, s = force*100., label = 'theta wake')
-# theta_mod_toplot = z['rem'][:,0]
-# phi_toplot = zz[:,0]
-# force = z['rem'][:,2] + zz[:,2] 
-# x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
-# y = np.concatenate([phi_toplot, phi_toplot + 2*np.pi, phi_toplot, phi_toplot + 2*np.pi])
-# scatter(x, y, s = force*100., label = 'theta rem')
-# xlabel('Theta phase (rad)')
-# ylabel('Spindle phase (rad)')
-
-
 

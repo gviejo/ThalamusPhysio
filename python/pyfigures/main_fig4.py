@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
 import scipy.io
+import sys
+sys.path.append("../")
 from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
@@ -14,11 +16,11 @@ import os
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-data = cPickle.load(open('../data/to_plot.pickle', 'rb'))
-allzth 			= 	data['allzth'		]		
+data = cPickle.load(open('../../data/to_plot.pickle', 'rb'))
+allzth 			= 	data['swr_modth'		]		
 eigen 			= 	data['eigen'		]		
 times 			= 	data['times' 		]		
-allthetamodth 	= 	data['allthetamodth']		
+allthetamodth 	= 	data['theta_modth']		
 phi 			= 	data['phi' 			]		
 zpca 			= 	data['zpca'			]		
 phi2			= 	data['phi2' 		]	 	
@@ -34,6 +36,7 @@ indextheta		=	data['indextheta'	]
 indexrip		=	data['indexrip'		]	
 jpca_theta		=	data['jpca_theta'	] 	
 jpca_rip		=	data['jpca_rip'		] 	
+ 	
 
 
 index = np.argsort(allthetamodth[:,2])
@@ -221,6 +224,6 @@ title("Density", fontsize = 5)
 # CORRELATION COEFFICIENT
 
 
-savefig("../figures/fig4.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
-os.system("evince ../figures/fig4.pdf &")
+savefig("../../figures/fig4.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+os.system("evince ../../figures/fig4.pdf &")
 

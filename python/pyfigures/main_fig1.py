@@ -24,7 +24,7 @@ allthetamodth 	= 	data['theta_modth'	]
 phi 			= 	data['phi' 			]		
 zpca 			= 	data['zpca'			]		
 phi2			= 	data['phi2' 		]	 					
-
+sys.exit()
 # sort allzth 
 index = np.argsort(allzth[:,np.where(times == 0)[0][0]])
 index = index[::-1]

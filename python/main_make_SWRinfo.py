@@ -24,8 +24,8 @@ data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 datatosave = {}
 
-# clients = ipyparallel.Client()	
-# dview = clients.direct_view()
+clients = ipyparallel.Client()	
+dview = clients.direct_view()
 
 for session in datasets:	
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -48,7 +48,6 @@ for session in datasets:
 
 	spikes_sws 		= {n:spikes[n].restrict(sws_ep) for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
 
-	# plotEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rip_ep, {0:spikes[27]})	
 	
 	def cross_correlation(tsd):
 		spike_tsd, rip_tsd = tsd
@@ -70,6 +69,7 @@ for session in datasets:
 	datatosave[session] = {}
 	for n,i in zip(spikes_sws.keys(), range(len(spikes_sws.keys()))):
 		datatosave[session][session.split("/")[1]+"_"+str(n)] = Hcorr[i]
+
 
 	print(session)		
 	

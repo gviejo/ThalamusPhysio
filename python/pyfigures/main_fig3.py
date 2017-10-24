@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
 import scipy.io
+import sys
+sys.path.append("../")
 from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
@@ -14,11 +16,11 @@ import os
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-data = cPickle.load(open('../data/to_plot.pickle', 'rb'))
-allzth 			= 	data['allzth'		]		
+data = cPickle.load(open('../../data/to_plot.pickle', 'rb'))
+allzth 			= 	data['swr_modth'		]		
 eigen 			= 	data['eigen'		]		
 times 			= 	data['times' 		]		
-allthetamodth 	= 	data['allthetamodth']		
+allthetamodth 	= 	data['theta_modth']		
 phi 			= 	data['phi' 			]		
 zpca 			= 	data['zpca'			]		
 phi2			= 	data['phi2' 		]	 	
@@ -221,6 +223,6 @@ r, p = corr_circular_(phasetheta1[1], phitheta[1])
 print(r, p)
 
 
-savefig("../figures/fig3.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
-os.system("evince ../figures/fig3.pdf &")
+savefig("../../figures/fig3.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+os.system("evince ../../figures/fig3.pdf &")
 
