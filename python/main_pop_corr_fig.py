@@ -16,7 +16,8 @@ import matplotlib.cm as cm
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-files = os.listdir("../data/corr_pop")
+main_dir = "../data/corr_pop/"
+files = os.listdir(main_dir)
 
 ywak = []
 yrem = []
@@ -25,7 +26,7 @@ yrip = []
 toplot = {}
 
 for f in files:
-	data = cPickle.load(open("../data/corr_pop/"+f, 'rb'))
+	data = cPickle.load(open(main_dir+f, 'rb'))
 	theta_wake_corr = data['theta_wake_corr']
 	rip_corr 		= data['rip_corr']
 	theta_rem_corr 	= data['theta_rem_corr']
@@ -34,10 +35,10 @@ for f in files:
 
 	if f == 'Mouse12-120809.pickle':
 		
-		toplot['wake'] = theta_wake_corr[32][1]
-		toplot['rem'] = theta_rem_corr[5][1]
+		toplot['wake'] = theta_wake_corr[0][1]
+		toplot['rem'] = theta_rem_corr[0][1]
 		toplot['rip'] = rip_corr[1]
-
+		
 	wake = []
 	for i in range(len(theta_wake_corr)):
 		np.fill_diagonal(theta_wake_corr[i][1], 1.0)
@@ -105,16 +106,16 @@ varyrip = yrip[~np.isnan(yrip)[:,0]].var(0)
 ######### 
 # TO SAVE
 #########
-tosave = {	'xt':		xt,
-			'meanywak':	meanywak,
-			'meanyrem':	meanyrem,
-			'meanyrip':	meanyrip,
-			'toplot'  : toplot,
-			'varywak' : varywak,
-			'varyrem' : varyrem,
-			'varyrip' : varyrip,
-		}
-cPickle.dump(tosave, open('../data/to_plot_corr_pop.pickle', 'wb'))
+# tosave = {	'xt':		xt,
+# 			'meanywak':	meanywak,
+# 			'meanyrem':	meanyrem,
+# 			'meanyrip':	meanyrip,
+# 			'toplot'  : toplot,
+# 			'varywak' : varywak,
+# 			'varyrem' : varyrem,
+# 			'varyrip' : varyrip,
+# 		}
+# cPickle.dump(tosave, open('../data/to_plot_corr_pop.pickle', 'wb'))
 
 
 plot(xt, meanywak, 'o-', label = 'theta(wake)')

@@ -15,24 +15,24 @@ data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
 
-# clients = ipyparallel.Client()
-# print(clients.ids)
-# dview = clients.direct_view()
+clients = ipyparallel.Client()
+print(clients.ids)
+dview = clients.direct_view()
 
 session = datasets[0]
 
-# def compute_population_correlation(session):
-# 	data_directory = '/mnt/DataGuillaume/MergedData/'
-# 	import numpy as np	
-# 	import scipy.io	
-# 	import scipy.stats		
-# 	import _pickle as cPickle
-# 	import time
-# 	import os, sys	
-# 	import neuroseries as nts
-# 	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadSpeed, loadXML, loadRipples, loadLFP, downsample, getPeaksandTroughs, butter_bandpass_filter
+def compute_population_correlation(session):
+	data_directory = '/mnt/DataGuillaume/MergedData/'
+	import numpy as np	
+	import scipy.io	
+	import scipy.stats		
+	import _pickle as cPickle
+	import time
+	import os, sys	
+	import neuroseries as nts
+	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadSpeed, loadXML, loadRipples, loadLFP, downsample, getPeaksandTroughs, butter_bandpass_filter
 # for session in datasets:
-for session in ['Mouse12/Mouse12-120810']:
+# for session in ['Mouse12/Mouse12-120810']:
 	start_time = time.clock()
 	print(session)
 	generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -110,17 +110,18 @@ for session in ['Mouse12/Mouse12-120810']:
 
 	# legend()
 	# show()
-
+	store 			= pd.HDFStore("../data/population_activity/"+session.split("/")[1]+".h5")
 	
 	if len(theta_wake_ep) and len(theta_rem_ep):		
 		###############################################################################################################
-		# POPULATION CORRELATION FOR EACH RIPPLES
-		###############################################################################################################
+		# SWR
+		###############################################################################################################				
+		# population activity vector				
 		n_ripples = len(rip_ep)
 		n_neurons = len(spikes)
 		keys_neurons = list(spikes.keys())					
 		rip_pop = np.zeros((n_ripples,n_neurons))
-		# population activity vector				
+	
 		for i in range(n_ripples):						
 			start, stop = rip_ep.iloc[i]
 			for j in range(n_neurons): 
@@ -129,153 +130,75 @@ for session in ['Mouse12/Mouse12-120810']:
 		# normalize by each ripple length
 		rip_pop = rip_pop/np.vstack((rip_ep.as_units('s')['end'] - rip_ep.as_units('s')['start']).values)		
 		# divide by mean firing rate
-		rip_pop = rip_pop / (rip_pop.mean(0)+1e-12)
+		# rip_pop = rip_pop / (rip_pop.mean(0)+1e-12)
 		rip_pop = pd.DataFrame(index = rip_tsd.index.values, columns = keys_neurons, data = rip_pop)
 
-		# rip_corr = np.zeros(n_ripples-1)
-
-		#matrix of distance between ripples	in second
-		interval_mat = np.vstack(rip_tsd.as_units('s').index.values) - rip_tsd.as_units('s').index.values
-		# interval_index = np.logical_and(interval_mat < 5.0, interval_mat > 0.0)
-		corr = np.ones(interval_mat.shape)
-		index = np.tril_indices(n_ripples,-1)
-		for i, j in zip(index[0], index[1]):	
-			corr[i,j] = scipy.stats.pearsonr(pop[i], pop[j])[0]
-			corr[j,i] = corr[i,j]
-
-		rip_corr = (interval_mat, corr)
-		allrip_corr = np.vstack((rip_corr[0][index], rip_corr[1][index])).transpose()
-
-
-
+		store.put('rip', rip_pop)
+		
 		###############################################################################################################
-		# POPULATION CORRELATION FOR EACH THETA CYCLE OF REM
+		# THETA REM
 		###############################################################################################################
-		# population activity vector
-		pop = []
-		for i in theta_rem_ep.index:
-			start, stop = theta_rem_ep.loc[i]		
-			index = np.logical_and(troughs_rem.index.values>start, troughs_rem.index.values<stop)
+		# population activity vector		
+		rem_pop = np.zeros((len(troughs_rem) - len(theta_rem_ep), n_neurons))
+		count = 0
+		index_timing = np.zeros(rem_pop.shape[0])
+		for i in theta_rem_ep.index:			
+			index = np.logical_and(troughs_rem.index.values>=theta_rem_ep.loc[i]['start'], troughs_rem.index.values<=theta_rem_ep.loc[i]['end'])
 			n_cycle = index.sum()-1
-			subpop = np.zeros( (n_cycle, n_neurons) )
-			for j in range(n_cycle):
-				cstart,cstop = troughs_rem[index].index.values[j:j+2]				
+			timestep = troughs_rem.index.values[index]			
+			for j in range(len(timestep)-1):
+				start, stop = timestep[j:j+2]
+				duree = stop-start
 				for k in range(n_neurons):
-					subpop[j,k] = float(np.sum(np.logical_and(spikes[k].index.values >= cstart, spikes[k].index.values <= cstop)))
-			# normalized by each theta length
-			dure = troughs_rem[index].as_units('s').index.values[1:] - troughs_rem[index].as_units('s').index.values[0:-1]
-			subpop = subpop/np.vstack(dure)
-			subpop = subpop/(subpop.mean(0)+1e-12)
-			pop.append(subpop)
+					rem_pop[count,k] = float(np.sum(np.logical_and(spikes[keys_neurons[k]].index.values >= start, spikes[keys_neurons[k]].index.values <= stop)))/(duree/1000/1000)
+				index_timing[count] = start + (duree)/2					
+				count += 1
 				
-		sys.exit()
-		# correlation
-		# compute all time interval for each ep of theta
-		theta_rem_corr = []
-		alltheta_rem_corr = []
-		for i in theta_rem_ep.index:
-			start, stop = theta_rem_ep.loc[i]		
-			index = np.logical_and(troughs_rem.index.values>start, troughs_rem.index.values<stop)
-			# matrix of distance between creux
-			interval_mat = np.vstack(troughs_rem[index].as_units('s').index.values[0:-1]) - troughs_rem[index].as_units('s').index.values[0:-1]
-			corr = np.ones(interval_mat.shape)
-			subpop = pop[i]
-			xx = np.tril_indices(interval_mat.shape[0],-1)
-			for j, k in zip(xx[0], xx[1]):	
-				corr[j,k] = scipy.stats.pearsonr(subpop[j], subpop[k])[0]
-				corr[k,j] = corr[j,k]	
-			
-			theta_rem_corr.append((interval_mat,corr))
-			
-			alltheta_rem_corr.append(np.vstack((theta_rem_corr[i][0][xx], theta_rem_corr[i][1][xx])).transpose())
+		rem_pop = pd.DataFrame(index = index_timing, columns = keys_neurons, data = rem_pop)
 
-		alltheta_rem_corr = np.vstack(alltheta_rem_corr)
+		store.put('rem', rem_pop)
 
 		###############################################################################################################
-		# POPULATION CORRELATION FOR EACH THETA CYCLE OF WAKE
+		# THETA WAKE
 		###############################################################################################################
-		# population activity vector
-		pop = []
-		for i in theta_wake_ep.index:
-			start, stop = theta_wake_ep.loc[i]		
-			index = np.logical_and(troughs_wake.index.values>start, troughs_wake.index.values<stop)
+		# population activity vector		
+		wake_pop = np.zeros((len(troughs_wake) - len(theta_wake_ep), n_neurons))
+		count = 0
+		index_timing = np.zeros(wake_pop.shape[0])
+		for i in theta_wake_ep.index:			
+			index = np.logical_and(troughs_wake.index.values>=theta_wake_ep.loc[i]['start'], troughs_wake.index.values<=theta_wake_ep.loc[i]['end'])
 			n_cycle = index.sum()-1
-			subpop = np.zeros( (n_cycle, n_neurons) )
-			for j in range(n_cycle):
-				cstart,cstop = troughs_wake[index].index.values[j:j+2]				
+			timestep = troughs_wake.index.values[index]			
+			for j in range(len(timestep)-1):
+				start, stop = timestep[j:j+2]
+				duree = stop-start
 				for k in range(n_neurons):
-					subpop[j,k] = float(np.sum(np.logical_and(spikes[k].index.values >= cstart, spikes[k].index.values <= cstop)))
-			# normalized by each theta length
-			dure = troughs_wake[index].as_units('s').index.values[1:] - troughs_wake[index].as_units('s').index.values[0:-1]
-			subpop = subpop/np.vstack(dure)
-			subpop = subpop/(subpop.mean(0)+1e-12)
-			pop.append(subpop)
+					wake_pop[count,k] = float(np.sum(np.logical_and(spikes[keys_neurons[k]].index.values >= start, spikes[keys_neurons[k]].index.values <= stop)))/(duree/1000/1000)
+				index_timing[count] = start + (duree)/2					
+				count += 1
 				
+		wake_pop = pd.DataFrame(index = index_timing, columns = keys_neurons, data = wake_pop)
 
-		# correlation
-		# compute all time interval for each ep of theta
-		theta_wake_corr = []
-		alltheta_wake_corr = []
-		for i in theta_wake_ep.index:
-			start, stop = theta_wake_ep.loc[i]		
-			index = np.logical_and(troughs_wake.index.values>start, troughs_wake.index.values<stop)
-			# matrix of distance between creux
-			interval_mat = np.vstack(troughs_wake[index].as_units('s').index.values[0:-1]) - troughs_wake[index].as_units('s').index.values[0:-1]
-			corr = np.ones(interval_mat.shape)
-			subpop = pop[i]
-			xx = np.tril_indices(interval_mat.shape[0],-1)
-			for j, k in zip(xx[0], xx[1]):	
-				corr[j,k] = scipy.stats.pearsonr(subpop[j], subpop[k])[0]
-				corr[k,j] = corr[j,k]	
+		store.put('wake', wake_pop)
 			
-			theta_wake_corr.append((interval_mat,corr))
+		###############################################################################################################
+		# BINNING WAKE 100 ms
+		###############################################################################################################
+		# population activity vector	
+		wake_ep 		= loadEpoch(data_directory+session, 'wake')
+		bins 			= np.arange(wake_ep['start'][0], wake_ep['end'][0], 100000)
+		all_wake_pop 	= np.zeros((len(bins)-1, n_neurons))
+		for i in range(len(bins)-1):
+			start, stop = bins[i:i+2]
+			for j in range(n_neurons): 
+				all_wake_pop[i,j] = np.sum(np.logical_and(spikes[keys_neurons[j]].index.values >= start, spikes[keys_neurons[j]].index.values <= stop))/0.1
+				
+		all_wake_pop = pd.DataFrame(index = bins[0:-1] + 50000, columns = keys_neurons, data = all_wake_pop)
+
+		store.put('allwake', all_wake_pop)
 			
-			alltheta_wake_corr.append(np.vstack((theta_wake_corr[i][0][xx], theta_wake_corr[i][1][xx])).transpose())
+	store.close()
 
-		alltheta_wake_corr = np.vstack(alltheta_wake_corr)
+	return 
 
-
-
-
-		print(time.clock() - start_time, "seconds")
-		# print('\n')
-
-		tosave =	 {	'rip_corr':rip_corr,
-						'theta_wake_corr':theta_wake_corr,
-						'theta_rem_corr':theta_rem_corr
-				}
-		cPickle.dump(tosave, open('../data/corr_pop/'+session.split("/")[1]+".pickle", 'wb'))
-
-# 		return session
-# 	else:
-# 		return 0
-
-# a = dview.map_sync(compute_population_correlation, datasets)
-	
-
-
-###############################################################################################################
-# PLOT
-###############################################################################################################
-last = np.max([np.max(allrip_corr[:,0]),np.max(alltheta_corr[:,0])])
-bins = np.arange(0.0, last, 0.2)
-# average rip corr
-index_rip = np.digitize(allrip_corr[:,0], bins)
-mean_ripcorr = np.array([np.mean(allrip_corr[index_rip == i,1]) for i in np.unique(index_rip)[0:30]])
-# average theta corr
-index_theta = np.digitize(alltheta_corr[:,0], bins)
-mean_thetacorr = np.array([np.mean(alltheta_corr[index_theta == i,1]) for i in np.unique(index_theta)[0:30]])
-
-
-xt = list(bins[0:30][::-1]*-1.0)+list(bins[0:30])
-ytheta = list(mean_thetacorr[0:30][::-1])+list(mean_thetacorr[0:30])
-yrip = list(mean_ripcorr[0:30][::-1])+list(mean_ripcorr[0:30])
-plot(xt, ytheta, 'o-', label = 'theta')
-plot(xt, yrip, 'o-', label = 'ripple')
-legend()
-xlabel('s')
-ylabel('r')
-show()
-
-
-
+a = dview.map_sync(compute_population_correlation, datasets)
