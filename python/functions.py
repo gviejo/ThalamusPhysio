@@ -536,7 +536,7 @@ def loadShankStructure(generalinfo):
 def loadShankMapping(path):	
 	import scipy.io	
 	spikedata = scipy.io.loadmat(path)
-	shank = spikedata['shank']
+	shank = spikedata['shank'] -1
 	return shank
 
 def loadSpikeData(path, index):

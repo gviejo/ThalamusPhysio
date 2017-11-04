@@ -29,47 +29,42 @@ theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_m
 swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
 spind_mod, spind_ses 	= loadSpindMod('/mnt/DataGuillaume/MergedData/SPINDLE_mod.pickle', datasets, return_index=True)
 
-nbins 				= 400
+nbins 					= 400
 binsize					= 5
 times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 swr 					= pd.DataFrame(	index = swr_ses, 
 										columns = times,
 										data = swr_mod)
 
-phase 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-phase.loc[theta_ses['wake'],'theta_wake'] = theta_mod['wake'][:,0]
-phase.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,0]
-phase.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,0]
-phase.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,0]
-
-pvalue 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-pvalue.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,1]
-pvalue.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,1]
-pvalue.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,1]
-pvalue.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,1]
-
-kappa 					= pd.DataFrame(index = theta_ses['wake'], columns = ['theta_wake', 'theta_rem', 'spindle_hpc', 'spindle_thl'])
-kappa.loc[theta_ses['wake'], 'theta_wake'] = theta_mod['wake'][:,2]
-kappa.loc[theta_ses['rem'], 'theta_rem'] = theta_mod['rem'][:,2]
-kappa.loc[spind_ses['hpc'], 'spindle_hpc'] = spind_mod['hpc'][:,2]
-kappa.loc[spind_ses['thl'], 'spindle_thl'] = spind_mod['thl'][:,2]
+theta 					= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
 
 # filtering swr_mod
-swr 				= pd.DataFrame(	index = swr.index, 
+swr 					= pd.DataFrame(	index = swr.index, 
 									columns = swr.columns,
 									data = gaussFilt(swr.values, (10,)))
 
 # Cut swr_mod from -500 to 500
-nbins 				= 200
-binsize				= 5
-times 				= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
-swr 				= swr.loc[:,times]
+nbins 					= 200
+binsize					= 5
+times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+swr 					= swr.loc[:,times]
 
 # CHECK FOR NAN
-tmp1 			= swr.index[swr.isnull().any(1).values]
+tmp1 			= swr.index[np.unique(np.where(np.isnan(swr))[0])]
+tmp2 			= theta.index[theta.isnull().any(1)]
+# CHECK P-VALUE 
+tmp3	 		= theta.index[(theta['pvalue'] > 0.01).values]
+tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3]))
 # copy and delete 
-if len(tmp1):
-	swr_modth 	= swr.drop(tmp1)
+if len(tmp):
+	swr_modth 	= swr.drop(tmp)
+	theta_modth = theta.drop(tmp)
+
+swr_modth_copy 	= swr_modth.copy()
+neuron_index 	= swr_modth.index
+sys.exit()
 
 ###############################################################################################################
 # MOVIE + jPCA for each animal
@@ -96,7 +91,7 @@ ypos_phase = dict.fromkeys(mouses)
 for m in mouses:	
 	depth = pd.DataFrame(index = np.genfromtxt(data_directory+m+"/"+m+".depth", dtype = 'str', usecols = 0),
 						data = np.genfromtxt(data_directory+m+"/"+m+".depth", usecols = 1),
-						columns = ['depth'])	
+						columns = ['depth'])
 	neurons 		= np.array([n for n in swr_modth.index if m in n])
 	rX,phi_swr,dynamical_system = jPCA(swr_modth.loc[neurons].values, times)
 	phi_swr 		= pd.DataFrame(index = swr_modth.loc[neurons].index, data = phi_swr)
