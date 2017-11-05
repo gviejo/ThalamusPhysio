@@ -15,14 +15,12 @@ data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
 
-bins1 = np.arange(-2050, 2100, 100)*1000		
+bins1 = np.arange(-3050, 3100, 100)*1000		
 times = np.floor(((bins1[0:-1] + (bins1[1] - bins1[0])/2)/1000)).astype('int')			
 premeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}# BAD
 posmeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}# BAD
-bins2 = np.arange(-5012.5,5025,25)*1000
-times = np.floor(((bins2[0:-1] + (bins2[1] - bins2[0])/2)/1000)).astype('int')			
-premeanscore25ms = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}# BAD
-posmeanscore25ms = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}# BAD
+bins2 = np.arange(-1012.5,1025,25)*1000
+tsmax = {i:pd.DataFrame(columns = ['pre', 'pos']) for i in range(2)}
 
 clients = ipyparallel.Client()
 print(clients.ids)
@@ -41,15 +39,13 @@ def compute_pop_pca(session):
 	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadSpeed, loadXML, loadRipples, loadLFP, downsample, getPeaksandTroughs, butter_bandpass_filter
 	import pandas as pd	
 
-	bins1 = np.arange(-2050, 2100, 100)*1000		
+	bins1 = np.arange(-3050, 3100, 100)*1000		
 	times = np.floor(((bins1[0:-1] + (bins1[1] - bins1[0])/2)/1000)).astype('int')			
 	premeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}
 	posmeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}
-	bins2 = np.arange(-5012.5,5025,25)*1000
-	times = np.floor(((bins2[0:-1] + (bins2[1] - bins2[0])/2)/1000)).astype('int')			
-	premeanscore25ms = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}
-	posmeanscore25ms = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(2)}
-
+	bins2 = np.arange(-1012.5,1025,25)*1000	
+	tsmax = {i:pd.DataFrame(columns = ['pre', 'pos']) for i in range(2)}
+	
 
 # for session in datasets:
 # for session in datasets[0:15]:
@@ -141,45 +137,42 @@ def compute_pop_pca(session):
 				pospop25ms = nts.TsdFrame(pos_pop_25ms[np.where(hd_info_neuron == hd)[0]].copy())
 				if allpop.shape[1] and allpop.shape[1] > 5:									
 
-					# pre_score_25ms, pos_score_25ms = compute_group_score(allpop, prepop25ms, pospop25ms, pre_sws_ep, pos_sws_ep)
-					# prerip25ms_score = compute_rip_score(rip_tsd.restrict(pre_sws_ep),  pre_score_25ms, bins2)
-					# posrip25ms_score = compute_rip_score(rip_tsd.restrict(pos_sws_ep), pos_score_25ms,  bins2)
-
-					eigen 			= compute_eigen(allpop.copy())
-					pre_score 		= compute_score(prepop25ms.copy(), eigen)
-					pos_score 		= compute_score(pospop25ms.copy(), eigen)					
+					eigen 			= compute_eigen(allpop)
+					pre_score 		= compute_score(prepop, eigen)
+					pos_score 		= compute_score(pospop, eigen)					
 					prerip_score 	= compute_rip_score(rip_tsd.restrict(pre_ep), pre_score, bins1)
 					posrip_score 	= compute_rip_score(rip_tsd.restrict(post_ep), pos_score, bins1)
+
+					pre_score_25ms	= compute_score(prepop25ms, eigen)
+					pos_score_25ms	= compute_score(pospop25ms, eigen)										
+					prerip25ms_score = compute_rip_score(rip_tsd.restrict(pre_ep),  pre_score_25ms, bins2)
+					posrip25ms_score = compute_rip_score(rip_tsd.restrict(post_ep), pos_score_25ms,  bins2)
+					prerip25ms_score = prerip25ms_score - prerip25ms_score.mean(0)	
+					posrip25ms_score = posrip25ms_score - posrip25ms_score.mean(0)	
+					prerip25ms_score = prerip25ms_score / prerip25ms_score.std(0)	
+					posrip25ms_score = posrip25ms_score / posrip25ms_score.std(0)
+					prerip25ms_score = prerip25ms_score.loc[-500:500]			
+					posrip25ms_score = posrip25ms_score.loc[-500:500]					
 					
-
-					# plot(pre_score)
-					# score = pre_score
-					# tsd = rip_tsd.restrict(pre_sws_ep)					
-					# bins = bins1
-					# times = np.floor(((bins[0:-1] + (bins[1] - bins[0])/2)/1000)).astype('int')			
-					# plot(pre_score)
-					# for r,i in zip(tsd.index.values,range(len(tsd))):
-					# 	xbins = (bins + r).astype('int')
-					# 	y = score.groupby(pd.cut(score.index.values, bins=xbins, labels = times)).mean()
-					# 	plot(times*1000+r, y.values, 'o')
-					# 	axvline(r)
-					# 	sys.exit()
-
+					tmp = pd.concat([pd.DataFrame(prerip25ms_score.idxmax().values, columns = ['pre']),pd.DataFrame(posrip25ms_score.idxmax().values, columns = ['pos'])],axis = 1)					
+					tsmax[hd] = tsmax[hd].append(tmp, ignore_index = True)
 
 					premeanscore[hd]['rip'][prerip_score.columns] = prerip_score
 					posmeanscore[hd]['rip'][posrip_score.columns] = posrip_score 
 					
-					# premeanscore25ms[hd]['rip'].loc[session] = prerip25ms_score.mean(0).values
-					# posmeanscore25ms[hd]['rip'].loc[session] = posrip25ms_score.mean(0).values	
-					# if len(rem_ep.intersect(pre_sws_ep)) and len(rem_ep.intersect(pos_sws_ep)):
-					# 	premeanscore[hd]['rem'].loc[session,'mean'] = pre_score.restrict(rem_ep.intersect(pre_sws_ep)).mean()
-					# 	posmeanscore[hd]['rem'].loc[session,'mean'] = pos_score.restrict(rem_ep.intersect(pos_sws_ep)).mean()
-					# 	premeanscore[hd]['rem'].loc[session,'std'] = pre_score.restrict(rem_ep.intersect(pre_sws_ep)).std()
-					# 	posmeanscore[hd]['rem'].loc[session,'std'] = pos_score.restrict(rem_ep.intersect(pos_sws_ep)).std()
+					if len(rem_ep.intersect(pre_ep)) and len(rem_ep.intersect(post_ep)):
+						premeanscore[hd]['rem'].loc[session,'mean'] = pre_score.restrict(rem_ep.intersect(pre_ep)).mean()
+						posmeanscore[hd]['rem'].loc[session,'mean'] = pos_score.restrict(rem_ep.intersect(post_ep)).mean()
+						premeanscore[hd]['rem'].loc[session,'std'] =  pre_score.restrict(rem_ep.intersect(pre_ep)).std()
+						posmeanscore[hd]['rem'].loc[session,'std'] =  pos_score.restrict(rem_ep.intersect(post_ep)).std()
 
-	return [premeanscore, posmeanscore]
 
-a = dview.map_sync(compute_pop_pca, datasets)
+
+	return [premeanscore, posmeanscore, tsmax]
+
+a = dview.map_sync(compute_pop_pca, datasets[0:5])
+
+sys.exit()
 
 prescore = {i:pd.DataFrame() for i in range(2)}
 posscore = {i:pd.DataFrame() for i in range(2)}
