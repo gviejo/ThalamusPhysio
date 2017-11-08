@@ -12,15 +12,19 @@ import matplotlib.cm as cm
 import os
 import neuroseries as nts
 
-	# plot([wake_ep['start'][0], wake_ep['end'][0]], np.zeros(2), '-', color = 'blue', label = 'wake')
-	# [plot([wake_ep['start'][i], wake_ep['end'][i]], np.zeros(2), '-', color = 'blue') for i in range(len(wake_ep))]
-	# plot([sleep_ep['start'][0], sleep_ep['end'][0]], np.zeros(2), '-', color = 'green', label = 'sleep')
-	# [plot([sleep_ep['start'][i], sleep_ep['end'][i]], np.zeros(2), '-', color = 'green') for i in range(len(sleep_ep))]	
-	# plot([rem_ep['start'][0], rem_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'orange', label = 'rem')
-	# [plot([rem_ep['start'][i], rem_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'orange') for i in range(len(rem_ep))]
-	# plot([sws_ep['start'][0], sws_ep['end'][0]],  np.zeros(2)+0.1, '-', color = 'red', label = 'sws')
-	# [plot([sws_ep['start'][i], sws_ep['end'][i]], np.zeros(2)+0.1, '-', color = 'red') for i in range(len(sws_ep))]	
-	# legend()
+
+def get_xmin(ep, minutes):
+	duree = (ep['end'] - ep['start'])/1000/1000/60
+	starts = []
+	ends = []
+	count = 0.0
+	for i in range(len(ep)):
+		if count < minutes:
+			starts.append(ep['start'].iloc[i])
+			ends.append(ep['end'].iloc[i])
+			count += duree[i]
+
+	return nts.IntervalSet(starts, ends)
 
 ###############################################################################################################
 # TO LOAD
@@ -29,6 +33,8 @@ exemple = pd.HDFStore("../figures/figures_articles/figure3/Mouse12-120807_pop_pc
 eigen = exemple['eigen']
 posscore = exemple['posscore']
 prescore = exemple['prescore']
+prescore = nts.Tsd(prescore.index.values, prescore.values.flatten())
+posscore = nts.Tsd(posscore.index.values, posscore.values.flatten())
 exemple.close()
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
@@ -45,29 +51,26 @@ sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)
 # rem_ep 			= sleep_ep.intersect(rem_ep)
 pre_ep 			= nts.IntervalSet(sleep_ep['start'][0], sleep_ep['end'][0])
 post_ep 		= nts.IntervalSet(sleep_ep['start'][1], sleep_ep['end'][1])
-pre_xmin_ep = pre_ep.copy()
-pre_xmin_ep['start'] = pre_xmin_ep['end'][0] - 60*60*1000*1000
-post_xmin_ep = post_ep.copy()
-post_xmin_ep['end'] = post_xmin_ep['start'][0] + 60*60*1000*1000
-pre_xmin_ep = pre_ep.copy()
-pre_xmin_ep['start'] = pre_xmin_ep['end'][0] - 60*60*1000*1000
-post_xmin_ep = post_ep.copy()
-post_xmin_ep['end'] = post_xmin_ep['start'][0] + 60*60*1000*1000
-
+pre_sws_ep 		= sws_ep.intersect(pre_ep)
+pos_sws_ep 		= sws_ep.intersect(post_ep)
+pre_sws_ep 		= get_xmin(pre_sws_ep.iloc[::-1], 30)
+pos_sws_ep		= get_xmin(pos_sws_ep, 30)
 
 store = pd.HDFStore("../figures/figures_articles/figure3/pop_phase_shift.h5")
 corr = store['corr']
 phi = store['phi']
 store.close()
 
-store = pd.HDFStore("../figures/figures_articles/figure3/pca_analysis.h5")
+store = pd.HDFStore("../figures/figures_articles/figure3/pca_analysis_3.h5")
 ripscore = {}
 remscore = {}
-for i in range(2):	
-	ripscore[i] = {'pre':store[str(i)+'pre_rip'],
-					'pos':store[str(i)+'pos_rip']}
-	remscore[i] = {'pre':store[str(i)+'pre_rem'],
-					'pos':store[str(i)+'pos_rem']}
+# for i, j in zip(range(3), ['hd', 'nohd_mod', 'nohd_nomod']):
+for i,j in zip(range(3),('nohd_mod', 'hd', 'nohd_nomod')):
+
+	ripscore[i] = {'pre':store[str(j)+'pre_rip'],
+					'pos':store[str(j)+'pos_rip']}
+	# remscore[i] = {'pre':store[str(i)+'pre_rem'],
+	# 				'pos':store[str(i)+'pos_rem']}
 
 store.close()
 
@@ -80,8 +83,8 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1            # height in inches
-	fig_size = [fig_width,fig_height]
+	fig_height = fig_width*golden_mean*0.6            # height in inches
+	fig_size = [fig_width*0.75,fig_height]
 	return fig_size
 
 def simpleaxis(ax):
@@ -139,7 +142,7 @@ from mpl_toolkits.axes_grid.inset_locator import inset_axes
 
 fig = figure(figsize = figsize(1))
 gs1 = gridspec.GridSpec(1,3)
-gs1.update(left = 0.05, right = 0.7, wspace = 0.3, top = 0.95, bottom = 0.75)
+gs1.update(left = 0.05, right = 0.95, wspace = 0.3, top = 0.93, bottom = 0.65)
 lw = 0.5
 
 colors = ['#044293', '#dc3926']
@@ -149,7 +152,7 @@ colors = ['#044293', '#dc3926']
 ##############################################################
 ax1 = subplot(gs1[0,0])
 simpleaxis(ax1)
-ax1.plot(prescore, linewidth = lw, color = colors[0])
+ax1.plot(prescore.restrict(pre_sws_ep), linewidth = lw, color = colors[0])
 title("Pre Sleep")
 ylim(-40, 60)
 # rem_ep_pre = rem_ep.intersect(pre_xmin_ep)
@@ -161,7 +164,7 @@ ylim(-40, 60)
 ##############################################################
 # EIGENVECTORS
 ##############################################################
-inter = gridspec.GridSpecFromSubplotSpec(len(eigen)+1, 1, subplot_spec=gs1[0,1])
+inter = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs1[0,1])
 
 ax2 = Subplot(fig, inter[0,0])
 fig.add_subplot(ax2)
@@ -170,7 +173,7 @@ xlim(0,1)
 ylim(0,1)
 noaxis(ax2)
 
-for i in range(len(eigen)):
+for i in range(len(eigen))[0:5]:
 	# ax = inter[i,0]
 	ax = Subplot(fig, inter[i+1,0])
 	fig.add_subplot(ax)
@@ -187,13 +190,13 @@ xlabel("Neurons", fontsize = 5)
 ##############################################################
 ax3 = subplot(gs1[0,2])
 simpleaxis(ax3)
-ax3.plot(posscore, linewidth = lw, color = colors[1])
+ax3.plot(posscore.restrict(pos_sws_ep), linewidth = lw, color = colors[1])
 title("Post Sleep")
 ylim(-40, 60)
-rem_ep_pos = rem_ep.intersect(post_xmin_ep)
-sws_ep_pos = sws_ep.intersect(post_xmin_ep)
-[plot([rem_ep_pos['start'][i], rem_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'orange') for i in range(len(rem_ep_pos))]
-[plot([sws_ep_pos['start'][i], sws_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'red') for i in range(len(sws_ep_pos))]	
+# rem_ep_pos = rem_ep.intersect(post_xmin_ep)
+# sws_ep_pos = sws_ep.intersect(post_sws_ep)
+# [plot([rem_ep_pos['start'][i], rem_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'orange') for i in range(len(rem_ep_pos))]
+# [plot([sws_ep_pos['start'][i], sws_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'red') for i in range(len(sws_ep_pos))]	
 
 
 ##############################################################
@@ -214,7 +217,7 @@ arrow = matplotlib.patches.FancyArrowPatch(
 fig.patches.append(arrow)
 
 ptB = figtr.transform(ax2tr.transform((0.8,1)))
-ptE = figtr.transform(ax3tr.transform((0.86e10,50)))
+ptE = figtr.transform(ax3tr.transform((0.93e10,50)))
 style="<->,head_width=2,head_length=3"
 arrow = matplotlib.patches.FancyArrowPatch(
     ptB, ptE, transform=fig.transFigure,  # Place arrow in figure coord system
@@ -224,65 +227,98 @@ fig.patches.append(arrow)
 
 ax2.text(0.1, 0.5, 'PCA(population activity)', fontsize = 4)
 ax1.text(3.5e9, 45, 'Reactivation Score', fontsize = 4)
+
+
+
+
 ##############################################################
-# NOHD SWR
+# NOHD SWR MOD
 ##############################################################
-gs2 = gridspec.GridSpec(2,3)
-gs2.update(left = 0.05, right = 0.7, wspace = 0.5, bottom = 0.06, top = 0.65)
-ax = subplot(gs2[0,0:2])
+gs2 = gridspec.GridSpec(1,3)
+gs2.update(left = 0.07, right = 0.8, wspace = 0.24, bottom = 0.1, top = 0.5)
+
+ax = subplot(gs2[0,0])
 simpleaxis(ax)
-times = ripscore[0]['pre'].columns
+times = ripscore[0]['pre'].index.values
 labels = ['Pre-sleep', 'Post-sleep']
+
+
 for k,i in zip(['pre', 'pos'],range(2)):
-	plot(times, gaussFilt(ripscore[0][k].mean(0), (1,)), linewidth = 1, color = colors[i], label = labels[i])
+	for j in ripscore[0][k].columns:
+		ripscore[0][k][j] = gaussFilt(ripscore[0][k][j], (1,))
+
+	plot(ripscore[0][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
+	sem = ripscore[0][k].sem(1).loc[-500:500]
+	fill_between(sem.index.values, ripscore[0][k].mean(1).loc[-500:500] - sem, ripscore[0][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
+
+
 axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
-title("SPWR score", y = 0.95)
-legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
-text(1800,0.850, '$\mathbf{Non\ HD\ Neurons}$')
+ylabel("SPWR score", fontsize = 5)
+# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
+# text(1800,0.90, '$\mathbf{Non\ HD\ Neurons}$')
+xlabel("Time from SPWR (s)", fontsize = 5)
+title("Theta modulated \n Non HD Neurons", fontsize = 5, y = 0.95)
+
+
 ##############################################################
 # HD SWR
 ##############################################################
-ax = subplot(gs2[1,0:2])
+ax = subplot(gs2[0,1])
 simpleaxis(ax)
 for k,i in zip(['pre', 'pos'],range(2)):
-	plot(times, gaussFilt(ripscore[1][k].mean(0), (1,)), linewidth = 1, color = colors[i], label = labels[i])
-legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
+	for j in ripscore[1][k].columns:
+		ripscore[1][k][j] = gaussFilt(ripscore[1][k][j], (1,))
+
+	plot(ripscore[1][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
+	sem = ripscore[1][k].sem(1).loc[-500:500]
+	fill_between(sem.index.values, ripscore[1][k].mean(1).loc[-500:500] - sem, ripscore[1][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
+
+
+# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
 axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
 xlabel("Time from SPWR (s)", fontsize = 5)
-text(2000,3.4, '$\mathbf{HD\ Neurons}$')
-# ##############################################################
-# # NOHD THETA
-# ##############################################################
-# ax = subplot(gs2[0,2])
-# simpleaxis(ax)
-# y = [remscore[0][k]['mean'].mean() for k in ['pre', 'pos']]
-# bar([0,1], y)
-# xticks([0,1], ['pre', 'pos'])
-# title("REM score", y = 0.95)
+# text(2000,3.4, '$\mathbf{HD\ Neurons}$')
+title("HD Neurons", fontsize = 5, y = 0.95)
 
-# ##############################################################
-# # HD THETA
-# ##############################################################
-# ax = subplot(gs2[1,2])
-# simpleaxis(ax)
-# y = [remscore[1][k]['mean'].mean() for k in ['pre', 'pos']]
-# bar([0,1], y)
-# xticks([0,1], ['pre', 'pos'])
 
 ##############################################################
-# COVARIANCE
+# HD SWR NO MOD
 ##############################################################
-gs3 = gridspec.GridSpec(3,1)
-gs3.update(left = 0.75, right = 1, hspace = 0.5)
-ax = subplot(gs3[0,0])
+ax = subplot(gs2[0,2])
 simpleaxis(ax)
-# scatter(corr['pre'], corr['pos'], s = 1)
+for k,i in zip(['pre', 'pos'],range(2)):
+	for j in ripscore[2][k].columns:
+		ripscore[2][k][j] = gaussFilt(ripscore[2][k][j], (1,))
+
+	plot(ripscore[2][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
+	sem = ripscore[2][k].sem(1).loc[-500:500]
+	fill_between(sem.index, ripscore[2][k].mean(1).loc[-500:500] - sem, ripscore[2][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
 
 
-##############################################################
-# PHASE DIFFERENCE
-##############################################################
-ax = subplot(gs3[1,0])
+# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
+axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
+xlabel("Time from SPWR (s)", fontsize = 5)
+# text(2000,3.4, '$\mathbf{HD\ Neurons}$')
+title("Non Theta modulated \n Non HD Neurons", fontsize = 5, y = 0.95)
+
+
+# ##############################################################
+# # COVARIANCE
+# ##############################################################
+gs3 = gridspec.GridSpec(2,1)
+gs3.update(left = 0.9, right = 0.99, hspace = 0.5,  bottom = 0.06, top = 0.5)
+# ax = subplot(gs3[0,0])
+# simpleaxis(ax)
+# # scatter(corr['pre'], corr['pos'], s = 1)
+# xlabel('$R_{pre}$')
+# ylabel('$R_{post}$')
+
+
+
+# ##############################################################
+# # PHASE DIFFERENCE
+# ##############################################################
+ax = subplot(gs3[0,0])
 simpleaxis(ax)
 x = phi['phi']-phi['phipre']
 y = phi['phi']-phi['phipos']
@@ -292,183 +328,17 @@ x[(x > np.pi)] -= 2*np.pi
 y[(y > np.pi)] -= 2*np.pi
 # scatter(x, y, s = 1)
 scatter(phi['phipre'], phi['phipos'], s = 1)
+xlabel('$\phi_{pre}$')
+ylabel('$\phi_{post}$')
 
 
-# ax1 = subplot(gs[0:,0])
-# plot(snippet_filt_rem*0.01 + 50, color = 'black', linewidth = 0.5)
-# # noaxis(ax1)
-# ylabel("CA1 LFP")
-# title("REM", fontsize = 5, y = 0.90)
-# text(0.85, 0,'6-14 Hz', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 4)
-# plot([start_theta,start_theta+100000], [-0,-0], '-', linewidth = 0.5, color = 'black')
-# text(0.1, -0.05,'100 ms', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 4)
-# p, t_theta = getPeaksandTroughs(nts.Tsd(t = snippet_filt_rem.index.values, d = snippet_filt_rem.values.flatten()), 5)
-# for i in t_theta.index.values:
-# 	plot([i,i], [0,78], color = 'grey', linewidth = 0.5)
-# for i in range(len(p)-1):
-# 	text(p.index.values[i]-1000, -4, str(i+1))
-
-# count = 0
-# msize = 3
-# mwidth = 0.5
-# for n in allneurons:	
-# 	xt = spikes[int(n.split("_")[1])].loc[start_theta:end_theta].index.values
-# 	if len(xt):			
-# 		plot(xt, np.ones(len(xt))*count, '|', markersize = msize, markeredgewidth = mwidth, color = 'black')
-# 	count+=1
-
-# ypos = np.linspace(-10, -60, len(p))
-# xpos = p.index.values - 2000
-# for i in range(len(p)-1):
-# 	text(xpos[0] - 100000, ypos[i], str(i+1))
-
-# for i in range(len(p)-1):
-# 	for j in range(len(p)-1):
-# 		plot([xpos[i], xpos[i] + 80000], [ypos[j], ypos[j]], '-', linewidth = 0.5, color = 'black')
-# 		plot([xpos[i], xpos[i]], [ypos[j], ypos[j]+5], '-', linewidth = 0.5, color = 'black')
-
-# 		x, y = pop_rem.iloc[i+1].values, pop_rem.iloc[j+1].values
-# 		x = x - x.min()
-# 		y = y - y.min()
-# 		x = x / x.max()
-# 		y = y / y.max()
-# 		x = x * 80000
-# 		y = y * 5
-# 		x = x + xpos[i]
-# 		y = y + ypos[j]		
-# 		scatter(x, y, 0.1, color = 'black')
-
-
-
-# # ylabel("Thalamus")
-# # ylabel("Correlation")
-# # offset = 68800
-# # style="<->,head_width=2,head_length=3"
-# # kw = dict(arrowstyle=style, color="k")
-# # ax1.add_patch(patches.FancyArrowPatch((t_theta.index.values[1]-offset,-1), (t_theta.index.values[2]-offset, -1),connectionstyle="arc3,rad=.5", **kw))
-# # ax1.add_patch(patches.FancyArrowPatch((t_theta.index.values[3]-offset,-1), (t_theta.index.values[4]-offset,-1),connectionstyle="arc3,rad=.5", **kw))
-# # ax1.add_patch(patches.FancyArrowPatch((t_theta.index.values[1]-offset,-40), (t_theta.index.values[4]-offset,-40),connectionstyle="arc3,rad=.5", **kw))
-
-
-# ylim(-70, 60)
-
-
-
-
-# ############ second column ###########################
-
-
-
-
-# ax2 = subplot(gs[0:,1])
-# plot(lfp_filt_hpc_swr.loc[start_rip:end_rip], color = 'black', linewidth = 0.5)
-# noaxis(ax2)
-# title("NON-REM", fontsize = 5, y = 0.9)
-# text(0.85, 0,'100-300 Hz', horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, fontsize = 4)
-# plot([start_rip,start_rip+40000], [-1,-1], '-', linewidth = 0.5, color = 'black')
-# text(0.1, -0.05,'40 ms', horizontalalignment='center', verticalalignment='center', transform=ax2.transAxes, fontsize = 4)
-
-
-# count = 0
-# for n in allneurons:
-# 	xt = spikes[int(n.split("_")[1])].loc[start_rip:end_rip].index.values
-# 	count+=1
-# 	if len(xt):					
-# 		plot(xt, np.ones(len(xt))*count, '|', markersize = msize, markeredgewidth = mwidth, color = 'black')
-		
-
-
-
-# ########### POP CORR #######################
-# # ax3 = subplot(gs[2,0], sharex = ax1)
-
-
-
-# # ax4 = subplot(gs[2,1])
-# #noaxis(ax4)
-
-
-
-
-
-
-
-
-
-# ###############################################################################
-# ax = subplot(gs[0,2])
-# # axp = imshow(toplot['rem'][100:,100:], origin = 'lower', cmap = 'gist_heat')
-# axp = imshow(rem_to_plot, origin = 'lower', cmap = 'gist_heat')
-# ylabel("Theta Cycle")
-# xlabel("Theta Cycle")
-# # title('REM SLEEP')
-# # cbaxes = fig.add_axes([0.32, 0.12, 0.01, 0.15])
-# # cb = colorbar(axp, cax = cbaxes, orientation = 'vertical', cmap = 'gist_heat')
-# # cbaxes.title.set_text('r')
-
-# ###############################################################################
-# # ax = subplot(gs[0, 1])
-# # imshow(toplot['wake'], interpolation = None, origin = 'lower', cmap = 'gist_heat')
-# # ylabel('Theta Cycle')
-# # xlabel('Theta Cycle')
-# # title("WAKE")
-
-# ###############################################################################
-# ax = subplot(gs[1, 2])
-# imshow(toplot['rip'][0:200,0:200], origin = 'lower', cmap = 'gist_heat')
-# # title('SHARP-WAVES RIPPLES')
-# xlabel('SWR')
-# ylabel('SWR')
-
-# ###############################################################################
-# ax = subplot(gs[2,2])
+##############################################################
+# TIME MAX
+##############################################################
+# ax = subplot(gs3[2,0])
 # simpleaxis(ax)
-# # xtsym = np.array(list(xt[::-1]*-1.0)    +list(xt))
-# # meanywak = np.array(list(meanywak[::-1])+list(meanywak))
-# # meanyrem = np.array(list(meanyrem[::-1])+list(meanyrem))
-# # meanyrip = np.array(list(meanyrip[::-1])+list(meanyrip))
-# # varywak  = np.array(list(varywak[::-1]) +list(varywak))
-# # varyrem  = np.array(list(varyrem[::-1]) +list(varyrem))
-# # varyrip  = np.array(list(varyrip[::-1]) +list(varyrip))
-
-# colors = ['red', 'blue', 'green']
-# colors = ['#231123', '#af1b3f', '#ccb69b']
-
-# # plot(xtsym, meanywak, '-', color = colors[0], label = 'theta(wake)')
-# # plot(xtsym, meanyrem, '-', color = colors[1], label = 'theta(rem)')
-# # plot(xtsym, meanyrip, '-', color = colors[2], label = 'ripple')
-# # fill_between(xtsym, meanywak+varywak, meanywak-varywak, color = colors[0], alpha = 0.4)
-# # fill_between(xtsym, meanyrem+varyrem, meanyrem-varyrem, color = colors[1], alpha = 0.4)
-# # fill_between(xtsym, meanyrip+varyrip, meanyrip-varyrip, color = colors[2], alpha = 0.4)
-# plot(xtime, meanyrem, '-', color = colors[1], label = 'REM')
-# plot(xtime, meanywak, '-', color = colors[0], label = 'WAKE')
-# plot(xtime, meanyrip, '-', color = colors[2], label = 'SWR')
-# fill_between(xtime, meanyrem+varyrem, meanyrem-varyrem, color = colors[1], alpha = 0.4)
-# fill_between(xtime, meanywak+varywak, meanywak-varywak, color = colors[0], alpha = 0.4)
-# fill_between(xtime, meanyrip+varyrip, meanyrip-varyrip, color = colors[2], alpha = 0.4)
-
-# xtime = xtime[::-1]*-1.0
-# meanywak = meanywak[::-1]
-# meanyrem = meanyrem[::-1]
-# meanyrip = meanyrip[::-1]
-# varywak = varywak[::-1]
-# varyrem = varyrem[::-1]
-# varyrip = varyrip[::-1]
-# plot(xtime, meanyrem, '-', color = colors[1])
-# plot(xtime, meanywak, '-', color = colors[0])
-# plot(xtime, meanyrip, '-', color = colors[2])
-# fill_between(xtime, meanyrem+varyrem, meanyrem-varyrem, color = colors[1], alpha = 0.4)
-# fill_between(xtime, meanywak+varywak, meanywak-varywak, color = colors[0], alpha = 0.4)
-# fill_between(xtime, meanyrip+varyrip, meanyrip-varyrip, color = colors[2], alpha = 0.4)
 
 
-# axvline(0, linestyle = '--', color = 'grey')
-
-# # ylim(0.0, 0.3)
-
-# legend(edgecolor = None, facecolor = None, frameon = False)
-# xlabel('Time between events (s) ')
-# ylabel("r")
 
 
 savefig("../figures/figures_articles/figart_3.pdf", dpi = 900, facecolor = 'white')

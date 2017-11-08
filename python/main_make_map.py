@@ -64,7 +64,7 @@ if len(tmp):
 
 swr_modth_copy 	= swr_modth.copy()
 neuron_index 	= swr_modth.index
-sys.exit()
+
 
 ###############################################################################################################
 # MOVIE + jPCA for each animal

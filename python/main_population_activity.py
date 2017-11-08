@@ -111,11 +111,11 @@ for session in datasets:
 
 	# legend()
 	# show()
-	store 			= pd.HDFStore("../data/population_activity_50ms/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_5ms/"+session.split("/")[1]+".h5")
 	# store 			= pd.HDFStore("../data/population_activity_"+session.split("/")[1]+"_special_one_for_testing.h5")
 	n_neurons = len(spikes)
 	keys_neurons = list(spikes.keys())					
-	if len(theta_wake_ep) and len(theta_rem_ep) and len(sleep_ep) == 2:
+	if len(sleep_ep) == 2:
 		# ###############################################################################################################
 		# # SWR
 		# ###############################################################################################################				
@@ -194,13 +194,15 @@ for session in datasets:
 		# BINNING ALL WAKE 100 ms
 		###############################################################################################################
 		# population activity vector			
+		bin_size = 5000
 		wake_ep 		= loadEpoch(data_directory+session, 'wake')
-		bins 			= np.arange(wake_ep['start'][0], wake_ep['end'][0], 50000)
+		bins 			= np.arange(wake_ep['start'][0], wake_ep['end'][0], bin_size)
 		all_wake_pop 	= np.zeros((len(bins)-1, n_neurons))
-		for n in range(n_neurons):
+		for n in range(n_neurons):			
 			all_wake_pop[:,n] = np.histogram(spikes[n].index.values, bins)[0]
-		all_wake_pop /= 0.050
-		all_wake_pop = pd.DataFrame(index = bins[0:-1] + 25000, columns = keys_neurons, data = all_wake_pop)
+		all_wake_pop /= (bin_size/1000)
+		all_wake_pop = pd.DataFrame(index = bins[0:-1] + bin_size//2, columns = keys_neurons, data = all_wake_pop)
+		
 
 		store.put('allwake', all_wake_pop)
 			
@@ -211,12 +213,12 @@ for session in datasets:
 		
 		all_sleep_pop = []
 		for e in range(len(sleep_ep)):
-			bins = np.arange(sleep_ep['start'][e], sleep_ep['end'][e], 50000)
+			bins = np.arange(sleep_ep['start'][e], sleep_ep['end'][e], bin_size)
 			sleep_pop 	= np.zeros((len(bins)-1, n_neurons))
 			for n in range(n_neurons):				
 				sleep_pop[:,n] = np.histogram(spikes[n].index.values, bins)[0]
-			sleep_pop /= 0.050
-			sleep_pop = pd.DataFrame(index = bins[0:-1] + 25000, columns = keys_neurons, data = sleep_pop)
+			sleep_pop /= (bin_size/1000)
+			sleep_pop = pd.DataFrame(index = bins[0:-1] + bin_size//2, columns = keys_neurons, data = sleep_pop)
 			all_sleep_pop.append(sleep_pop)		
 		store.put('presleep', all_sleep_pop[0])
 		store.put('postsleep', all_sleep_pop[1])

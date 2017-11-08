@@ -14,32 +14,29 @@ import neuroseries as nts
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
-bins_ = np.arange(-5025, 5050, 25)*1000		
-times = np.floor(((bins_[0:-1] + (bins_[1] - bins_[0])/2)/1000)).astype('int')			
-premeanscore = {i:pd.DataFrame(index = times, columns = []) for i in range(2)}
-posmeanscore = {i:pd.DataFrame(index = times, columns = []) for i in range(2)}
+bins2 = np.arange(-1012.5,1025,25)*1000
+tsmax = {i:pd.DataFrame(columns = ['pre', 'pos']) for i in range(2)}
 
-clients = ipyparallel.Client()
-print(clients.ids)
-dview = clients.direct_view()
+# clients = ipyparallel.Client()
+# print(clients.ids)
+# dview = clients.direct_view()
 
-def compute_pop_pca_shank(session):
-	data_directory = '/mnt/DataGuillaume/MergedData/'
-	import numpy as np	
-	import scipy.io	
-	import scipy.stats		
-	import _pickle as cPickle
-	import time
-	import os, sys	
-	import neuroseries as nts
-	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadSpeed, loadXML, loadRipples, loadLFP, downsample, getPeaksandTroughs, butter_bandpass_filter
-	import pandas as pd	
-	bins_ = np.arange(-2025, 2050, 25)*1000		
-	times = np.floor(((bins_[0:-1] + (bins_[1] - bins_[0])/2)/1000)).astype('int')				
-	premeanscore = {i:pd.DataFrame(index = times, columns = []) for i in range(2)}
-	posmeanscore = {i:pd.DataFrame(index = times, columns = []) for i in range(2)}
+# def compute_pop_pca_shank(session):
+# 	data_directory = '/mnt/DataGuillaume/MergedData/'
+# 	import numpy as np	
+# 	import scipy.io	
+# 	import scipy.stats		
+# 	import _pickle as cPickle
+# 	import time
+# 	import os, sys	
+# 	import neuroseries as nts
+# 	from functions import loadShankStructure, loadSpikeData, loadEpoch, loadSpeed, loadXML, loadRipples, loadLFP, downsample, getPeaksandTroughs, butter_bandpass_filter, gaussFilt
+# 	import pandas as pd	
 
-# for session in datasets:
+# 	bins2 = np.arange(-1012.5,1025,25)*1000	
+# 	tsmax = {i:pd.DataFrame(columns = ['pre', 'pos']) for i in range(2)}
+
+for session in datasets:
 # for session in ['Mouse20/Mouse20-130603']:
 
 	start_time = time.clock()
@@ -103,7 +100,7 @@ def compute_pop_pca_shank(session):
 
 		def compute_rip_score(tsd, score, bins):								
 			times = np.floor(((bins[0:-1] + (bins[1] - bins[0])/2)/1000)).astype('int')			
-			rip_score = pd.DataFrame(index = tsd.index.values, columns = times)
+			rip_score = pd.DataFrame(index = times, columns = [])
 			for r,i in zip(tsd.index.values,range(len(tsd))):
 				xbins = (bins + r).astype('int')
 				y = score.groupby(pd.cut(score.index.values, bins=xbins, labels = times)).mean()
@@ -125,8 +122,8 @@ def compute_pop_pca_shank(session):
 			for hd in range(2):
 				index = np.where(hd_info_neuron == hd)[0]
 				allpop = all_pop[index].copy()			
-				if allpop.shape[1] and allpop.shape[1] > 5:	
-					eigen = compute_eigen(allpop.copy())
+				if allpop.shape[1] and allpop.shape[1] > 2:	
+					eigen = compute_eigen(allpop)
 					###############################################################################################################
 					# SHANK LOOP
 					###############################################################################################################				
@@ -138,16 +135,38 @@ def compute_pop_pca_shank(session):
 						pre_score = compute_score(prepop.copy(), eigen[:,index2])
 						pos_score = compute_score(pospop.copy(), eigen[:,index2])
 						
-						prerip_score = compute_rip_score(rip_tsd.restrict(pre_ep), pre_score, bins_)
-						posrip_score = compute_rip_score(rip_tsd.restrict(post_ep), pos_score, bins_)
+						prerip_score = compute_rip_score(rip_tsd.restrict(pre_ep), pre_score, bins2)
+						posrip_score = compute_rip_score(rip_tsd.restrict(post_ep), pos_score, bins2)
 
-						idx = session.split("/")[1] + "_" + str(shank)
-						premeanscore[hd][idx] = prerip_score.mean(0)
-						posmeanscore[hd][idx] = posrip_score.mean(0)
+						a = pd.DataFrame(index = prerip_score.index.values, data = gaussFilt(prerip_score.mean(1).values, (5,)))
+						b = pd.DataFrame(index = posrip_score.index.values, data = gaussFilt(posrip_score.mean(1).values, (5,)))
 
-	return [premeanscore, posmeanscore]
+						tmp = pd.DataFrame(data = [[a.loc[-500:500].idxmax()[0], b.loc[-500:500].idxmax()[0]]], columns = ['pre', 'pos'])
+						tsmax[hd] = tsmax[hd].append(tmp, ignore_index = True)
+						sys.exit()
+						# idx = session.split("/")[1] + "_" + str(shank)
+						# premeanscore[hd][idx] = prerip_score.mean(0)
+						# posmeanscore[hd][idx] = posrip_score.mean(0)
 
-a = dview.map_sync(compute_pop_pca_shank, datasets)
+# 	return tsmax
+
+# a = dview.map_sync(compute_pop_pca_shank, datasets)
+
+
+tsmax = {i:pd.DataFrame(columns = ['pre', 'pos']) for i in range(2)}
+for i in range(len(a)):
+	for hd in range(2):
+		tsmax[hd] = tsmax[hd].append(a[i][hd], ignore_index = True)
+
+
+from pylab import *
+plot(tsmax[0]['pos'], np.ones(len(tsmax[0]['pos'])), 'o')
+plot(tsmax[0]['pos'].mean(), [1], '|', markersize = 10)
+plot(tsmax[1]['pos'], np.zeros(len(tsmax[1]['pos'])), 'o')
+plot(tsmax[1]['pos'].mean(), [0], '|', markersize = 10)
+show()
+
+sys.exit()
 
 preshank = {i:pd.DataFrame() for i in range(2)}
 posshank = {i:pd.DataFrame() for i in range(2)}

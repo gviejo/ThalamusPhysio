@@ -35,28 +35,32 @@ spike_theta_phase 		= cPickle.load(open('/mnt/DataGuillaume/MergedData/SPIKE_THE
 nbins 					= 400
 binsize					= 5
 times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
-swr 					= pd.DataFrame(	index = swr_ses, 
-										columns = times,
-										data = swr_mod)
+
+theta 				= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
 
 # filtering swr_mod
-swr 				= pd.DataFrame(	index = swr.index, 
-									columns = swr.columns,
-									data = gaussFilt(swr.values, (15,)))
+swr 					= pd.DataFrame(	columns = swr_ses, 
+										index = times,
+										data = gaussFilt(swr_mod, (5,)).transpose())
 
 # Cut swr_mod from -500 to 500
-nbins 				= 200
-binsize				= 5
-times 				= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
-swr 				= swr.loc[:,times]
-
+swr = swr.loc[-500:500]
 # CHECK FOR NAN
-tmp1 			= swr.index[swr.isnull().any(1).values]
+tmp1 			= swr.columns[swr.isnull().any()].values
+tmp2 			= theta.index[theta.isnull().any(1)].values
+# CHECK P-VALUE 
+tmp3	 		= theta.index[(theta['pvalue'] > 0.05).values].values
+tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3]))
 # copy and delete 
-if len(tmp1):
-	swr 		= swr.drop(tmp1)
-tmp2 			= swr.index[(swr.std(1)<np.percentile(swr.std(1), 50)).values]
-swr_modth 		= swr.drop(tmp2)
+if len(tmp):
+	swr_modth 	= swr.drop(tmp, axis = 1)
+	theta_modth = theta.drop(tmp, axis = 0)
+
+swr_modth_copy 	= swr_modth.copy()
+neuron_index = swr_modth.columns
+times = swr_modth.loc[-500:500].index.values
 
 ###############################################################################################################
 # MOVIE + jPCA for each animal
@@ -82,69 +86,78 @@ xpos_phase 	= dict.fromkeys(mouses)
 ypos_phase 	= dict.fromkeys(mouses)
 
 for m in mouses:	
+	print(m)
 	depth = pd.DataFrame(index = np.genfromtxt(data_directory+m+"/"+m+".depth", dtype = 'str', usecols = 0),
 						data = np.genfromtxt(data_directory+m+"/"+m+".depth", usecols = 1),
 						columns = ['depth'])	
-	sessions 		= np.unique([n.split("_")[0] for n in swr.index if m in n])	
-	swr_shank 		= np.zeros((len(sessions),8,len(times)))
-	# nb_bins			= interval_to_cut[m][1] - interval_to_cut[m][0]
+	neurons 		= np.array([n for n in neuron_index if m in n])
+	sessions 		= np.unique([n.split("_")[0] for n in neuron_index if m in n])	
 	nb_bins 		= 201
-	theta_shank 	= np.zeros((len(sessions),8,nb_bins)) # that's radian bins here
-	spindle_shank 	= np.zeros((len(sessions),8,nb_bins)) # that's radian bins here
-	bins_phase 		= np.linspace(0.0, 2*np.pi+0.00001, nb_bins+1)
+	swr_shank 		= np.zeros((len(sessions),8,nb_bins))
+	# nb_bins			= interval_to_cut[m][1] - interval_to_cut[m][0]	
+	theta_shank 	= np.zeros((len(sessions),8,30)) # that's radian bins here
+	spindle_shank 	= np.zeros((len(sessions),8,30)) # that's radian bins here
+	bins_phase 		= np.linspace(0.0, 2*np.pi+0.00001, 31)
 	count_total 	= np.zeros((len(sessions),8))	
 	hd_neurons 		= np.zeros((len(sessions),8))
-	amplitute		= np.zeros((len(sessions),8))	
-	for s in sessions:				
-		shank				= loadShankMapping(data_directory+m+'/'+s+'/Analysis/SpikeData.mat').flatten()
-		hd_info 			= scipy.io.loadmat(data_directory+m+'/'+s+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
+	amplitute		= np.zeros((len(sessions),8))
+###########################################################################################################			
+# JPCA
+###########################################################################################################				
+	rX,phi_swr,dynamical_system = jPCA(swr_modth[neurons].values.transpose(), times)
+	phi_swr 		= pd.DataFrame(index = neurons, data = phi_swr)
 ###########################################################################################################			
 # VARIOUS
-###########################################################################################################		
-		neurons 			= np.array([n for n in swr.index if m in n])
-		shankIndex 			= np.array([shank[int(n.split("_")[1])]-1 for n in neurons if s in n])		
-		if np.max(shankIndex) > 8 : sys.exit("Invalid shank index for thalamus" + s)		
-		hd_info_neuron		= np.array([hd_info[int(n.split("_")[1])] for n in neurons if s in n])		
-		neurons_in_session 	= np.array([n for n in neurons if s in n])				
-		shank_to_neurons 	= {k:[n for n in neurons_in_session[shankIndex == k]] for k in np.unique(shankIndex)}
-		for k in shank_to_neurons.keys(): 									
+###########################################################################################################				
+	for s in sessions:				
+		generalinfo 		= scipy.io.loadmat(data_directory+m+"/"+s+'/Analysis/GeneralInfo.mat')
+		shankStructure 		= loadShankStructure(generalinfo)
+		spikes,shank		= loadSpikeData(data_directory+m+"/"+s+'/Analysis/SpikeData.mat', shankStructure['thalamus'])				
+		hd_info 			= scipy.io.loadmat(data_directory+m+'/'+s+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
+		hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])
+		shankIndex 			= np.array([shank[n] for n in spikes.keys()]).flatten()
+		if np.max(shankIndex) > 8 : sys.exit("Invalid shank index for thalamus" + s)				
+		shank_to_neurons 	= {k:np.array(list(spikes.keys()))[shankIndex == k] for k in np.unique(shankIndex)}
+		for k in shank_to_neurons.keys(): 						
 			count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])			
 			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])	
-			amplitute[np.where(sessions==s)[0][0],k] = (swr.loc[shank_to_neurons[k]].var(1)).mean()
+			# amplitute[np.where(sessions==s)[0][0],k] = (swr.loc[shank_to_neurons[k]].var(1)).mean()
 ###########################################################################################################			
 # SWR MOD
 ###########################################################################################################		
-		neurons 			= np.array([n for n in swr_modth.index if m in n])
-		rX,phi_swr,dynamical_system = jPCA(swr_modth.loc[neurons].values, times)
-		phi_swr 			= pd.DataFrame(index = swr_modth.loc[neurons].index, data = phi_swr)
-		shankIndex 			= np.array([shank[int(n.split("_")[1])]-1 for n in neurons if s in n])		
-		if np.max(shankIndex) > 8 : sys.exit("Invalid shank index for thalamus" + s)
-		neurons_in_session 	= np.array([n for n in neurons if s in n])				
-		shank_to_neurons 	= {k:[n for n in neurons_in_session[shankIndex == k]] for k in np.unique(shankIndex)}
-		for k in shank_to_neurons.keys(): 									
-			swr_shank[np.where(sessions== s)[0][0],k] = swr_modth.loc[shank_to_neurons[k]].mean(0).values
+		neurons_mod_in_s 	= np.array([n for n in neurons if s in n])								
+		shank_to_neurons 	= {k:np.array([n for n in neurons_mod_in_s if shankIndex[int(n.split("_")[1])] == k]) for k in np.unique(shankIndex)}
+		for k in shank_to_neurons.keys():
+			if len(shank_to_neurons[k]):							
+				swr_shank[np.where(sessions== s)[0][0],k] = swr_modth[shank_to_neurons[k]].mean(1).values
+		
 ###########################################################################################################			
 # THETA MOD
 ###########################################################################################################							
-			for n in shank_to_neurons[k]:
-				phi = spike_theta_phase['rem'][n]
-				phi[phi<0.0] += 2*np.pi
-				index = np.digitize(phi, bins_phase)-1
-				for t in index:
-				 	theta_shank[np.where(sessions == s)[0][0],k,t] += 1.0				
+		for k in shank_to_neurons.keys():
+			if len(shank_to_neurons[k]):
+				for n in shank_to_neurons[k]:					
+					phi = spike_theta_phase['rem'][n]
+					phi[phi<0.0] += 2*np.pi
+					index = np.digitize(phi, bins_phase)-1
+					for t in index:
+					 	theta_shank[np.where(sessions == s)[0][0],k,t] += 1.0				
 ###########################################################################################################			
 # SPIND HPC MOD
 ###########################################################################################################					
-			for n in shank_to_neurons[k]:
-				phi = spike_spindle_phase['hpc'][n]
-				phi[phi<0.0] += 2*np.pi
-				index = np.digitize(phi, bins_phase)-1
-				for t in index:
-				 	spindle_shank[np.where(sessions == s)[0][0],k,t] += 1.0			
+		# for k in shank_to_neurons.keys():
+		# 	if len(shank_to_neurons[k]):
+		# 		for n in shank_to_neurons[k]:					
+		# 			phi = spike_spindle_phase['hpc'][n]
+		# 			phi[phi<0.0] += 2*np.pi
+		# 			index = np.digitize(phi, bins_phase)-1
+		# 			for t in index:
+		# 			 	spindle_shank[np.where(sessions == s)[0][0],k,t] += 1.0			
 
 	
 	for t in range(len(times)):
 		swr_shank[:,:,t] = np.flip(swr_shank[:,:,t], 1)
+	for t in range(theta_shank.shape[-1]):
 		theta_shank[:,:,t] = np.flip(theta_shank[:,:,t], 1)
 		spindle_shank[:,:,t] = np.flip(spindle_shank[:,:,t], 1)
 
@@ -160,10 +173,19 @@ for m in mouses:
 					'y'			: 	depth.loc[sessions].values.flatten()
 					}
 	headdir[m] 	= np.flip(hd_neurons, 1)
+	# sys.exit()	
 
+for m in movies.keys():
+	datatosave = {	'movies':movies[m],
+					'total':maps[m]['total'],
+					'x':maps[m]['x'],
+					'y':maps[m]['y'],
+					'headdir':headdir[m],
+					'jpc':rXX[m]
+					}
+	cPickle.dump(datatosave, open("../data/maps/"+m+".pickle", 'wb'))	
 
-
-	
+sys.exit()
 
 
 def interpolate(z, x, y, inter, bbox = None):	
@@ -184,7 +206,6 @@ def softmax(x, b1 = 20.0, b2 = 0.5):
 	x -= x.min()
 	x /= x.max()
 	return 1.0/(1.0+np.exp(-(x-b2)*b1))
-
 
 def get_rgb(mapH, mapV, mapS, bound):
 	from matplotlib.colors import hsv_to_rgb	
@@ -212,7 +233,7 @@ def get_rgb(mapH, mapV, mapS, bound):
 
 
 
-m = 'Mouse17'
+m = 'Mouse12'
 space = 0.01
 
 thl_lines = np.load("../figures/thalamus_lines.mat.npy").sum(2)
@@ -228,8 +249,11 @@ xnew, ynew, total = interpolate(maps[m]['total'].copy(), maps[m]['x'], maps[m]['
 total = softmax(total, 20.0, 0.2)
 
 
+for k in movies[m].keys():
+	movies[m][k] = filter_(movies[m][k], (2,2,5))
+
 filmov = dict.fromkeys(movies[m].keys())
-for k in filmov:
+for k in filmov:	
 	tmp = []
 	for t in range(movies[m][k].shape[-1]):
 		# frame = movies[m][k][:,:,t] / (maps[m]['total']+1.0)
@@ -239,7 +263,7 @@ for k in filmov:
 	tmp = np.array(tmp)
 	filmov[k] = filter_(tmp, 5)
 	filmov[k] = filmov[k] - np.min(filmov[k])
-	filmov[k] = filmov[k] / np.max(filmov[k])
+	filmov[k] = filmov[k] / np.max(filmov[k] + 1e-8)
 	filmov[k] = softmax(filmov[k], 10, 0.5)
 
 xnew, ynew, head = interpolate(headdir[m].copy(), maps[m]['x'], maps[m]['y'], space)
@@ -288,7 +312,7 @@ def animate(t):
 	return images
 	
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-						   frames=range(len(times)), interval=0, blit=False, repeat_delay = 1000)
+						   frames=range(len(times)), interval=0, blit=False, repeat_delay = 5000)
 
 anim.save('../figures/swr_mod_'+m+'.gif', writer='imagemagick', fps=60)
 show()
