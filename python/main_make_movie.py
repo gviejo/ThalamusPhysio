@@ -43,7 +43,7 @@ theta 				= pd.DataFrame(	index = theta_ses['rem'],
 # filtering swr_mod
 swr 					= pd.DataFrame(	columns = swr_ses, 
 										index = times,
-										data = gaussFilt(swr_mod, (5,)).transpose())
+										data = gaussFilt(swr_mod, (10,)).transpose())
 
 # Cut swr_mod from -500 to 500
 swr = swr.loc[-500:500]
@@ -51,7 +51,7 @@ swr = swr.loc[-500:500]
 tmp1 			= swr.columns[swr.isnull().any()].values
 tmp2 			= theta.index[theta.isnull().any(1)].values
 # CHECK P-VALUE 
-tmp3	 		= theta.index[(theta['pvalue'] > 0.05).values].values
+tmp3	 		= theta.index[(theta['pvalue'] > 1).values].values
 tmp 			= np.unique(np.concatenate([tmp1,tmp2,tmp3]))
 # copy and delete 
 if len(tmp):
@@ -85,7 +85,10 @@ ypos_shank 	= dict.fromkeys(mouses)
 xpos_phase 	= dict.fromkeys(mouses)
 ypos_phase 	= dict.fromkeys(mouses)
 
+hd_neurons_index = []
+
 for m in mouses:	
+# for m in ['Mouse17']:
 	print(m)
 	depth = pd.DataFrame(index = np.genfromtxt(data_directory+m+"/"+m+".depth", dtype = 'str', usecols = 0),
 						data = np.genfromtxt(data_directory+m+"/"+m+".depth", usecols = 1),
@@ -117,18 +120,24 @@ for m in mouses:
 		hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])
 		shankIndex 			= np.array([shank[n] for n in spikes.keys()]).flatten()
 		if np.max(shankIndex) > 8 : sys.exit("Invalid shank index for thalamus" + s)				
-		shank_to_neurons 	= {k:np.array(list(spikes.keys()))[shankIndex == k] for k in np.unique(shankIndex)}
+		shank_to_neurons 	= {k:np.array(list(spikes.keys()))[shankIndex == k] for k in np.unique(shankIndex)}		
+
 		for k in shank_to_neurons.keys(): 						
 			count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])			
 			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])	
+
 			# amplitute[np.where(sessions==s)[0][0],k] = (swr.loc[shank_to_neurons[k]].var(1)).mean()
 ###########################################################################################################			
 # SWR MOD
 ###########################################################################################################		
 		neurons_mod_in_s 	= np.array([n for n in neurons if s in n])								
-		shank_to_neurons 	= {k:np.array([n for n in neurons_mod_in_s if shankIndex[int(n.split("_")[1])] == k]) for k in np.unique(shankIndex)}
+		shank_to_neurons 	= {k:np.array([n for n in neurons_mod_in_s if shankIndex[int(n.split("_")[1])] == k]) for k in np.unique(shankIndex)}		
+
 		for k in shank_to_neurons.keys():
-			if len(shank_to_neurons[k]):							
+			# if np.sum(hd_info_neuron[[int(n.split("_")[1]) for n in shank_to_neurons[k]]]):
+			# print(s, k, len(shank_to_neurons[k]))
+			# if s == 'Mouse17-130204': sys.exit()
+			if len(shank_to_neurons[k]):				
 				swr_shank[np.where(sessions== s)[0][0],k] = swr_modth[shank_to_neurons[k]].mean(1).values
 		
 ###########################################################################################################			
@@ -173,7 +182,7 @@ for m in mouses:
 					'y'			: 	depth.loc[sessions].values.flatten()
 					}
 	headdir[m] 	= np.flip(hd_neurons, 1)
-	# sys.exit()	
+	
 
 for m in movies.keys():
 	datatosave = {	'movies':movies[m],

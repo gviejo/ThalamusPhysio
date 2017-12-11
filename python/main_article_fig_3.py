@@ -83,7 +83,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*0.6            # height in inches
+	fig_height = fig_width*golden_mean*0.7            # height in inches
 	fig_size = [fig_width*0.75,fig_height]
 	return fig_size
 
@@ -120,11 +120,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 8,               # LaTeX default is 10pt font.
-	"font.size": 7,
-	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 4,
-	"ytick.labelsize": 4,
+	"axes.labelsize": 9,               # LaTeX default is 10pt font.
+	"font.size": 8,
+	"legend.fontsize": 8,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 5,
+	"ytick.labelsize": 5,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -152,7 +152,9 @@ colors = ['#044293', '#dc3926']
 ##############################################################
 ax1 = subplot(gs1[0,0])
 simpleaxis(ax1)
-ax1.plot(prescore.restrict(pre_sws_ep), linewidth = lw, color = colors[0])
+times = prescore.restrict(pre_sws_ep).as_units('s').index.values/60
+times = times - np.min(times)
+ax1.plot(times, prescore.restrict(pre_sws_ep).values, linewidth = lw, color = colors[0])
 title("Pre Sleep")
 ylim(-40, 60)
 # rem_ep_pre = rem_ep.intersect(pre_xmin_ep)
@@ -180,19 +182,22 @@ for i in range(len(eigen))[0:5]:
 	noaxis(ax)
 	axhline(0, linewidth = 0.4, color = 'grey')
 	for j in eigen.loc[i].index.values:
-		ax.plot([j,j], [0, eigen.loc[i,j]], '-', linewidth = lw, color = 'black', markersize = 1)
-		ax.plot([j], [eigen.loc[i,j]], 'o', linewidth = lw, color = 'black', markersize = 1)
-	ylabel("PC "+str(i+1), rotation = 'horizontal', fontsize = 4)
+		ax.plot([j,j], [0, eigen.loc[i,j]], '-', linewidth = lw, color = 'black', markersize = 1.5)
+		ax.plot([j], [eigen.loc[i,j]], 'o', linewidth = lw, color = 'black', markersize = 1.5)
+	ylabel("PC "+str(i+1), rotation = 'horizontal', fontsize = 5)
 
-xlabel("Neurons", fontsize = 5)
+xlabel("Neurons", fontsize = 6)
 ##############################################################
 # POST SCORE
 ##############################################################
 ax3 = subplot(gs1[0,2])
 simpleaxis(ax3)
-ax3.plot(posscore.restrict(pos_sws_ep), linewidth = lw, color = colors[1])
+times = posscore.restrict(pos_sws_ep).as_units('s').index.values/60
+times = times - np.min(times)
+ax3.plot(times, posscore.restrict(pos_sws_ep).values, linewidth = lw, color = colors[1])
 title("Post Sleep")
 ylim(-40, 60)
+xlabel('min', ha='right', va = 'center')
 # rem_ep_pos = rem_ep.intersect(post_xmin_ep)
 # sws_ep_pos = sws_ep.intersect(post_sws_ep)
 # [plot([rem_ep_pos['start'][i], rem_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'orange') for i in range(len(rem_ep_pos))]
@@ -207,7 +212,7 @@ ax2tr = ax2.transData
 ax3tr = ax3.transData
 figtr = fig.transFigure.inverted()
 ptB = figtr.transform(ax2tr.transform((0.2,1)))
-ptE = figtr.transform(ax1tr.transform((5e9,50)))
+ptE = figtr.transform(ax1tr.transform((40,50)))
 style="simple,head_width=2,head_length=3"
 kw = dict(arrowstyle=style, color="k")
 arrow = matplotlib.patches.FancyArrowPatch(
@@ -217,7 +222,7 @@ arrow = matplotlib.patches.FancyArrowPatch(
 fig.patches.append(arrow)
 
 ptB = figtr.transform(ax2tr.transform((0.8,1)))
-ptE = figtr.transform(ax3tr.transform((0.93e10,50)))
+ptE = figtr.transform(ax3tr.transform((10,50)))
 style="<->,head_width=2,head_length=3"
 arrow = matplotlib.patches.FancyArrowPatch(
     ptB, ptE, transform=fig.transFigure,  # Place arrow in figure coord system
@@ -230,17 +235,41 @@ ax1.text(3.5e9, 45, 'Reactivation Score', fontsize = 4)
 
 
 
+##############################################################
+# HD SWR
+##############################################################
 
-##############################################################
-# NOHD SWR MOD
-##############################################################
 gs2 = gridspec.GridSpec(1,3)
-gs2.update(left = 0.07, right = 0.8, wspace = 0.24, bottom = 0.1, top = 0.5)
+gs2.update(left = 0.075, right = 0.8, wspace = 0.24, bottom = 0.1, top = 0.5)
 
 ax = subplot(gs2[0,0])
 simpleaxis(ax)
 times = ripscore[0]['pre'].index.values
 labels = ['Pre-sleep', 'Post-sleep']
+
+for k,i in zip(['pre', 'pos'],range(2)):
+	for j in ripscore[1][k].columns:
+		ripscore[1][k][j] = gaussFilt(ripscore[1][k][j], (1,))
+
+	plot(ripscore[1][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
+	sem = ripscore[1][k].sem(1).loc[-500:500]
+	fill_between(sem.index.values, ripscore[1][k].mean(1).loc[-500:500] - sem, ripscore[1][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
+
+
+axvline(0, linewidth =1, color = 'grey', alpha = 0.0)
+ylabel("SPWR score", fontsize = 5)
+# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
+# text(1800,0.90, '$\mathbf{Non\ HD\ Neurons}$')
+xlabel("Time from SPWR (s)", fontsize = 5)
+
+title("HD Neurons", fontsize = 7, y = 0.95)
+
+
+##############################################################
+# NOHD SWR MOD
+##############################################################
+ax = subplot(gs2[0,1])
+simpleaxis(ax)
 
 
 for k,i in zip(['pre', 'pos'],range(2)):
@@ -252,34 +281,12 @@ for k,i in zip(['pre', 'pos'],range(2)):
 	fill_between(sem.index.values, ripscore[0][k].mean(1).loc[-500:500] - sem, ripscore[0][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
 
 
-axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
-ylabel("SPWR score", fontsize = 5)
-# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
-# text(1800,0.90, '$\mathbf{Non\ HD\ Neurons}$')
-xlabel("Time from SPWR (s)", fontsize = 5)
-title("Theta modulated \n Non HD Neurons", fontsize = 5, y = 0.95)
-
-
-##############################################################
-# HD SWR
-##############################################################
-ax = subplot(gs2[0,1])
-simpleaxis(ax)
-for k,i in zip(['pre', 'pos'],range(2)):
-	for j in ripscore[1][k].columns:
-		ripscore[1][k][j] = gaussFilt(ripscore[1][k][j], (1,))
-
-	plot(ripscore[1][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
-	sem = ripscore[1][k].sem(1).loc[-500:500]
-	fill_between(sem.index.values, ripscore[1][k].mean(1).loc[-500:500] - sem, ripscore[1][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
-
-
 # legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
 axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
 xlabel("Time from SPWR (s)", fontsize = 5)
 # text(2000,3.4, '$\mathbf{HD\ Neurons}$')
-title("HD Neurons", fontsize = 5, y = 0.95)
-
+title("Theta modulated \n Non HD Neurons", fontsize = 7, y = 0.95)
+ylim(0.055, 0.22)
 
 ##############################################################
 # HD SWR NO MOD
@@ -299,8 +306,8 @@ for k,i in zip(['pre', 'pos'],range(2)):
 axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
 xlabel("Time from SPWR (s)", fontsize = 5)
 # text(2000,3.4, '$\mathbf{HD\ Neurons}$')
-title("Non Theta modulated \n Non HD Neurons", fontsize = 5, y = 0.95)
-
+title("Non Theta modulated \n Non HD Neurons", fontsize = 7, y = 0.95)
+ylim(0.055, 0.22)
 
 # ##############################################################
 # # COVARIANCE
@@ -328,10 +335,11 @@ x[(x > np.pi)] -= 2*np.pi
 y[(y > np.pi)] -= 2*np.pi
 # scatter(x, y, s = 1)
 scatter(phi['phipre'], phi['phipos'], s = 1)
-xlabel('$\phi_{pre}$')
-ylabel('$\phi_{post}$')
-
-
+xlabel('$jPCA_{pre}$', fontsize = 5)
+ylabel('$jPCA_{post}$', fontsize = 5)
+title("Responses \n to SWRs", fontsize = 7)
+xticks([0, 2*np.pi], ('0', '$2\pi$'))
+yticks([0, 2*np.pi], ('0', '$2\pi$'))
 ##############################################################
 # TIME MAX
 ##############################################################

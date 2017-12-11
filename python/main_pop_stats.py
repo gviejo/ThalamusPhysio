@@ -27,7 +27,7 @@ neurons_index = theta_modth.index.values
 
 
 
-bins1 = np.arange(-1005, 1010, 10)*1000		
+bins1 = np.arange(-1012.5, 1025, 25)*1000		
 times = np.floor(((bins1[0:-1] + (bins1[1] - bins1[0])/2)/1000)).astype('int')			
 premeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}# BAD
 posmeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}# BAD
@@ -100,13 +100,13 @@ for session in datasets:
 	all_neurons 	= np.array(list(spikes.keys()))
 	mod_neurons 	= np.array([int(n.split("_")[1]) for n in neurons_index if session.split("/")[1] in n])
 	if len(sleep_ep) > 1:
-		store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_10ms/"+session.split("/")[1]+".h5")	
+		store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_25ms/"+session.split("/")[1]+".h5")	
 		# all_pop 		= store['allwake']
 		pre_pop 		= store['presleep']
 		pos_pop 		= store['postsleep']
 		store.close()
 
-		store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_25ms/"+session.split("/")[1]+".h5")			
+		store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_100ms/"+session.split("/")[1]+".h5")			
 		all_pop 		= store['allwake']
 		# pre_pop		= store['presleep']
 		# pos_pop		= store['postsleep']

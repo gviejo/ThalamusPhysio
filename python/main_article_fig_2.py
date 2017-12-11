@@ -78,11 +78,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 5,               # LaTeX default is 10pt font.
-	"font.size": 7,
-	"legend.fontsize": 4,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 4,
-	"ytick.labelsize": 4,
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
+	"font.size": 8,
+	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 6,
+	"ytick.labelsize": 6,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -108,9 +108,9 @@ xticks(np.arange(20,200,40), (times[np.arange(20,200,40)]).astype('int'))
 yticks([0,700], ['0', '700'])
 cb = colorbar()
 cb.set_label("z", labelpad = -13, y = 1.08, rotation = 0)
-ylabel("Thalamic neurons", labelpad = -5.0)
+ylabel("Thalamic neurons", labelpad = -5.0, y = 0.6)
 xlabel("Time from SWR (ms)")
-title("Sharp-waves Ripples \n modulation", fontsize = 5)
+title("Sharp-waves Ripples \n modulation", fontsize = 9)
 
 ax = subplot(gs[0, 1])
 simpleaxis(ax)	
@@ -118,7 +118,7 @@ plot(times, jX[:,0], color = '#386150')
 plot(times, jX[:,1], color = '#58b09c')
 ylabel('jPC')
 xlabel('Time from SWR (ms)')
-title('jPCA', fontsize = 5, y = 1)
+title('$\mathbf{jPCA}$', fontsize = 9, y = 1)
 
 ax = subplot(gs[0, 2])
 # axis('off')
@@ -153,8 +153,8 @@ text(-r, 0,'$\pi$', horizontalalignment='center', verticalalignment='center', 	 
 text(r, 0,'0', horizontalalignment='center', verticalalignment='center', 		 	fontsize = 6)
 text(0, r,'$\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 6)
 text(0, -r,'$3\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 6)
-text(r-5, -2.0, 'jPC1', fontsize = 5)
-text(0.7, r-6, 'jPC2', fontsize = 5)
+text(r-5, -2.0, 'jPC1', fontsize = 6)
+text(0.7, r-6, 'jPC2', fontsize = 6)
 
 
 color_points = allthetamodth['phase'].copy()
@@ -192,7 +192,7 @@ for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):
 	yticks([])	
 	grid(linestyle = '--')
 	if j == 1:
-		ai.set_title("Theta phase")
+		ai.set_title("$\mathbf{Theta\ phase}$", fontsize = 8)
 	ai.yaxis.grid(False)
 	# ai.set_ylim(0,0.5)
 	ai.arrow(x = allthetamodth.loc[best_n,'phase'], y = 0, dx = 0, dy = ai.get_ylim()[1]*0.6,
@@ -202,12 +202,12 @@ for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):
 	x = np.cos(quarter.loc[best_n,0])*r
 	y = np.sin(quarter.loc[best_n,0])*r
 	xx, yy = (jscore.loc[best_n,0],jscore.loc[best_n,1])
-	ax.scatter(x, y, s = 5, c = 'blue', cmap = cm.get_cmap('viridis'), zorder = 2)
-	ax.scatter(xx, yy, s = 5, c = 'blue', cmap = cm.get_cmap('viridis'), zorder = 2)
+	ax.scatter(x, y, s = 6, c = 'blue', cmap = cm.get_cmap('viridis'), zorder = 2)
+	ax.scatter(xx, yy, s = 6, c = 'blue', cmap = cm.get_cmap('viridis'), zorder = 2)
 	
 	ax.arrow(xx, yy, x - xx, y - yy,
 		head_width = 0.8,
-		linewidth = 0.3,
+		linewidth = 0.4,
 		length_includes_head = True,		
 		color = 'grey'
 		)
@@ -216,7 +216,7 @@ for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):
 
 
 # text(0, 0, '$\mathbf{SWR\ jPCA\ phase}$',horizontalalignment='center')
-text(0.5, 0.8, 'SWR jPCA phase', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
+text(0.5, 0.8, '$\mathbf{SWR\ jPCA\ phase}$', fontsize = 8, horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
 # lower_left = np.argmin(jscore.values[:,0])
 # text(-35.,-7, 'arctan2', rotation = 13.0)
 # cbaxes = fig.add_axes([0.25, 0.45, 0.01, 0.04])
@@ -225,6 +225,8 @@ text(0.5, 0.8, 'SWR jPCA phase', horizontalalignment='center', verticalalignment
 # cb = matplotlib.colorbar.ColorbarBase(cbaxes, cmap = cmap, norm = norm)
 # cbaxes.axes.set_xlabel('SWR \n modulation')
 
+
+# correlation coefficient
 
 
 
@@ -235,6 +237,10 @@ simpleaxis(ax)
 # dist_cp = np.sqrt(np.sum(np.power(eigen[0] - eigen[1], 2))
 theta_mod_toplot = allthetamodth.values[:,0]#,dist_cp>0.02]
 phi_toplot = phi2.values.flatten()
+
+r, p = corr_circular_(theta_mod_toplot, phi_toplot)
+print(r, p)
+
 x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
 y = np.concatenate([phi_toplot, phi_toplot + 2*np.pi, phi_toplot, phi_toplot + 2*np.pi])
 scatter(x, y, s = 0.8, c = np.tile(allzth.values[:,100],4), cmap = cm.get_cmap('viridis'), zorder = 2, alpha = 0.5)
@@ -247,6 +253,7 @@ xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$',
 yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
 xlabel('Theta phase (rad)', labelpad = 1.2)
 ylabel('SWR jPCA phase (rad)')
+title(r'$r = 0.17, p = 1.6 \times 10^{-6}$',fontsize = 6)
 
 
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[5])
@@ -273,9 +280,6 @@ cbaxes = fig.add_axes([0.63, 0.11, 0.01, 0.04])
 cb = colorbar(axp, cax = cbaxes, ticks = [0, 1])
 cbaxes.yaxis.set_ticks_position('left')
 
-# correlation coefficient
-r, p = corr_circular_(theta_mod_toplot, phi_toplot)
-print(r, p)
 
 
 

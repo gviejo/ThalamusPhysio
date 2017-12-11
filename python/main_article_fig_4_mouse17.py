@@ -97,10 +97,10 @@ def filter_(z, n):
 	from scipy.ndimage import gaussian_filter	
 	return gaussian_filter(z, n)
 
-def softmax(x, b1 = 10.0, b2 = 0.5):
+def softmax(x, b1 = 10.0, b2 = 0.5, lb = 0.2):
 	x -= x.min()
 	x /= x.max()
-	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + 0.2)/1.2
+	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + lb)/(1.0+lb)
 
 def get_rgb(mapH, mapS, mapV, bound):
 	from matplotlib.colors import hsv_to_rgb	
@@ -169,13 +169,14 @@ thl_lines[thl_lines > 200] = 1.0
 newswr = []
 for t in range(len(times)):	
 	xnew, ynew, frame = interpolate(swr[:,:,t].copy(), x, y, space)
-	frame = gaussian_filter(frame, (10, 10))
+	frame = gaussian_filter(frame, (1, 1))
 	newswr.append(frame)
 newswr = np.array(newswr)
 
-newswr = gaussian_filter(newswr, (0,0.2,0.2))
 newswr = newswr - newswr.min()
 newswr = newswr / newswr.max()
+newswr = softmax(newswr, 10, 0.5, 0.0)
+
 ##############################################################################################################
 # THETA
 ##############################################################################################################
@@ -258,7 +259,7 @@ n = 4
 if m == 'Mouse12':
 	to_plot = [0, 11, 22]
 elif m == 'Mouse17':
-	to_plot = [4, 17, 38]
+	to_plot = [4, 18, 26]
 ##############################################################
 # ORBIT
 ##############################################################
@@ -311,11 +312,11 @@ for i,j in zip(range(3), ((1,0), (1,1), (1,2))):
 			title("T = 0 ms")
 		else:
 			title("T = "+str(int(times[to_plot[i]]))+" ms")
-		# contour(newheaddir, aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), cmap = 'winter')
-		imshow(thl_lines, aspect = 'equal', origin = 'upper', extent = (xlines[0], xlines[-1], ylines[-1], ylines[0]))	
+		contour(newheaddir, aspect = 'equal',origin = 'upper', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), cmap = 'winter')
+		# imshow(thl_lines, aspect = 'equal', origin = 'upper', extent = (xlines[0], xlines[-1], ylines[-1], ylines[0]))	
 
-		xticks([], [])
-		yticks([], [])
+		# xticks([], [])
+		# yticks([], [])
 
 ##############################################################
 # SWR

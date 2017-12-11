@@ -25,7 +25,7 @@ tmp             = np.unique(np.concatenate([tmp2,tmp3]))
 theta_modth = theta.drop(tmp, axis = 0)
 neurons_index = theta_modth.index.values
 
-bins1 = np.arange(-1005, 1010, 10)*1000     
+bins1 = np.arange(-1005, 1010, 25)*1000     
 times = np.floor(((bins1[0:-1] + (bins1[1] - bins1[0])/2)/1000)).astype('int')          
 premeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}# BAD
 posmeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}# BAD
@@ -61,7 +61,7 @@ def compute_pop_pca(session):
     theta_modth = theta.drop(tmp, axis = 0)
     neurons_index = theta_modth.index.values
 
-    bins1 = np.arange(-1005, 1010, 10)*1000     
+    bins1 = np.arange(-1005, 1010, 25)*1000     
     times = np.floor(((bins1[0:-1] + (bins1[1] - bins1[0])/2)/1000)).astype('int')          
     premeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}
     posmeanscore = {i:{'rem':pd.DataFrame(index = [], columns = ['mean', 'std']),'rip':pd.DataFrame(index = times, columns = [])} for i in range(3)}
@@ -98,13 +98,13 @@ def compute_pop_pca(session):
     all_neurons     = np.array(list(spikes.keys()))
     mod_neurons     = np.array([int(n.split("_")[1]) for n in neurons_index if session.split("/")[1] in n])
     if len(sleep_ep) > 1:
-        store           = pd.HDFStore("/mnt/DataGuillaume/population_activity_10ms/"+session.split("/")[1]+".h5")   
+        store           = pd.HDFStore("/mnt/DataGuillaume/population_activity_25ms/"+session.split("/")[1]+".h5")   
         # all_pop       = store['allwake']
         pre_pop         = store['presleep']
         pos_pop         = store['postsleep']
         store.close()
 
-        store           = pd.HDFStore("/mnt/DataGuillaume/population_activity_25ms/"+session.split("/")[1]+".h5")           
+        store           = pd.HDFStore("/mnt/DataGuillaume/population_activity_100ms/"+session.split("/")[1]+".h5")           
         all_pop         = store['allwake']
         # pre_pop       = store['presleep']
         # pos_pop       = store['postsleep']
@@ -176,7 +176,7 @@ def compute_pop_pca(session):
                 # pospop25ms = nts.TsdFrame(pos_pop_25ms[index].copy())
                 if allpop.shape[1] and allpop.shape[1] > 5:                                 
                     eigen,lambdaa   = compute_eigen(allpop)                 
-                    seuil           = 1.1
+                    seuil           = 1.2
                     if np.sum(lambdaa > seuil):
                         pre_score       = compute_score(prepop, eigen, lambdaa, seuil)
                         pos_score       = compute_score(pospop, eigen, lambdaa, seuil)
@@ -239,8 +239,8 @@ for i in range(3):
     # for s in premeanscore[i]['rip'].index.values:     
     #   plot(times, premeanscore[i]['rip'].loc[s].values, linewidth = 0.3, color = 'blue')
     #   plot(times, posmeanscore[i]['rip'].loc[s].values, linewidth = 0.3, color = 'red')
-    plot(times, prescore[i].mean(1).values, label = 'pre', color = 'blue', linewidth = 2)
-    plot(times, posscore[i].mean(1).values,label = 'post', color = 'red', linewidth = 2)
+    plot(times, gaussFilt(prescore[i].mean(1).values, (1,)), label = 'pre', color = 'blue', linewidth = 2)
+    plot(times, gaussFilt(posscore[i].mean(1).values, (1,)), label = 'post', color = 'red', linewidth = 2)
     legend()
     title(titles[i])
 

@@ -73,7 +73,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*2.0           # height in inches
+	fig_height = fig_width*golden_mean*2.1           # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -109,11 +109,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 4,               # LaTeX default is 10pt font.
-	"font.size": 7,
-	"legend.fontsize": 4,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 4,
-	"ytick.labelsize": 4,
+	"axes.labelsize": 6,               # LaTeX default is 10pt font.
+	"font.size": 8,
+	"legend.fontsize": 5,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 5,
+	"ytick.labelsize": 5,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -132,8 +132,8 @@ colors = ['#444b6e', '#708b75', '#9ab87a']
 fig = figure(figsize = figsize(0.5))
 # outer = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)#, height_ratios = [1,3])#, width_ratios = [1.6,0.7]) 
 hrat = np.ones(11)
-hrat[4] = 0.1
-hrat[7] = 0.1
+hrat[4] = 0.2
+hrat[7] = 0.4
 
 gs = gridspec.GridSpec(11,6, wspace = 0.3, hspace = 0.5, top = 1.0, bottom = 0.0, right = 0.9, left = 0.0, height_ratios = hrat)
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[0])
@@ -144,10 +144,10 @@ plot(lfp_hpc_theta, 	color = 'black', linewidth = 0.5)
 plot(lfp_filt_hpc_theta-1300.0, color = 'black', linewidth = 0.5)
 noaxis(ax1)
 ylabel("CA1 LFP")
-title("REM", fontsize = 5, y = 0.90)
-text(0.85, 0,'6-14 Hz', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 4)
+title("REM", fontsize = 6, y = 0.90)
+text(0.85, 0,'6-14 Hz', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 5)
 plot([start_theta,start_theta+100000], [-1800,-1800], '-', linewidth = 0.5, color = 'black')
-text(0.1, -0.05,'100 ms', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 4)
+text(0.1, -0.05,'100 ms', horizontalalignment='center', verticalalignment='center', transform=ax1.transAxes, fontsize = 5)
 
 # ax1 = subplot(gs[1,0:3])
 # plot(lfp_filt_hpc_theta, 		color = 'black', linewidth = 0.5)
@@ -161,10 +161,10 @@ for i in swr_ep.index.values[2:]:
 	start3, end3 = swr_ep.loc[i]
 	plot(lfp_hpc_swr.loc[start3:end3], linewidth = 0.5, color = 'red')
 noaxis(ax3)
-title("NON-REM", fontsize = 5, y = 0.9)
-text(0.85, 0,'100-300 Hz', horizontalalignment='center', verticalalignment='center', transform=ax3.transAxes, fontsize = 4)
+title("NON-REM", fontsize = 6, y = 0.9)
+text(0.85, 0,'100-300 Hz', horizontalalignment='center', verticalalignment='center', transform=ax3.transAxes, fontsize = 5)
 plot([start_rip,start_rip+40000], [-1800,-1800], '-', linewidth = 0.5, color = 'black')
-text(0.1, -0.05,'40 ms', horizontalalignment='center', verticalalignment='center', transform=ax3.transAxes, fontsize = 4)
+text(0.1, -0.05,'40 ms', horizontalalignment='center', verticalalignment='center', transform=ax3.transAxes, fontsize = 5)
 
 
 
@@ -172,8 +172,8 @@ text(0.1, -0.05,'40 ms', horizontalalignment='center', verticalalignment='center
 ########### SPIKES #######################
 ax2 = subplot(gs[2:4,0:3], sharex = ax1)
 count = 0
-msize = 3
-mwidth = 0.5
+msize = 4
+mwidth = 0.6
 for n in allneurons_sorted:	
 	xt = spikes[int(n.split("_")[1])].loc[start_theta:end_theta].index.values
 	if len(xt):			
@@ -208,13 +208,13 @@ for n in neurons:
 	tmp += 2*np.pi
 	tmp %= 2*np.pi
 	hist(tmp,20, color = colors[neurons.index(n)])
-	# xlabel("$\mathbf{Theta\ phase}$", fontsize = 8)
+	xlabel("Neuron "+str(neurons.index(n)+1), fontsize = 8)
 	xticks(np.arange(0, 2*np.pi, np.pi/4), ['0', '', '$\pi/2$', '', '$\pi$', '', '$3\pi/2$',''])
 	yticks([])	
 	grid(linestyle = '--')
 	ax.yaxis.grid(False)
 	if neurons.index(n) == 1:
-		text(0.5, 1.17,'THETA PHASE MODULATION', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 6)
+		text(0.5, 1.17,'$\mathbf{THETA\ PHASE\ MODULATION}$', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
 
 
 	# CROSS CORR
@@ -228,10 +228,11 @@ for n in neurons:
 	axvline(0, color = 'grey', linewidth = 0.5)
 	xticks([], [])
 	if neurons.index(n) == 0:
-		ylabel('Firing rate (Hz)')
+		ylabel('Firing \n rate (Hz)', verticalalignment = 'top', labelpad = 13.4)
 	legend(edgecolor = None, facecolor = None, frameon = False)	
 	if neurons.index(n) == 1:
-		text(0.5, 1.23,'RIPPLES MODULATION', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 6)
+		text(0.5, 1.23,'$\mathbf{RIPPLES\ MODULATION}$', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
+
 	
 
 	# Z
@@ -240,11 +241,12 @@ for n in neurons:
 	z = pd.DataFrame((H0[n] - Hm[n])/Hstd.loc[n][0])
 	z['filt'] = gaussFilt(z.values.flatten(), (10,))
 
-	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 0.7)
+	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
 	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
-	xlabel('Time from ripples (ms)', fontsize = 4)
+	if neurons.index(n) == 1:
+		xlabel('Time from ripples (ms)', fontsize = 6)
 	if neurons.index(n) == 0:
-		ylabel('Modulation (a.u.)')
+		ylabel('Modulation (a.u.)', verticalalignment = 'bottom')
 	axvline(0, color = 'grey', linewidth = 0.5)	
 	ylim(-2,3)
 	yticks([-1,0,1,2,3])
