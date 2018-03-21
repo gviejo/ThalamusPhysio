@@ -413,6 +413,48 @@ def getPhaseCoherence(phase):
 	return r
 
 #########################################################
+# INTERPOLATION
+#########################################################
+def interpolate(z, x, y, inter, bbox = None):	
+	import scipy.interpolate
+	xnew = np.arange(x.min(), x.max()+inter, inter)
+	ynew = np.arange(y.min(), y.max()+inter, inter)
+	if bbox == None:
+		f = scipy.interpolate.RectBivariateSpline(y, x, z)
+	else:
+		f = scipy.interpolate.RectBivariateSpline(y, x, z, bbox = bbox)
+	znew = f(ynew, xnew)
+	return (xnew, ynew, znew)
+
+def filter_(z, n):
+	from scipy.ndimage import gaussian_filter	
+	return gaussian_filter(z, n)
+
+def softmax(x, b1 = 20.0, b2 = 0.5):
+	x -= x.min()
+	x /= x.max()
+	return 0.75*(1.0/(1.0+np.exp(-(x-b2)*b1)))+0.25
+
+def get_rgb(mapH, mapS, mapV, bound):
+	from matplotlib.colors import hsv_to_rgb	
+	"""
+		1. convert mapH to x between -1 and 1
+		2. get y value between 0 and 1 -> mapV
+		3. rescale mapH between 0 and 0.6
+		4. normalize mapS
+	"""		
+	# x = mapH.copy() * 2.0
+	# x = x - 1.0
+	# y = 1.0 - 0.4*x**6.0
+	# mapV = y.copy()
+	H 	= (1-mapH)*bound
+	S 	= mapS	
+	V 	= mapV
+	HSV = np.dstack((H,S,V))	
+	RGB = hsv_to_rgb(HSV)	
+	return RGB
+
+#########################################################
 # CORRELATION
 #########################################################
 def crossCorr(t1, t2, binsize, nbins):
@@ -520,9 +562,36 @@ def corr_circular_(alpha1, alpha2):
 
 	return rho, pval
 
+def autocorr(tsd):	
+	bin_size 	= 5 # ms 
+	nb_bins 	= 200
+	confInt 	= 0.95
+	nb_iter 	= 1000
+	jitter  	= 150 # ms					
+	H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(tsd, tsd, bin_size, nb_bins, nb_iter, jitter, confInt)
+	return (H0 - Hm)/Hstd
+
 #########################################################
 # WRAPPERS
 #########################################################
+def loadMappingNucleus(path):
+	import pandas as pd
+	tmp = open(path, 'r').readlines()
+	tmp = [x.strip() for x in tmp]
+	data = {}
+	table = []
+	name = tmp[0]	
+	for l in tmp[1:]:		
+		if 'Mouse' in l:
+			table = np.array(table)			
+			data[name] = pd.DataFrame(table)
+			table = []
+			name = l			
+		else:
+			table.append(l.split(" "))
+	data[name] = pd.DataFrame(np.array(table))
+	return data
+
 def loadShankStructure(generalinfo):
 	shankStructure = {}
 	for k,i in zip(generalinfo['shankStructure'][0][0][0][0],range(len(generalinfo['shankStructure'][0][0][0][0]))):

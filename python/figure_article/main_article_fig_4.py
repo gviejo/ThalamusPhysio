@@ -1,5 +1,5 @@
-
-
+import sys
+sys.path.append("../")
 import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
@@ -12,6 +12,10 @@ import matplotlib.cm as cm
 import os
 import neuroseries as nts
 
+# def softmax(x, b1 = 10.0, b2 = 0.5, lb = 0.2):
+# 	x -= x.min()
+# 	x /= x.max()
+# 	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + lb)/(1.0+lb)
 
 ###############################################################################################################
 # TO LOAD
@@ -57,8 +61,8 @@ times = swr_modth.loc[-500:500].index.values
 
 
 
-m = 'Mouse17'
-data 	= cPickle.load(open("../data/maps/"+m+".pickle", 'rb'))
+m = 'Mouse12'
+data 	= cPickle.load(open("../../data/maps/"+m+".pickle", 'rb'))
 theta 	= data['movies']['theta']
 swr 	= data['movies']['swr']
 total 	= data['total']
@@ -83,44 +87,6 @@ exemples = {'ldvl':['Mouse12-120807_7', 'Mouse12-120807_8', 'Mouse12-120807_9',
 depths = [0.07, 0.49, 1.61]
 shanks = [1.2, 1.0 ,0.8]
 
-def interpolate(z, x, y, inter, bbox = None):	
-	xnew = np.arange(x.min(), x.max()+inter, inter)
-	ynew = np.arange(y.min(), y.max()+inter, inter)
-	if bbox == None:
-		f = scipy.interpolate.RectBivariateSpline(y, x, z)
-	else:
-		f = scipy.interpolate.RectBivariateSpline(y, x, z, bbox = bbox)
-	znew = f(ynew, xnew)
-	return (xnew, ynew, znew)
-
-def filter_(z, n):
-	from scipy.ndimage import gaussian_filter	
-	return gaussian_filter(z, n)
-
-def softmax(x, b1 = 10.0, b2 = 0.5):
-	x -= x.min()
-	x /= x.max()
-	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + 0.2)/1.2
-
-def get_rgb(mapH, mapS, mapV, bound):
-	from matplotlib.colors import hsv_to_rgb	
-	"""
-		1. convert mapH to x between -1 and 1
-		2. get y value between 0 and 1 -> mapV
-		3. rescale mapH between 0 and 0.6
-		4. normalize mapS
-
-	"""		
-	# x = mapH.copy() * 2.0
-	# x = x - 1.0
-	# y = 1.0 - 0.4*x**6.0
-	# mapV = y.copy()
-	H 	= (1-mapH)*bound
-	S 	= mapS	
-	V 	= mapV
-	HSV = np.dstack((H,S,V))	
-	RGB = hsv_to_rgb(HSV)	
-	return RGB
 
 nbins 					= 200
 binsize					= 5
@@ -143,7 +109,6 @@ xnew, ynew, xytotal = interpolate(total.copy(), x, y, space)
 filtotal = gaussian_filter(xytotal, (10, 10))
 newtotal = softmax(filtotal, 15.0, 0.25)
 
-
 # newtotal[newtotal > 0.9] = np.NaN
 
 ##############################################################################################################
@@ -154,7 +119,7 @@ newheaddir[newheaddir < np.percentile(newheaddir, 95)] = 0.0
 ##############################################################################################################
 # THALAMUS LINES
 ##############################################################################################################
-thl_lines = scipy.ndimage.imread("../figures/thalamus_lines_4.png").sum(2)
+thl_lines = scipy.ndimage.imread("../../figures/mapping_to_align/"+m+"_thalamus_lines.png").sum(2)
 xlines, ylines, thl_lines = interpolate(thl_lines, 	np.linspace(x.min(), x.max(), thl_lines.shape[1]),
  													np.linspace(y.min(), y.max(), thl_lines.shape[0]), space*0.1)
 
@@ -173,9 +138,10 @@ for t in range(len(times)):
 	newswr.append(frame)
 newswr = np.array(newswr)
 
-newswr = gaussian_filter(newswr, (0,0.2,0.2))
+newswr = gaussian_filter(newswr, (1,0.2,0.2))
 newswr = newswr - newswr.min()
 newswr = newswr / newswr.max()
+
 ##############################################################################################################
 # THETA
 ##############################################################################################################
@@ -448,8 +414,8 @@ cbaxes.axes.set_xlabel('Neurons \n density')
 
 
 
-savefig("../figures/figures_articles/figart_4"+m+".pdf", dpi = 900, facecolor = 'white')
-os.system("evince ../figures/figures_articles/figart_4"+m+".pdf &")
+savefig("../../figures/figures_articles/figart_4"+m+".pdf", dpi = 900, facecolor = 'white')
+os.system("evince ../../figures/figures_articles/figart_4"+m+".pdf &")
 
 
 

@@ -19,6 +19,7 @@ from pylab import *
 from sklearn.decomposition import PCA
 import _pickle as cPickle
 import neuroseries as nts
+import sys
 
 ###############################################################################################################
 # LOADING DATA
@@ -36,7 +37,7 @@ nbins 					= 400
 binsize					= 5
 times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 
-theta 				= pd.DataFrame(	index = theta_ses['rem'], 
+theta 					= pd.DataFrame(	index = theta_ses['rem'], 
 									columns = ['phase', 'pvalue', 'kappa'],
 									data = theta_mod['rem'])
 
@@ -44,6 +45,7 @@ theta 				= pd.DataFrame(	index = theta_ses['rem'],
 swr 					= pd.DataFrame(	columns = swr_ses, 
 										index = times,
 										data = gaussFilt(swr_mod, (10,)).transpose())
+
 
 # Cut swr_mod from -500 to 500
 swr = swr.loc[-500:500]
@@ -84,11 +86,10 @@ xpos_shank 	= dict.fromkeys(mouses)
 ypos_shank 	= dict.fromkeys(mouses)
 xpos_phase 	= dict.fromkeys(mouses)
 ypos_phase 	= dict.fromkeys(mouses)
-
+theta_dens	= dict.fromkeys(mouses)
 hd_neurons_index = []
 
 for m in mouses:	
-# for m in ['Mouse17']:
 	print(m)
 	depth = pd.DataFrame(index = np.genfromtxt(data_directory+m+"/"+m+".depth", dtype = 'str', usecols = 0),
 						data = np.genfromtxt(data_directory+m+"/"+m+".depth", usecols = 1),
@@ -104,6 +105,7 @@ for m in mouses:
 	count_total 	= np.zeros((len(sessions),8))	
 	hd_neurons 		= np.zeros((len(sessions),8))
 	amplitute		= np.zeros((len(sessions),8))
+	mod_theta 		= np.zeros((len(sessions),8))
 ###########################################################################################################			
 # JPCA
 ###########################################################################################################				
@@ -124,8 +126,8 @@ for m in mouses:
 
 		for k in shank_to_neurons.keys(): 						
 			count_total[np.where(sessions== s)[0][0],k] = len(shank_to_neurons[k])			
-			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])	
-
+			hd_neurons[np.where(sessions== s)[0][0],k] = np.sum(hd_info_neuron[shankIndex == k])
+			mod_theta[np.where(sessions== s)[0][0],k] = (theta.loc[[s+'_'+str(i) for i in shank_to_neurons[k]]]['pvalue'] < 0.05).sum()
 			# amplitute[np.where(sessions==s)[0][0],k] = (swr.loc[shank_to_neurons[k]].var(1)).mean()
 ###########################################################################################################			
 # SWR MOD
@@ -154,14 +156,15 @@ for m in mouses:
 ###########################################################################################################			
 # SPIND HPC MOD
 ###########################################################################################################					
-		# for k in shank_to_neurons.keys():
-		# 	if len(shank_to_neurons[k]):
-		# 		for n in shank_to_neurons[k]:					
-		# 			phi = spike_spindle_phase['hpc'][n]
-		# 			phi[phi<0.0] += 2*np.pi
-		# 			index = np.digitize(phi, bins_phase)-1
-		# 			for t in index:
-		# 			 	spindle_shank[np.where(sessions == s)[0][0],k,t] += 1.0			
+		for k in shank_to_neurons.keys():
+			if len(shank_to_neurons[k]):
+				for n in shank_to_neurons[k]:
+					if n in list(spike_spindle_phase.keys()):
+						phi = spike_spindle_phase['hpc'][n]
+						phi[phi<0.0] += 2*np.pi
+						index = np.digitize(phi, bins_phase)-1
+						for t in index:
+						 	spindle_shank[np.where(sessions == s)[0][0],k,t] += 1.0			
 
 	
 	for t in range(len(times)):
@@ -176,13 +179,14 @@ for m in mouses:
 					'spindle':	spindle_shank	}
 
 	hd_neurons	= hd_neurons/(count_total+1.0)
+	mod_theta 	= mod_theta/(count_total+1.0)
 	rXX[m]		= rX
 	maps[m] 	= {	'total':		np.flip(count_total,1), 
 					'x'			: 	np.arange(0.0, 8*0.2, 0.2),
 					'y'			: 	depth.loc[sessions].values.flatten()
 					}
 	headdir[m] 	= np.flip(hd_neurons, 1)
-	
+	theta_dens[m] = np.flip(mod_theta, 1)
 
 for m in movies.keys():
 	datatosave = {	'movies':movies[m],
@@ -190,55 +194,22 @@ for m in movies.keys():
 					'x':maps[m]['x'],
 					'y':maps[m]['y'],
 					'headdir':headdir[m],
-					'jpc':rXX[m]
+					'jpc':rXX[m],
+					'theta_dens':theta_dens[m]
+
 					}
 	cPickle.dump(datatosave, open("../data/maps/"+m+".pickle", 'wb'))	
 
+
+
+
+
+
+
+
+
 sys.exit()
 
-
-def interpolate(z, x, y, inter, bbox = None):	
-	xnew = np.arange(x.min(), x.max()+inter, inter)
-	ynew = np.arange(y.min(), y.max()+inter, inter)
-	if bbox == None:
-		f = scipy.interpolate.RectBivariateSpline(y, x, z)
-	else:
-		f = scipy.interpolate.RectBivariateSpline(y, x, z, bbox = bbox)
-	znew = f(ynew, xnew)
-	return (xnew, ynew, znew)
-
-def filter_(z, n):
-	from scipy.ndimage import gaussian_filter	
-	return gaussian_filter(z, n)
-
-def softmax(x, b1 = 20.0, b2 = 0.5):
-	x -= x.min()
-	x /= x.max()
-	return 1.0/(1.0+np.exp(-(x-b2)*b1))
-
-def get_rgb(mapH, mapV, mapS, bound):
-	from matplotlib.colors import hsv_to_rgb	
-	"""
-		1. convert mapH to x between -1 and 1
-		2. get y value between 0 and 1 -> mapV
-		3. rescale mapH between 0 and 0.6
-		4. normalize mapS
-
-	"""	
-	mapH -= mapH.min()
-	mapH /= mapH.max()
-	mapS -= mapS.min()
-	mapS /= mapS.max()
-	x = mapH.copy() * 2.0
-	x = x - 1.0
-	y = 1.0 - 0.4*x**6.0
-	mapV = y
-	H 	= (1-mapH)*bound
-	S 	= mapS	
-	V 	= mapV
-	HSV = np.dstack((H,S,V))	
-	RGB = hsv_to_rgb(HSV)	
-	return RGB
 
 
 
