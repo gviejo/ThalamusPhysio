@@ -4,87 +4,64 @@ import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
 import scipy.io
+import sys
+sys.path.append("../")
 from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
 import _pickle as cPickle
 import matplotlib.cm as cm
 import os
-import neuroseries as nts
-
-
-def get_xmin(ep, minutes):
-	duree = (ep['end'] - ep['start'])/1000/1000/60
-	starts = []
-	ends = []
-	count = 0.0
-	for i in range(len(ep)):
-		if count < minutes:
-			starts.append(ep['start'].iloc[i])
-			ends.append(ep['end'].iloc[i])
-			count += duree[i]
-
-	return nts.IntervalSet(starts, ends)
 
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-exemple = pd.HDFStore("../figures/figures_articles/figure3/Mouse12-120807_pop_pca.h5")
-eigen = exemple['eigen']
-posscore = exemple['posscore']
-prescore = exemple['prescore']
-prescore = nts.Tsd(prescore.index.values, prescore.values.flatten())
-posscore = nts.Tsd(posscore.index.values, posscore.values.flatten())
-exemple.close()
+data = cPickle.load(open('../../figures/figures_articles/figure3/dict_fig3_article.pickle', 'rb'))
+allzth 			= 	data['swr_modth'	]
+eigen 			= 	data['eigen'		]		
+times 			= 	data['times' 		]
+allthetamodth 	= 	data['theta_modth'	]		
+phi 			= 	data['phi' 			]		
+zpca 			= 	data['zpca'			]		
+phi2			= 	data['phi2' 		]	 					
+jX				= 	data['rX'			]
+jscore			= 	data['jscore'		]
+force 			= 	data['force'		] # theta modulation
+variance 		= 	data['variance'		] # ripple modulation
 
-data_directory = '/mnt/DataGuillaume/MergedData/'
-session = 'Mouse12/Mouse12-120807'
-generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
-shankStructure 	= loadShankStructure(generalinfo)	
-# spikes,shank	= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
-wake_ep 		= loadEpoch(data_directory+session, 'wake')
-sleep_ep 		= loadEpoch(data_directory+session, 'sleep')
-sws_ep 			= loadEpoch(data_directory+session, 'sws')
-rem_ep 			= loadEpoch(data_directory+session, 'rem')
-sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
-# sws_ep 			= sleep_ep.intersect(sws_ep)	
-# rem_ep 			= sleep_ep.intersect(rem_ep)
-pre_ep 			= nts.IntervalSet(sleep_ep['start'][0], sleep_ep['end'][0])
-post_ep 		= nts.IntervalSet(sleep_ep['start'][1], sleep_ep['end'][1])
-pre_sws_ep 		= sws_ep.intersect(pre_ep)
-pos_sws_ep 		= sws_ep.intersect(post_ep)
-pre_sws_ep 		= get_xmin(pre_sws_ep.iloc[::-1], 30)
-pos_sws_ep		= get_xmin(pos_sws_ep, 30)
 
-store = pd.HDFStore("../figures/figures_articles/figure3/pop_phase_shift.h5")
-corr = store['corr']
-phi = store['phi']
-store.close()
+# sort allzth 
+index = allzth[0].sort_values().index.values
+index = index[::-1]
+allzthsorted = allzth.loc[index]
+phi = phi.loc[index]
+phi2 = phi2.loc[index]
+allthetamodth = allthetamodth.loc[index]
 
-store = pd.HDFStore("../figures/figures_articles/figure3/pca_analysis_3.h5")
-ripscore = {}
-remscore = {}
-# for i, j in zip(range(3), ['hd', 'nohd_mod', 'nohd_nomod']):
-for i,j in zip(range(3),('nohd_mod', 'hd', 'nohd_nomod')):
+theta2 = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5")
+theta2 = theta2['rem']
 
-	ripscore[i] = {'pre':store[str(j)+'pre_rip'],
-					'pos':store[str(j)+'pos_rip']}
-	# remscore[i] = {'pre':store[str(i)+'pre_rem'],
-	# 				'pos':store[str(i)+'pos_rem']}
+# REPlACING WITH VERSION 2 OF THETA MOD HERE
+allthetamodth = theta2.loc[allthetamodth.index]
+allthetamodth.rename({'pval':'pvalue'}, inplace=True)
 
-store.close()
+allthetamodth['phase'] += 2*np.pi
+allthetamodth['phase'] %= 2*np.pi
+
+
+spikes_theta_phase = cPickle.load(open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'rb'))
 
 
 ###############################################################################################################
-# PLOT
+# PLOT11
 ###############################################################################################################
 def figsize(scale):
 	fig_width_pt = 483.69687                         # Get this from LaTeX using \the\textwidth
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*0.7            # height in inches
-	fig_size = [fig_width*0.75,fig_height]
+	fig_height = fig_width*golden_mean*1.4            # height in inches
+	fig_size = [fig_width,fig_height]
 	return fig_size
 
 def simpleaxis(ax):
@@ -95,36 +72,23 @@ def simpleaxis(ax):
 	# ax.xaxis.set_tick_params(size=6)
 	# ax.yaxis.set_tick_params(size=6)
 
-def noaxis(ax):
-	ax.spines['top'].set_visible(False)
-	ax.spines['right'].set_visible(False)
-	ax.spines['left'].set_visible(False)
-	ax.spines['bottom'].set_visible(False)
-	ax.get_xaxis().tick_bottom()
-	ax.get_yaxis().tick_left()
-	ax.set_xticks([])
-	ax.set_yticks([])
-	# ax.xaxis.set_tick_params(size=6)
-	# ax.yaxis.set_tick_params(size=6)
 
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import matplotlib.patches as patches
-
 
 mpl.use("pdf")
 pdf_with_latex = {                      # setup matplotlib to use latex for output
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
-	"text.usetex": True,                # use LaTeX to write all text
-	"font.family": "serif",
+	# "text.usetex": True,                # use LaTeX to write all text
+	# "font.family": "serif",
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 9,               # LaTeX default is 10pt font.
-	"font.size": 8,
-	"legend.fontsize": 8,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 5,
-	"ytick.labelsize": 5,
+	"axes.labelsize": 6,               # LaTeX default is 10pt font.
+	"font.size": 6,
+	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 6,
+	"ytick.labelsize": 6,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -141,214 +105,221 @@ from mpl_toolkits.axes_grid.inset_locator import inset_axes
 
 
 fig = figure(figsize = figsize(1))
-gs1 = gridspec.GridSpec(1,3)
-gs1.update(left = 0.05, right = 0.95, wspace = 0.3, top = 0.93, bottom = 0.65)
-lw = 0.5
+# outer = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)#, height_ratios = [1,3])#, width_ratios = [1.6,0.7]) 
+gs = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)
 
-colors = ['#044293', '#dc3926']
+########################################################################
+# A. SHarp waves ripples modulation
+########################################################################
 
-##############################################################
-# PRE SCORE
-##############################################################
-ax1 = subplot(gs1[0,0])
-simpleaxis(ax1)
-times = prescore.restrict(pre_sws_ep).as_units('s').index.values/60
-times = times - np.min(times)
-ax1.plot(times, prescore.restrict(pre_sws_ep).values, linewidth = lw, color = colors[0])
-title("Pre Sleep")
-ylim(-40, 60)
-# rem_ep_pre = rem_ep.intersect(pre_xmin_ep)
-# sws_ep_pre = sws_ep.intersect(pre_xmin_ep)
-# [plot([rem_ep_pre['start'][i], rem_ep_pre['end'][i]], np.zeros(2)-50.0, '-', color = 'orange') for i in range(len(rem_ep_pre))]
-# [plot([sws_ep_pre['start'][i], sws_ep_pre['end'][i]], np.zeros(2)-50.0, '-', color = 'red') for i in range(len(sws_ep_pre))]	
+subplot(gs[0,0])
+imshow(allzthsorted, aspect = 'auto', cmap = 'viridis')
+xticks(np.arange(20,200,40), (times[np.arange(20,200,40)]).astype('int'))
+yticks([0,700], ['0', '700'])
+cb = colorbar()
+cb.set_label("z", labelpad = -13, y = 1.08, rotation = 0)
+ylabel("Thalamic neurons", labelpad = -5.0, y = 0.6)
+xlabel("Time from SWR (ms)")
+title("Sharp-waves Ripples \n modulation", fontsize = 7)
+text(-0.15, 1.17, "A", transform = gca().transAxes, fontsize = 8)
 
+########################################################################
+# B. JPCA
+########################################################################
 
-##############################################################
-# EIGENVECTORS
-##############################################################
-inter = gridspec.GridSpecFromSubplotSpec(6, 1, subplot_spec=gs1[0,1])
+ax = subplot(gs[0, 1])
+simpleaxis(ax)	
+plot(times, jX[:,0], color = '#386150')
+plot(times, jX[:,1], color = '#58b09c')
+ylabel('jPC')
+xlabel('Time from SWR (ms)')
+title('jPCA', fontsize = 7, y = 1)
+text(-0.1, 1.14, "B", transform = gca().transAxes, fontsize = 8)
 
-ax2 = Subplot(fig, inter[0,0])
-fig.add_subplot(ax2)
-title('Wake')
-xlim(0,1)
-ylim(0,1)
-noaxis(ax2)
-
-for i in range(len(eigen))[0:5]:
-	# ax = inter[i,0]
-	ax = Subplot(fig, inter[i+1,0])
-	fig.add_subplot(ax)
-	noaxis(ax)
-	axhline(0, linewidth = 0.4, color = 'grey')
-	for j in eigen.loc[i].index.values:
-		ax.plot([j,j], [0, eigen.loc[i,j]], '-', linewidth = lw, color = 'black', markersize = 1.5)
-		ax.plot([j], [eigen.loc[i,j]], 'o', linewidth = lw, color = 'black', markersize = 1.5)
-	ylabel("PC "+str(i+1), rotation = 'horizontal', fontsize = 5)
-
-xlabel("Neurons", fontsize = 6)
-##############################################################
-# POST SCORE
-##############################################################
-ax3 = subplot(gs1[0,2])
-simpleaxis(ax3)
-times = posscore.restrict(pos_sws_ep).as_units('s').index.values/60
-times = times - np.min(times)
-ax3.plot(times, posscore.restrict(pos_sws_ep).values, linewidth = lw, color = colors[1])
-title("Post Sleep")
-ylim(-40, 60)
-xlabel('min', ha='right', va = 'center')
-# rem_ep_pos = rem_ep.intersect(post_xmin_ep)
-# sws_ep_pos = sws_ep.intersect(post_sws_ep)
-# [plot([rem_ep_pos['start'][i], rem_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'orange') for i in range(len(rem_ep_pos))]
-# [plot([sws_ep_pos['start'][i], sws_ep_pos['end'][i]], np.zeros(2)-50.0, '-', color = 'red') for i in range(len(sws_ep_pos))]	
-
-
-##############################################################
-# ARROWS
-##############################################################
-ax1tr = ax1.transData
-ax2tr = ax2.transData
-ax3tr = ax3.transData
-figtr = fig.transFigure.inverted()
-ptB = figtr.transform(ax2tr.transform((0.2,1)))
-ptE = figtr.transform(ax1tr.transform((40,50)))
-style="simple,head_width=2,head_length=3"
-kw = dict(arrowstyle=style, color="k")
-arrow = matplotlib.patches.FancyArrowPatch(
-    ptB, ptE, transform=fig.transFigure,  # Place arrow in figure coord system
-    fc = "None", connectionstyle="arc3,rad=0.4", alpha = 0.3,
-    mutation_scale = 3., **kw)
-fig.patches.append(arrow)
-
-ptB = figtr.transform(ax2tr.transform((0.8,1)))
-ptE = figtr.transform(ax3tr.transform((10,50)))
-style="<->,head_width=2,head_length=3"
-arrow = matplotlib.patches.FancyArrowPatch(
-    ptB, ptE, transform=fig.transFigure,  # Place arrow in figure coord system
-    fc = "None", connectionstyle="arc3,rad=-0.4", alpha = 0.3,
-    mutation_scale = 3., **kw)
-fig.patches.append(arrow)
-
-ax2.text(0.1, 0.5, 'PCA(population activity)', fontsize = 4)
-ax1.text(3.5e9, 45, 'Reactivation Score', fontsize = 4)
-
-
-
-##############################################################
-# HD SWR
-##############################################################
-
-gs2 = gridspec.GridSpec(1,3)
-gs2.update(left = 0.075, right = 0.8, wspace = 0.24, bottom = 0.1, top = 0.5)
-
-ax = subplot(gs2[0,0])
+########################################################################
+# C. ORBIT
+########################################################################
+ax = subplot(gs[0, 2])
+# axis('off')
 simpleaxis(ax)
-times = ripscore[0]['pre'].index.values
-labels = ['Pre-sleep', 'Post-sleep']
+plot(jX[0,0], jX[0,1], 'o', markersize = 3, color = '#5c7d6f')
+plot(jX[:,0], jX[:,1], linewidth = 0.8, color = '#5c7d6f')
+arrow(jX[-10,0],jX[-10,1],jX[-1,0]-jX[-10,0],jX[-1,1]-jX[-10,1], color = '#5c7d6f', head_width = 0.01)
+plot(jX[np.where(times==-250),0], jX[np.where(times==-250),1], 'o', color = '#5c7d6f', markersize = 2)
+plot(jX[np.where(times== 250),0], jX[np.where(times== 250),1], 'o', color = '#5c7d6f', markersize = 2)
+plot(jX[np.where(times==   0),0], jX[np.where(times==   0),1], 'o', color = '#5c7d6f', markersize = 2)
+annotate("-250", xy = (jX[np.where(times==-250),0], jX[np.where(times==-250),1]), xytext = (jX[np.where(times==-250),0]-0.06, jX[np.where(times==-250),1]), fontsize = 4)
+annotate( "250", xy = (jX[np.where(times== 250),0], jX[np.where(times== 250),1]), xytext = (jX[np.where(times== 250),0]+0.03, jX[np.where(times== 250),1]), fontsize = 4)
+annotate(   "0", xy = (jX[np.where(times==   0),0], jX[np.where(times==   0),1]), xytext = (jX[np.where(times==   0),0]-0.01, jX[np.where(times==   0),1]+0.01), fontsize = 4)
+ax.spines['left'].set_bounds(np.min(jX[:,1]), np.min(jX[:,1]+0.1))
+ax.spines['bottom'].set_bounds(np.min(jX[:,0]), np.min(jX[:,0]+0.1))
+xticks([], [])
+yticks([], [])
+ax.xaxis.set_label_coords(0.15, -0.02)
+ax.yaxis.set_label_coords(-0.02, 0.15)
+ylabel('jPC2')
+xlabel('jPC1')
+text(-0.1, 1.14, "C", transform = gca().transAxes, fontsize = 8)
 
-for k,i in zip(['pre', 'pos'],range(2)):
-	for j in ripscore[1][k].columns:
-		ripscore[1][k][j] = gaussFilt(ripscore[1][k][j], (1,))
+########################################################################
+# D circle
+########################################################################
+ax = subplot(gs[1:,0:2])
+text(-0.05, 1.05, "D", transform = gca().transAxes, fontsize = 8)
+axis('off')
+axhline(0, xmin = 0.25, xmax = 0.75, color = '#386150', linewidth = 0.7)
+axvline(0, ymin = 0.25, ymax = 0.75, color = '#58b09c', linewidth = 0.7)
+xlim(-20, 20)
+ylim(-20, 20)
+phase_circle = np.arange(0, 2*np.pi, 0.0001)
+# x, y = (np.cos(phi2.values.flatten()), np.sin(phi2.values.flatten()))
+x, y = (np.cos(phase_circle),np.sin(phase_circle))
+r = 14
+plot(x*r, y*r, '-', color = 'black', linewidth = 0.5)
+r = r+1
+text(-r, 0,'$\pi$', horizontalalignment='center', verticalalignment='center', 	 	fontsize = 6)
+text(r, 0,'0', horizontalalignment='center', verticalalignment='center', 		 	fontsize = 6)
+text(0, r,'$\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 6)
+text(0, -r,'$3\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 6)
+text(r-5, -2.0, 'jPC1', fontsize = 6)
+text(0.7, r-6, 'jPC2', fontsize = 6)
 
-	plot(ripscore[1][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
-	sem = ripscore[1][k].sem(1).loc[-500:500]
-	fill_between(sem.index.values, ripscore[1][k].mean(1).loc[-500:500] - sem, ripscore[1][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
+
+color_points = allthetamodth['phase'].copy()
+color_points -= color_points.min()
+color_points /= color_points.max()
+# scatter(jscore.values[:,0], jscore.values[:,1], s = 3, c = color_points.values, cmap = cm.get_cmap('hsv'), zorder = 2, alpha = 1, linewidth = 0.0)
+# scatter(jscore.values[:,0], jscore.values[:,1], s = 3, c = 'black', zorder = 2, alpha = 0.7, linewidth = 0.0)
+scatter(jscore.values[:,0], jscore.values[:,1], s = 3, c = allzth.values[:,100], cmap = cm.get_cmap('viridis'), zorder = 2, alpha = 0.7, linewidth = 0.0)
+
+bb = ax.get_position().bounds
+aiw = 0.1
+ail = 0.1
+position_axes = [
+				[bb[0]+bb[2]*0.75,bb[1]+bb[3]*0.75],
+				[bb[0]+bb[2]*0.05,bb[1]+bb[3]*0.75],
+				[bb[0]+bb[2]*0.05,bb[1]+bb[3]*0.05],
+				[bb[0]+bb[2]*0.75,bb[1]+bb[3]*0.05]]
+r -= 1
+best_neurons = []
+for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):	
+	quarter = phi2[np.logical_and(phi2 > i, phi2 < i+(np.pi/2)).values]
+	tmp = jscore.loc[quarter.index.values]
+	if j == 2:		
+		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).sort_values().index.values[9]
+	elif j == 0:
+		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).sort_values().index.values[4]
+	elif j == 3:
+		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).sort_values().index.values[1]
+	else:
+		best_n = np.argmin(np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)))	
+	best_neurons.append(best_n)
+	ai = axes([position_axes[j][0],position_axes[j][1], aiw, ail], projection = 'polar')
+	ai.get_xaxis().tick_bottom()
+	ai.get_yaxis().tick_left()
+	ai.hist(spikes_theta_phase['rem'][best_n], 30, color = 'red', normed = True)
+	xticks(np.arange(0, 2*np.pi, np.pi/4), ['0', '', '$\pi/2$', '', '$\pi$', '', '$3\pi/2$',''])
+	yticks([])	
+	grid(linestyle = '--')
+	if j == 1:
+		ai.set_title("Theta phase", fontsize = 8)
+	ai.yaxis.grid(False)
+	ai.tick_params(axis='x', pad = -5)
+	# ai.set_ylim(0,0.5)
+	ai.arrow(x = allthetamodth.loc[best_n,'phase'], y = 0, dx = 0, dy = ai.get_ylim()[1]*0.6,
+			edgecolor = 'black', facecolor = 'green', lw = 1.0, head_width = 0.1, head_length = 0.02,zorder = 5)
+	
+
+	x = np.cos(quarter.loc[best_n,0])*r
+	y = np.sin(quarter.loc[best_n,0])*r
+	xx, yy = (jscore.loc[best_n,0],jscore.loc[best_n,1])
+	ax.scatter(x, y, s = 6, c = 'red', cmap = cm.get_cmap('viridis'), zorder = 2)
+	ax.scatter(xx, yy, s = 6, c = 'red', cmap = cm.get_cmap('viridis'), zorder = 2)
+	
+	ax.arrow(xx, yy, x - xx, y - yy,
+		head_width = 0.8,
+		linewidth = 0.4,
+		length_includes_head = True,		
+		color = 'grey'
+		)
+	
 
 
-axvline(0, linewidth =1, color = 'grey', alpha = 0.0)
-ylabel("SPWR score", fontsize = 5)
-# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
-# text(1800,0.90, '$\mathbf{Non\ HD\ Neurons}$')
-xlabel("Time from SPWR (s)", fontsize = 5)
 
-title("HD Neurons", fontsize = 7, y = 0.95)
+# text(0, 0, '$\mathbf{SWR\ jPCA\ phase}$',horizontalalignment='center')
+text(0.5, 0.8, 'SWR jPCA phase', fontsize = 8, horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
+# lower_left = np.argmin(jscore.values[:,0])
+# text(-35.,-7, 'arctan2', rotation = 13.0)
+# cbaxes = fig.add_axes([0.25, 0.45, 0.01, 0.04])
+# cmap = cm.viridis
+# norm = matplotlib.colors.Normalize(allzth.values[:,100].min(), allzth.values[:,100].max())
+# cb = matplotlib.colorbar.ColorbarBase(cbaxes, cmap = cmap, norm = norm)
+# cbaxes.axes.set_xlabel('SWR \n modulation')
 
 
-##############################################################
-# NOHD SWR MOD
-##############################################################
-ax = subplot(gs2[0,1])
+
+
+
+#########################################################################
+# E PHASE PHASE SCATTER
+#########################################################################
+# gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[4])
+ax = subplot(gs[1,2])
 simpleaxis(ax)
+# dist_cp = np.sqrt(np.sum(np.power(eigen[0] - eigen[1], 2))
+theta_mod_toplot = allthetamodth.values[:,0].astype('float32')#,dist_cp>0.02]
+phi_toplot = phi2.values.flatten()
+
+r, p = corr_circular_(theta_mod_toplot, phi_toplot)
+print(r, p)
+
+x = np.concatenate([theta_mod_toplot, theta_mod_toplot, theta_mod_toplot+2*np.pi, theta_mod_toplot+2*np.pi])
+y = np.concatenate([phi_toplot, phi_toplot + 2*np.pi, phi_toplot, phi_toplot + 2*np.pi])
+scatter(x, y, s = 0.8, c = np.tile(allzth.values[:,100],4), cmap = cm.get_cmap('viridis'), zorder = 2, alpha = 0.5)
+# scatter(x, y, s = 0.8, c = np.tile(color_points,4), cmap = cm.get_cmap('hsv'), zorder = 2, alpha = )
+
+scatter(allthetamodth.loc[best_neurons, 'phase'].values, phi2.loc[best_neurons].values.flatten(), color = 'red', s = 5, zorder = 5)
 
 
-for k,i in zip(['pre', 'pos'],range(2)):
-	for j in ripscore[0][k].columns:
-		ripscore[0][k][j] = gaussFilt(ripscore[0][k][j], (1,))
+xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
+yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
+xlabel('Theta phase (rad)', labelpad = 1.2)
+ylabel('SWR jPCA phase (rad)')
+title(r'$r = 0.18, p = 2.3 \times 10^{-7}$',fontsize = 6)
+text(-0.1, 1.1, "E", transform = gca().transAxes, fontsize = 8)
 
-	plot(ripscore[0][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
-	sem = ripscore[0][k].sem(1).loc[-500:500]
-	fill_between(sem.index.values, ripscore[0][k].mean(1).loc[-500:500] - sem, ripscore[0][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
-
-
-# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
-axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
-xlabel("Time from SPWR (s)", fontsize = 5)
-# text(2000,3.4, '$\mathbf{HD\ Neurons}$')
-title("Theta modulated \n Non HD Neurons", fontsize = 7, y = 0.95)
-ylim(0.055, 0.22)
-
-##############################################################
-# HD SWR NO MOD
-##############################################################
-ax = subplot(gs2[0,2])
-simpleaxis(ax)
-for k,i in zip(['pre', 'pos'],range(2)):
-	for j in ripscore[2][k].columns:
-		ripscore[2][k][j] = gaussFilt(ripscore[2][k][j], (1,))
-
-	plot(ripscore[2][k].mean(1).loc[-500:500], linewidth = 1, color = colors[i], label = labels[i])
-	sem = ripscore[2][k].sem(1).loc[-500:500]
-	fill_between(sem.index, ripscore[2][k].mean(1).loc[-500:500] - sem, ripscore[2][k].mean(1).loc[-500:500] + sem, facecolor = colors[i], alpha = 0.2, linewidth = lw)
-
-
-# legend(loc = 'upper left', edgecolor = None, facecolor = None, frameon = False)
-axvline(0, linewidth =1, color = 'grey', alpha = 0.5)
-xlabel("Time from SPWR (s)", fontsize = 5)
-# text(2000,3.4, '$\mathbf{HD\ Neurons}$')
-title("Non Theta modulated \n Non HD Neurons", fontsize = 7, y = 0.95)
-ylim(0.055, 0.22)
-
-# ##############################################################
-# # COVARIANCE
-# ##############################################################
-gs3 = gridspec.GridSpec(2,1)
-gs3.update(left = 0.9, right = 0.99, hspace = 0.5,  bottom = 0.06, top = 0.5)
-# ax = subplot(gs3[0,0])
-# simpleaxis(ax)
-# # scatter(corr['pre'], corr['pos'], s = 1)
-# xlabel('$R_{pre}$')
-# ylabel('$R_{post}$')
-
-
-
-# ##############################################################
-# # PHASE DIFFERENCE
-# ##############################################################
-ax = subplot(gs3[0,0])
-simpleaxis(ax)
-x = phi['phi']-phi['phipre']
-y = phi['phi']-phi['phipos']
-x[(x < -np.pi)] += 2*np.pi
-y[(y < -np.pi)] += 2*np.pi
-x[(x > np.pi)] -= 2*np.pi
-y[(y > np.pi)] -= 2*np.pi
-# scatter(x, y, s = 1)
-scatter(phi['phipre'], phi['phipos'], s = 1)
-xlabel('$jPCA_{pre}$', fontsize = 5)
-ylabel('$jPCA_{post}$', fontsize = 5)
-title("Responses \n to SWRs", fontsize = 7)
-xticks([0, 2*np.pi], ('0', '$2\pi$'))
-yticks([0, 2*np.pi], ('0', '$2\pi$'))
-##############################################################
-# TIME MAX
-##############################################################
-# ax = subplot(gs3[2,0])
-# simpleaxis(ax)
+########################################################################
+# F PHASE PHASE DENSITY
+########################################################################
+# gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[5])
+ax = subplot(gs[2,2])
+text(-0.1, 1.1, "F", transform = gca().transAxes, fontsize = 8)
+H, xedges, yedges = np.histogram2d(y, x, 50)
+H = gaussFilt(H, (3,3))
+H = H - H.min()
+H = H / H.max()
+print(np.sum(np.isnan(H)))
+# imshow(H, origin = 'lower', interpolation = 'nearest', aspect = 'auto')
+levels = np.linspace(H.min(), H.max(), 50)
+axp = ax.contourf(H, V = levels, cmap = 'binary')
+xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
+yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
+xlabel('Theta phase (rad)')
+ylabel('SWR jPCA phase (rad)')
+tik = np.array([0, np.pi, 2*np.pi, 3*np.pi])
+xtik = [np.argmin(np.abs(i-xedges)) for i in tik]
+ytik = [np.argmin(np.abs(i-yedges)) for i in tik]
+xticks(xtik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
+yticks(ytik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
+title("Density", fontsize = 8)
+cbaxes = fig.add_axes([0.63, 0.11, 0.01, 0.04])
+cb = colorbar(axp, cax = cbaxes, ticks = [0, 1])
+cbaxes.yaxis.set_ticks_position('left')
 
 
 
 
-savefig("../figures/figures_articles/figart_3.pdf", dpi = 900, facecolor = 'white')
-os.system("evince ../figures/figures_articles/figart_3.pdf &")
+
+savefig("../../figures/figures_articles/figart_3.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+os.system("evince ../../figures/figures_articles/figart_3.pdf &")
 

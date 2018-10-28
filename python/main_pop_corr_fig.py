@@ -12,12 +12,142 @@ import time
 import os, sys
 import ipyparallel
 import matplotlib.cm as cm
+from scipy.optimize import curve_fit
 
+def func(x, a, b, c):
+	return a*np.exp(-b*x) + c
+
+
+main_dir = "/mnt/DataGuillaume/corr_pop/"
+files = os.listdir(main_dir)
+files = list(np.sort(files))
+##############################################################################################################
+# CROSS_CORR OF POPULATION CORRELATION
+##############################################################################################################
+bins = np.arange(0, 5.1, 0.1)
+
+# 1 per session
+# 2 per shank 
+# 3 per nucleus
+
+space = pd.read_hdf("../figures/figures_articles/figure1/space.hdf5")
+
+cross_pop = {
+	'session':	{
+		'wak': pd.DataFrame(index = bins[0:-1], columns = files, data = 0),
+		'rem': pd.DataFrame(index = bins[0:-1], columns = files, data = 0),
+		'rip': pd.DataFrame(index = bins[0:-1], columns = files, data = 0)
+		},
+	'shank':	{
+		'wak': None,
+		'rem': None,
+		'rip': None
+		},
+	'nucleus':	{
+		'wak': pd.DataFrame(index = bins[0:-1], columns = np.unique(space['nucleus']), data = 0),
+		'rem': pd.DataFrame(index = bins[0:-1], columns = np.unique(space['nucleus']), data = 0),
+		'rip': pd.DataFrame(index = bins[0:-1], columns = np.unique(space['nucleus']), data = 0)
+		}
+	}
+
+lambdaa = {
+	'session':	{
+		'wak': pd.DataFrame(index = files, columns = ['a', 'b', 'c', 'mx', 'my'], data = 0),
+		'rem': pd.DataFrame(index = files, columns = ['a', 'b', 'c', 'mx', 'my'], data = 0)
+		},
+	'nucleus':	{
+		'wak': pd.DataFrame(index = np.unique(space['nucleus']), columns = ['a', 'b', 'c'], data = 0),
+		'rem': pd.DataFrame(index = np.unique(space['nucleus']), columns = ['a', 'b', 'c'], data = 0)		
+		}		
+	}
+	
+
+for f in files:
+	store = pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+f)
+	for m in ['allwak_corr', 'allrem_corr', 'allrip_corr']:
+		tmp = store[m]
+		tmp = tmp[np.abs(tmp.index.values)<bins.max()]
+		idx = np.digitize(np.abs(tmp.index.values), bins)-1
+		tmp2 = np.array([np.nanmean(tmp.values.flatten()[idx == i]) for i in np.arange(len(bins)-1)])
+		cross_pop['session'][m[3:6]][f] = tmp2
+
+
+for ep in ['wak', 'rem']:
+	tmp = cross_pop['session'][ep].loc[0.1:3.1]
+	tmp = tmp.rolling(window=20,win_type='gaussian',center=True,min_periods=1).mean(std=1.0)
+	predit = []
+	for ses in tmp.columns:
+		popt, pcov = curve_fit(func, tmp.index.values, tmp[ses].values)
+		predit.append(func(tmp.index.values, popt[0], popt[1], popt[2]))
+		lambdaa['session'][ep].loc[ses, ['a', 'b', 'c']] = popt
+
+
+# mean x and y postion of neurons on the same session
+for ses in files:
+	nme = ses.split(".")[0]
+	idx = space.index.values[space.index.str.contains(nme)]
+	for ep in ['wak', 'rem']:
+		lambdaa['session'][ep].loc[ses, ['mx','my']] = space.loc[idx, ['x', 'y']].mean().values
+
+
+
+
+subplot(211)
+for m in ['12', '17', '20', '32']:
+	tmp = lambdaa['session']['wak'][lambdaa['session']['wak'].index.str.contains('Mouse'+m)]
+	plot(tmp['my'], tmp['b'], 'o-', label = m)
+subplot(212)
+for m in ['12', '17', '20', '32']:
+	tmp = lambdaa['session']['rem'][lambdaa['session']['rem'].index.str.contains('Mouse'+m)]
+	plot(tmp['my'], tmp['b'], 'o-', label = m)
+
+sys.exit()
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-main_dir = "../data/corr_pop/"
-files = os.listdir(main_dir)
+
+files = [f for f in files if 'Mouse12' in f]
+files = list(np.sort(files))
+bins = np.arange(0, 5.1, 0.1)
+hist_corr = {n:pd.DataFrame(index = bins[0:-1], columns = np.arange(len(files)), data = 0) for n in ['allwak_corr', 'allrem_corr', 'allrip_corr']}
+for f in files:
+	store = pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+f)
+	for m in ['allwak_corr', 'allrem_corr', 'allrip_corr']:
+		tmp = store[m]
+		idx = np.digitize(np.abs(tmp.index.values), bins)-1
+		for i in np.arange(len(bins)-1):
+			hist_corr[m][files.index(f)].iloc[i] = np.nanmean(tmp.values.flatten()[idx == i])
+	store.close()
+
+ct = 1
+colors = cm.jet(np.linspace(0, 1, len(files)))
+for m in ['allwak_corr', 'allrem_corr', 'allrip_corr']:
+	subplot(1,3,ct)
+	ct+=1
+	tmp = hist_corr[m]
+	for i in tmp.columns:
+		plot(hist_corr[m][i], color = colors[i])
+	legend()
+
+show()
+
+sys.exit()
+
+ct2 = 1
+for f in files:
+	store = pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+f)
+	ct = 1	
+	for m in ['wak_corr', 'rem_corr', 'rip_corr']:
+		subplot(1, 3, ct)
+		imshow(store[m], interpolation = 'none', origin = 'lower', aspect = 'equal')
+		title(f+" "+str(ct2)+"/"+str(len(files)))
+		ct+=1
+	store.close()
+	show()
+	ct2+=1
+
+sys.exit()
+
 
 ywak = []
 yrem = []
@@ -32,7 +162,7 @@ mean_rem = pd.DataFrame(index = [f.split(".")[0] for f in files], columns = bins
 mean_wak = pd.DataFrame(index = [f.split(".")[0] for f in files], columns = bins[1:] - dt)
 
 for f in files:	
-	store 			= pd.HDFStore("../data/corr_pop_no_hd/"+f)
+	store 			= pd.HDFStore(main_dir+f)
 	theta_wake_corr = store['wak_corr']
 	theta_rem_corr 	= store['rem_corr']
 	rip_corr 		= store['rip_corr']
@@ -40,27 +170,32 @@ for f in files:
 	wake 			= store['allwak_corr']
 	rem 			= store['allrem_corr']	
 	store.close()
-	# index = np.tril_indices(len(rip_corr))
-	# rip = np.vstack([rip_corr[0][index],rip_corr[1][index]]).transpose()
 
-	# if f == 'Mouse12-120809.pickle':
+	##############################################
+	# TO MAKE THE EXEMPLES
+	#############################################
+
+	index = np.tril_indices(len(rip_corr))
+	rip = np.vstack([rip_corr[0][index],rip_corr[1][index]]).transpose()
+
+	if f == 'Mouse12-120809.pickle':
 		
-	# 	toplot['wake'] = theta_wake_corr[0][1]
-	# 	toplot['rem'] = theta_rem_corr[0][1]
-	# 	toplot['rip'] = rip_corr[1]
+		toplot['wake'] = theta_wake_corr[0][1]
+		toplot['rem'] = theta_rem_corr[0][1]
+		toplot['rip'] = rip_corr[1]
 
-	# wake = []
-	# for i in range(len(theta_wake_corr)):
-	# 	np.fill_diagonal(theta_wake_corr[i][1], 1.0)
-	# 	index = np.tril_indices(len(theta_wake_corr[i][0]))
-	# 	wake.append(np.vstack([theta_wake_corr[i][0][index],theta_wake_corr[i][1][index]]).transpose())
-	# wake = np.vstack(wake)
-	# rem = []
-	# for i in range(len(theta_rem_corr)):
-	# 	np.fill_diagonal(theta_rem_corr[i][1], 1.0)
-	# 	index = np.tril_indices(len(theta_rem_corr[i][0]))
-	# 	rem.append(np.vstack([theta_rem_corr[i][0][index],theta_rem_corr[i][1][index]]).transpose())
-	# rem = np.vstack(rem)
+	wake = []
+	for i in range(len(theta_wake_corr)):
+		np.fill_diagonal(theta_wake_corr[i][1], 1.0)
+		index = np.tril_indices(len(theta_wake_corr[i][0]))
+		wake.append(np.vstack([theta_wake_corr[i][0][index],theta_wake_corr[i][1][index]]).transpose())
+	wake = np.vstack(wake)
+	rem = []
+	for i in range(len(theta_rem_corr)):
+		np.fill_diagonal(theta_rem_corr[i][1], 1.0)
+		index = np.tril_indices(len(theta_rem_corr[i][0]))
+		rem.append(np.vstack([theta_rem_corr[i][0][index],theta_rem_corr[i][1][index]]).transpose())
+	rem = np.vstack(rem)
 
 	
 	# remove nan

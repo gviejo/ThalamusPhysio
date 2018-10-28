@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
@@ -20,27 +18,20 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 
 # datasets = [s for s in datasets if 'Mouse17' in s]
 
+sessions = os.listdir('/mnt/DataGuillaume/population_activity_hd')
 
 # sys.exit()
 def compute_population_correlation(session):
-# 	import numpy as np
-# 	import scipy.io
-# 	import scipy.stats
-# 	import _pickle as cPickle
-# 	import time
-# 	import os, sys
-# 	import neuroseries as nts
-# 	import pandas as pd
-# for session in datasets:
+# for session in sessions:
 	start_time = time.clock()
 	print(session)
 
-	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_hd/"+session)
 	rip_pop 		= store['rip']
 	rem_pop 		= store['rem']
 	wak_pop 		= store['wake']	
 	store.close()
-	
+		
 
 	###############################################################################################################
 	# POPULATION CORRELATION FOR EACH RIPPLES
@@ -116,7 +107,7 @@ def compute_population_correlation(session):
 	###############################################################################################################
 	# STORING
 	###############################################################################################################
-	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop_hd/"+session)
 	store.put('rip_corr', rip_corr)
 	store.put('allrip_corr', allrip_corr)
 	store.put('wak_corr', wak_corr)
@@ -130,8 +121,8 @@ def compute_population_correlation(session):
 
 dview = Pool(8)
 
-a = dview.map_async(compute_population_correlation, datasets)
-# a = compute_population_correlation(datasets[0])	
+a = dview.map_async(compute_population_correlation, sessions).get()
+
 
 
 # ###############################################################################################################

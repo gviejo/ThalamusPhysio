@@ -6,7 +6,7 @@
 	Date created: 28/09/2017    
 	Python Version: 3.5.2
 
-To make shank mapping
+TRying to make the mapping from the allen atlas
 
 '''
 
@@ -38,7 +38,6 @@ interval_to_cut 		= {	'Mouse12':[88,120],
 							# 'Mouse20':[92,131],
 							# 'Mouse32':[80,125]}
 
-
 ###############################################################################################################
 # LOADING DATA
 ###############################################################################################################
@@ -60,8 +59,6 @@ for m in mouses:
 	xnew, ynew, xytotal = interpolate(total.copy(), x, y, space)
 	filtotal = gaussian_filter(xytotal, (10, 10))
 	newtotal = softmax(filtotal, 10.0, 0.1)
-	xx, yy = np.meshgrid(x, y)
-	total_shank = np.vstack((xx.flatten(), yy.flatten(), total.flatten()))
 
 	# head direction
 	xnew, ynew, newheaddir = interpolate(headdir.copy(), x, y, space)
@@ -92,24 +89,10 @@ for m in mouses:
 	newtheta = newtheta - newtheta.min()
 	newtheta = newtheta / newtheta.max()
 
-	
-
-
-	figure()
-	imshow(newthetadens, extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), cmap = 'jet')
-	contour(newheaddir, extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), origin = 'upper', cmap = 'winter')	
-	scatter(total_shank[0], total_shank[1], s = 80.0*total_shank[2]+2, c = total_shank[2], alpha = 0.8, cmap = 'Greys')
-	gca().set_aspect('equal')
-	savefig("../figures/mapping_to_align/allen/"+m+"/"+m+"_hd_density.pdf")
-	
-
-	pass
-
-
 	thl_lines = None
 	# # thalamus lines and shanks position to creat the mapping session nucleus
 	if m+"_thalamus_lines.png" in os.listdir("../figures/mapping_to_align"):
-		thl_lines = scipy.ndimage.imread("../figures/mapping_to_align/allen/"+m+"_thalamus_lines.png").sum(2)
+		thl_lines = scipy.ndimage.imread("../figures/mapping_to_align/"+m+"_thalamus_lines.png").sum(2)
 		xlines, ylines, thl_lines = interpolate(thl_lines, 	np.linspace(x.min(), x.max(), thl_lines.shape[1]),
 	 														np.linspace(y.min(), y.max(), thl_lines.shape[0]), space*0.1)
 
@@ -122,7 +105,7 @@ for m in mouses:
 		scatter(xx.flatten(), yy.flatten())
 		xticks(x, np.arange(len(x))[::-1])
 		yticks(y, np.arange(len(y)))
-		savefig("../figures/mapping_to_align/allen/"+m+"_shanks_postion.pdf")
+		savefig("../figures/mapping_to_align/"+m+"_shanks_postion.pdf")
 	
 	mse = np.abs(np.median(newswr, 0) - newswr).sum(1).sum(1)		
 	idx_frames = np.arange(0, len(newswr), 10)#[np.argmax(mse)-15:np.argmax(mse)+15]
@@ -144,7 +127,7 @@ for m in mouses:
 		gca().set_yticks(np.arange(ynew[0], ynew[-1], 0.2))
 		title("T = "+str(int(times[fr]))+" ms")
 
-	savefig("../figures/mapping_to_align/allen/"+m+"_swr_frames.pdf")
+	savefig("../figures/mapping_to_align/"+m+"_swr_frames.pdf")
 		
 	
 	idx_frames = np.arange(len(newtheta))
@@ -165,7 +148,7 @@ for m in mouses:
 		
 		title("phi = "+str(int(phase[fr])))
 
-	savefig("../figures/mapping_to_align/allen/"+m+"_theta_frames.pdf")
+	savefig("../figures/mapping_to_align/"+m+"_theta_frames.pdf")
 
 	figure()
 	imshow(newthetadens, extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]), cmap = 'jet')
@@ -173,7 +156,7 @@ for m in mouses:
 	if thl_lines is not None:
 		imshow(thl_lines, aspect = 'equal', extent = (xnew[0], xnew[-1], ynew[-1], ynew[0]))	
 	gca().set_aspect('equal')
-	savefig("../figures/mapping_to_align/allen/"+m+"_hd_density.pdf")
+	savefig("../figures/mapping_to_align/"+m+"_hd_density.pdf")
 	
 
 	from matplotlib import animation, rc
@@ -204,9 +187,7 @@ for m in mouses:
 	anim = animation.FuncAnimation(fig, animate, init_func=init,
 							   frames=range(start,len(newswr)), interval=10, blit=False, repeat_delay = 1000)
 
-	anim.save('../figures/mapping_to_align/allen/swr_mod_'+m+'.gif', writer='imagemagick', fps=15)
+	anim.save('../figures/mapping_to_align/swr_mod_'+m+'.gif', writer='imagemagick', fps=15)
 	
 
-
-		
 

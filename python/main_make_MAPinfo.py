@@ -21,6 +21,8 @@ import _pickle as cPickle
 import neuroseries as nts
 import sys
 
+sys.exit()
+
 ###############################################################################################################
 # LOADING DATA
 ###############################################################################################################
@@ -117,7 +119,7 @@ for m in mouses:
 	for s in sessions:				
 		generalinfo 		= scipy.io.loadmat(data_directory+m+"/"+s+'/Analysis/GeneralInfo.mat')
 		shankStructure 		= loadShankStructure(generalinfo)
-		spikes,shank		= loadSpikeData(data_directory+m+"/"+s+'/Analysis/SpikeData.mat', shankStructure['thalamus'])				
+		spikes,shank		= loadSpikeData(data_directory+m+"/"+s+'/Analysis/SpikeData.mat', shankStructure['thalamus'])						
 		hd_info 			= scipy.io.loadmat(data_directory+m+'/'+s+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
 		hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])
 		shankIndex 			= np.array([shank[n] for n in spikes.keys()]).flatten()
@@ -196,8 +198,8 @@ for m in movies.keys():
 					'headdir':headdir[m],
 					'jpc':rXX[m],
 					'theta_dens':theta_dens[m]
-
 					}
+	
 	cPickle.dump(datatosave, open("../data/maps/"+m+".pickle", 'wb'))	
 
 

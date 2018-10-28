@@ -26,6 +26,8 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 datatosave = {}
 spikes_theta_phase = {'wake':{},'rem':{}}
 
+
+
 for session in datasets:	
 	print(session)
 	start = time.time()
@@ -60,7 +62,8 @@ for session in datasets:
 	lfp_filt_hpc	= nts.Tsd(lfp_hpc.index.values, butter_bandpass_filter(lfp_hpc, 5, 15, fs/5, 2))	
 	power	 		= nts.Tsd(lfp_filt_hpc.index.values, np.abs(lfp_filt_hpc.values))
 	enveloppe,dummy	= getPeaksandTroughs(power, 5)	
-	index 			= (enveloppe > np.percentile(enveloppe, 50)).values*1.0
+	# index 			= (enveloppe > np.percentile(enveloppe, 50)).values*1.0
+	index 			= (enveloppe > np.percentile(enveloppe, 10)).values*1.0
 	start_cand 		= np.where((index[1:] - index[0:-1]) == 1)[0]+1
 	end_cand 		= np.where((index[1:] - index[0:-1]) == -1)[0]
 	if end_cand[0] < start_cand[0]:	end_cand = end_cand[1:]
@@ -75,8 +78,8 @@ for session in datasets:
 	theta_rem_ep 	= rem_ep.intersect(good_ep).merge_close_intervals(30000).drop_short_intervals(1000000)
 	
 
-	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".wake.evt.theta", theta_wake_ep, "Theta")
-	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".rem.evt.theta", theta_rem_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".wake.evt.theta.2", theta_wake_ep, "Theta")
+	writeNeuroscopeEvents("/mnt/DataGuillaume/MergedData/"+session+"/"+session.split("/")[1]+".rem.evt.theta.2", theta_rem_ep, "Theta")
 	
 	
 	phase 			= getPhase(lfp_hpc, 6, 14, 16, fs/5.)	
@@ -105,7 +108,31 @@ for session in datasets:
 
 
 
-import _pickle as cPickle
-cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', 'wb'))
-cPickle.dump(spikes_theta_phase, open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'wb'))
+# import _pickle as cPickle
+# cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', 'wb'))
+# cPickle.dump(spikes_theta_phase, open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'wb'))
+neurons = []
+for s in datatosave.keys():
+	for ep in ['wake', 'rem']:
+		for n in datatosave[s][ep].keys():
+			neurons.append(n)
+
+neurons = np.unique(neurons)
+
+theta = pd.DataFrame(index = neurons, columns = pd.MultiIndex.from_product([['wak', 'rem'], ['phase', 'pval', 'kappa']]))
+
+for s in datatosave.keys():
+	for ep in ['wake', 'rem']:
+		for n in datatosave[s][ep].keys():
+			theta.loc[n,ep[0:3]] = datatosave[s][ep][n]
+
+theta.to_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5", 'theta')
+
+
+# COMPARING THETA
+theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
+theta 					= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
+
 

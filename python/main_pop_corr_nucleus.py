@@ -17,30 +17,47 @@ from multiprocessing import Pool
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
+mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
+nucleus = np.unique(mappings['nucleus'])
+sessions = np.unique([n.split("_")[0] for n in mappings.index])
 
-# datasets = [s for s in datasets if 'Mouse17' in s]
+# determining number of neurons per nucleus et per sessions
+count = pd.DataFrame(index=sessions, columns = nucleus,data=0)
+for s in count.index:
+	for n in nucleus:	
+		count.loc[s,n] = (mappings[mappings.index.str.contains(s)]['nucleus'] == n).sum()
 
+nucleus_session = {n:count.index.values[count[n]>5] for n in nucleus}
 
 # sys.exit()
-def compute_population_correlation(session):
-# 	import numpy as np
-# 	import scipy.io
-# 	import scipy.stats
-# 	import _pickle as cPickle
-# 	import time
-# 	import os, sys
-# 	import neuroseries as nts
-# 	import pandas as pd
-# for session in datasets:
+
+# make directory for each nucleus
+for n in nucleus:
+	try:
+		os.mkdir("/mnt/DataGuillaume/corr_pop_nucleus/"+n)
+	except:
+		pass
+
+
+def compute_population_correlation(nuc, session):
 	start_time = time.clock()
 	print(session)
 
-	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity/"+session+".h5")
 	rip_pop 		= store['rip']
 	rem_pop 		= store['rem']
 	wak_pop 		= store['wake']	
 	store.close()
-	
+
+	# WHICH columns to keep
+	mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
+	tmp = mappings[mappings.index.str.contains(session)]['nucleus'] == nuc
+	neurons = tmp.index.values[np.where(tmp)[0]]
+	idx = np.array([int(n.split("_")[1]) for n in neurons])
+	rip_pop = rip_pop[idx]
+	rem_pop = rem_pop[idx]
+	wak_pop = wak_pop[idx]
+
 
 	###############################################################################################################
 	# POPULATION CORRELATION FOR EACH RIPPLES
@@ -116,7 +133,7 @@ def compute_population_correlation(session):
 	###############################################################################################################
 	# STORING
 	###############################################################################################################
-	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop_nucleus/"+nuc+"/"+session+".h5")
 	store.put('rip_corr', rip_corr)
 	store.put('allrip_corr', allrip_corr)
 	store.put('wak_corr', wak_corr)
@@ -130,8 +147,10 @@ def compute_population_correlation(session):
 
 dview = Pool(8)
 
-a = dview.map_async(compute_population_correlation, datasets)
-# a = compute_population_correlation(datasets[0])	
+for n in nucleus:
+	print(n)
+	a = dview.starmap_async(compute_population_correlation, zip([n]*len(nucleus_session[n]),nucleus_session[n])).get()
+# a = compute_population_correlation('AD', nucleus_session['AD'][0])
 
 
 # ###############################################################################################################

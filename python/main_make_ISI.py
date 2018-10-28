@@ -21,16 +21,17 @@ from time import time
 start_init = time()
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
-
-
-datatosave = {ep:pd.DataFrame() for ep in ['wak', 'rem', 'sws']}
+datatosave = dict(zip(['wake', 'rem', 'sws'],[{} for _ in range(3)]))
 
 # clients = ipyparallel.Client()	
 # dview = clients.direct_view()
 dview = Pool(8)
 
-# firing_rate = pd.DataFrame(columns = ['wake', 'rem', 'sws'])
+bin_size = 5.0
+bins = np.arange(2, 1000.0, bin_size) # 5 ms bin
+x = bins[0:-1] + bin_size/2.0
 
+allisi = {ep:pd.DataFrame(index = x) for ep in ['wake', 'rem', 'sws']}
 
 for session in datasets:	
 		start = time()
@@ -48,30 +49,37 @@ for session in datasets:
 		sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
 		sws_ep 			= sleep_ep.intersect(sws_ep)	
 		rem_ep 			= sleep_ep.intersect(rem_ep)
-		Hcorr_ep 		= {}
-		for ep,k in zip([wake_ep, rem_ep, sws_ep], ['wak', 'rem', 'sws']):					
+		for ep,k in zip([wake_ep, rem_ep, sws_ep], ['wake', 'rem', 'sws']):					
 			spikes_ep 		= {n:spikes[n].restrict(ep) for n in spikes.keys() if len(spikes[n].restrict(ep))}
-			spikes_list 	= [spikes_ep[i].as_units('ms').index.values for i in spikes_ep.keys()]
-			Hcorr = dview.map_async(autocorr, spikes_list).get()			
-			# normalizing by nomber of spikes			
-			for n,i in zip(spikes_ep.keys(), range(len(spikes_ep.keys()))):				
-				datatosave[k][session.split("/")[1]+"_"+str(n)] = Hcorr[i]/(len(spikes_list[i])/float(ep.tot_length('s')))				
-
-				# neuron = session.split("/")[1]+"_"+str(n)
-				# firing_rate.loc[neuron, k] = (len(spikes_list[i])/float(ep.tot_length('s')))
-			
+			for n in spikes_ep.keys():
+				neuron = session.split("/")[1]+"_"+str(n)
+				spike_times = spikes_ep[n].as_units('ms').index.values
+				dif = np.diff(spike_times)
+				dif = dif[np.logical_and(dif >= 2.0, dif < 1000.0)]												
+				a, b = np.histogram(dif, bins, density = True)
+				# firing rate
+				fr = (len(spike_times)/float(ep.tot_length('s')))
+				tmp = np.exp(-fr*(x/1000.0))
+				tmp = tmp/tmp.sum()
+				isi = a*bin_size - tmp
+				allisi[k][neuron] = isi
+				
 		print(session, time() - start)
 	
 	
 
+allisi['wake'].to_hdf('/mnt/DataGuillaume/MergedData/ISI_ALL.h5', key = 'wake', mode = 'w')
+allisi['rem'].to_hdf('/mnt/DataGuillaume/MergedData/ISI_ALL.h5', key = 'rem', mode = 'a')
+allisi['sws'].to_hdf('/mnt/DataGuillaume/MergedData/ISI_ALL.h5', key = 'sws', mode = 'a')
 
-# firing_rate.to_hdf('/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5', key='firing_rate', mode='w')
 
-store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_LONG_SMALLBINS.h5", 'w')
-store_autocorr.put('wak', datatosave['wak'])
-store_autocorr.put('rem', datatosave['rem'])
-store_autocorr.put('sws', datatosave['sws'])
-store_autocorr.close()
+sys.exit()
+
+firing_rate.to_hdf('/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5', key='firing_rate', mode='w')
+
+
+import _pickle as cPickle
+cPickle.dump(datatosave, open('/mnt/DataGuillaume/MergedData/AUTOCORR_ALL.pickle', 'wb'))
 
 
 print(time() - start_init)

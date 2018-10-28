@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
@@ -19,7 +17,7 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 
 
 # datasets = [s for s in datasets if 'Mouse17' in s]
-
+sessions = os.listdir('/mnt/DataGuillaume/population_activity_nohd')
 
 # sys.exit()
 def compute_population_correlation(session):
@@ -35,7 +33,7 @@ def compute_population_correlation(session):
 	start_time = time.clock()
 	print(session)
 
-	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity/"+session.split("/")[1]+".h5")
+	store 			= pd.HDFStore("/mnt/DataGuillaume/population_activity_nohd/"+session)
 	rip_pop 		= store['rip']
 	rem_pop 		= store['rem']
 	wak_pop 		= store['wake']	
@@ -115,8 +113,8 @@ def compute_population_correlation(session):
 	
 	###############################################################################################################
 	# STORING
-	###############################################################################################################
-	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop/"+session.split("/")[1]+".h5")
+	###############################################################################################################	
+	store 			= pd.HDFStore("/mnt/DataGuillaume/corr_pop_no_hd/"+session)
 	store.put('rip_corr', rip_corr)
 	store.put('allrip_corr', allrip_corr)
 	store.put('wak_corr', wak_corr)
@@ -130,7 +128,7 @@ def compute_population_correlation(session):
 
 dview = Pool(8)
 
-a = dview.map_async(compute_population_correlation, datasets)
+a = dview.map_async(compute_population_correlation, sessions).get()
 # a = compute_population_correlation(datasets[0])	
 
 

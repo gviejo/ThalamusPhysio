@@ -1,4 +1,5 @@
 import numpy as np
+from multiprocessing import Pool, cpu_count
 
 def jPCA(data, times):
 	#PCA
@@ -269,7 +270,7 @@ def downsample(tsd, up, down):
 	if len(tsd.shape) == 1:		
 		return nts.Tsd(dt, dtsd, time_units = 's')
 	elif len(tsd.shape) == 2:
-		return nts.TsdFrame(dt, dtsd, time_units = 's')
+		return nts.TsdFrame(dt, dtsd, time_units = 's', columns = list(tsd.columns))
 
 def getPhase(lfp, fmin, fmax, nbins, fsamp, power = False):
 	""" Continuous Wavelets Transform
@@ -412,6 +413,14 @@ def getPhaseCoherence(phase):
 	r = np.sqrt(np.sum([np.power(np.sum(np.cos(phase)),2), np.power(np.sum(np.sin(phase)),2)]))/len(phase)	
 	return r
 
+def computeBurstiness(spikes, epoch, start = 2.0, stop = 8.0):
+	s = spikes.restrict(epoch)
+	dt = np.diff(s.as_units('ms').index.values)
+	Nobs = float(np.logical_and(dt>2.0, dt<8.0).sum())
+	r = len(s)/epoch.tot_length('s')
+	Nthe = len(dt)*(np.exp(-r*(start/1000)) - np.exp(-r*(stop/1000)))
+	return Nobs/(Nthe+1.0)
+
 #########################################################
 # INTERPOLATION
 #########################################################
@@ -431,9 +440,10 @@ def filter_(z, n):
 	return gaussian_filter(z, n)
 
 def softmax(x, b1 = 20.0, b2 = 0.5):
-	x -= x.min()
-	x /= x.max()
-	return 0.75*(1.0/(1.0+np.exp(-(x-b2)*b1)))+0.25
+	# x -= x.min()
+	# x /= x.max()
+	# return 0.75*(1.0/(1.0+np.exp(-(x-b2)*b1)))+0.25
+	return 1.0/(1.0+np.exp(-(x-b2)*b1))
 
 def get_rgb(mapH, mapS, mapV, bound):
 	from matplotlib.colors import hsv_to_rgb	
@@ -453,6 +463,26 @@ def get_rgb(mapH, mapS, mapV, bound):
 	HSV = np.dstack((H,S,V))	
 	RGB = hsv_to_rgb(HSV)	
 	return RGB
+
+def rotateImage(image, angle):
+	import cv2
+	row,col = image.shape
+	center=tuple(np.array([row,col])/2)
+	rot_mat = cv2.getRotationMatrix2D(center,angle,1.0)
+	new_image = cv2.warpAffine(image, rot_mat, (col,row))
+	return new_image
+
+def getRotationMatrix(shape, angle):
+	import cv2
+	row,col = shape
+	center=tuple(np.array([row,col])/2)
+	rot_mat = cv2.getRotationMatrix2D(center,angle,1.0)
+	return rot_mat
+
+def getXYshapeofRotatedMatrix(x, y, angle):	
+	return (x * np.cos(angle * np.pi /180.) + y * np.sin(angle * np.pi / 180.),
+			y * np.cos(angle * np.pi /180.) + x * np.sin(angle * np.pi / 180.)			)
+
 
 #########################################################
 # CORRELATION
@@ -538,7 +568,7 @@ def xcrossCorr_fast(t1, t2, binsize, nbins, nbiter, jitter, confInt):
 	# need to do a cross-corr of double size to convolve after and avoid boundary effect
 	H0 				= crossCorr(t1, t2, binsize, nbins*2)	
 	window_size 	= 2*jitter//binsize
-	window 			= np.ones(window_size)*(1/window_size)
+	window 			= np.ones(int(window_size))*(1/window_size)
 	Hm 				= np.convolve(H0, window, 'same')
 	Hstd			= np.sqrt(np.var(Hm))	
 	HeI 			= np.NaN
@@ -562,18 +592,46 @@ def corr_circular_(alpha1, alpha2):
 
 	return rho, pval
 
-def autocorr(tsd):	
-	bin_size 	= 5 # ms 
-	nb_bins 	= 200
-	confInt 	= 0.95
-	nb_iter 	= 1000
-	jitter  	= 150 # ms					
-	H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(tsd, tsd, bin_size, nb_bins, nb_iter, jitter, confInt)
-	return (H0 - Hm)/Hstd
+def autocorr(tsd):
+	import pandas as pd
+	# bin_size 	= 0.5 # ms 
+	# nb_bins 	= 1000
+	bin_size 	= 1
+	nb_bins 	= 10000	
+	# confInt 	= 0.95
+	# nb_iter 	= 1000
+	# jitter  	= 150 # ms					
+	# H0, Hm, HeI, HeS, Hstd, times = xcrossCorr_fast(tsd, tsd, bin_size, nb_bins, nb_iter, jitter, confInt)
+	C = crossCorr(tsd, tsd, bin_size, nb_bins)
+	times 		= np.arange(0, bin_size*(nb_bins+1), bin_size) - (nb_bins*bin_size)/2
+	return pd.Series(index = times, data = C)
+	# return (H0 - Hm)/Hstd
 
 #########################################################
 # WRAPPERS
 #########################################################
+def loadWaveforms(data_directory, datasets):
+	# load waveforms
+	import scipy.io	
+	to_return = pd.DataFrame()
+	for i in range(len(datasets)):
+		path = data_directory+datasets[i]
+		try:
+			data = scipy.io.loadmat(path+'/Analysis/SpikeWaveF.mat')
+			meanWaveF = data['meanWaveF'][0]
+			maxIx = data['maxIx'][0]
+			generalinfo 	= scipy.io.loadmat(path+'/Analysis/GeneralInfo.mat')
+			shankStructure 	= loadShankStructure(generalinfo)
+			spikes,shank = loadSpikeData(path+'/Analysis/SpikeData.mat', shankStructure['thalamus'])	
+			index_neurons = [path.split("/")[-1]+"_"+str(n) for n in spikes.keys()]
+			for i, n in zip(list(spikes.keys()), index_neurons):	
+				to_return[n] = meanWaveF[i][maxIx[i]-1]			
+		except:
+			print(datasets[i])
+			pass
+
+	return to_return
+
 def loadMappingNucleus(path):
 	import pandas as pd
 	tmp = open(path, 'r').readlines()
@@ -888,4 +946,29 @@ def plotThetaEpoch(wake_ep, sleep_ep, rem_ep, sws_ep, rem_peaks, rem_troughs, wa
 	legend()
 	show()
 
+def makeTSNE(data):
+	from sklearn.manifold import TSNE
+	tsne = TSNE(n_components=2,
+				# early_exaggeration = 4, 
+				# n_iter = 10000,
+				perplexity = 50,
+				# learning_rate = 500,
+				# min_grad_norm = 1e-12,
+				# n_iter_without_progress = 1000,
+				# method = 'exact'
+			)
+	kluster = tsne.fit_transform(data)
+	return kluster, tsne.kl_divergence_
+
+def makeAllTSNE(data, n):
+	dview = Pool(cpu_count())
+	datatsne = dview.map_async(makeTSNE, [data.copy() for _ in range(n)]).get()
+	klusters = []
+	divergence = []
+	for kl, dv in datatsne:
+		klusters.append(kl)
+		divergence.append(dv)
+	klusters = np.dstack(klusters).T
+	divergence = np.array(divergence)
+	return klusters, divergence
 
