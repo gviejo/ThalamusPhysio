@@ -30,7 +30,12 @@ for n in nucleus:
 		lambdaa_nucleus.loc[n,(e,'mean')] = tmp[e].mean(skipna=True)
 		lambdaa_nucleus.loc[n,(e,'sem')] = tmp[e].sem(skipna=True)
 
-
+data_directory 	= '/mnt/DataGuillaume/MergedData/'
+datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
+theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
+theta 					= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
 
 
 ###############################################################################################################
@@ -68,16 +73,16 @@ def noaxis(ax):
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-mpl.use("pdf")
+# mpl.use("pdf")
 pdf_with_latex = {                      # setup matplotlib to use latex for output
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
 	# "font.family": "serif",
-	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-	"font.sans-serif": [],
+	# "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+	# "font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 6,               # LaTeX default is 10pt font.
-	"font.size": 6,
+	"axes.labelsize": 7,               # LaTeX default is 10pt font.
+	"font.size": 7,
 	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
 	"xtick.labelsize": 6,
 	"ytick.labelsize": 6,
@@ -89,7 +94,7 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"axes.linewidth"        : 0.5,
 	"ytick.major.size"      : 1.0,
 	"xtick.major.size"      : 1.0
-	}       
+	}     
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
@@ -166,13 +171,15 @@ xlabel("Time (s)")
 ylabel("Autocorrelation (a.u)")
 locator_params(nbins = 4)
 
+axA.text(-0.1, 1.05, "A", transform = axA.transAxes, fontsize = 9)
+
 ###################################################################################################
 # B. LAMBDA AUTOCORRELOGRAM / NUCLEUS
 ###################################################################################################
 axB = subplot(1,3,2)
 simpleaxis(axB)
 order = lambdaa_nucleus[('wak', 'mean')].sort_values().index
-order = order.drop(['U', 'sm'])
+order = order.drop(['U', 'sm', 'Rt'])
 
 labels = ['Wake', 'REM']
 
@@ -183,10 +190,12 @@ for i, ep in enumerate(['wak', 'rem']):
 	fill_betweenx(np.arange(len(order)), m+s, m-s, color = colors[i], alpha = 0.3)
 
 legend(edgecolor = None, facecolor = None, frameon = False)
-yticks(np.arange(len(order)), order.values)
+yticks(np.arange(len(order)), order)
 ylabel("Nucleus")	
 xlabel(r"Exp fit $\tau$ (s)")
 locator_params(axis = 'x', nbins = 4)
+
+axB.text(-0.1, 1.05, "B", transform = axB.transAxes, fontsize = 9)
 
 ###################################################################################################
 # C. BURSTINESS VS LAMBDA
@@ -215,6 +224,21 @@ ylabel(r"Exp fit $\tau$ (s)")
 a, b = pearsonr(df['burst'].values, df['lambda'].values)
 
 print(a, b)
+axC.text(0.5, 1.0, "r="+str(np.round(a, 3))+" (p<0.001)", transform = axC.transAxes, fontsize = 6)
+
+
+axC.text(-0.1, 1.05, "C", transform = axC.transAxes, fontsize = 9)
+
+
+###################################################################################################
+# C. BURSTINESS VS LAMBDA
+###################################################################################################
+df = pd.concat([theta['kappa'].loc[idx], lambdaa['rem']['b'].loc[idx]], axis = 1).rename(columns={'b':'lambda'})
+df = df[np.logical_and(df['kappa']<1,df['lambda']<3)]
+df = df[df['lambda'] > 0]
+
+
+
 
 
 fig.subplots_adjust(wspace= 0.4, hspace = 0.6)

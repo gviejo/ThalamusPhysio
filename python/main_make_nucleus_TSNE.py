@@ -76,7 +76,7 @@ for m in ['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']:
 		rem_ep 			= loadEpoch(data_directory+m+'/'+s, 'rem')
 		sleep_ep 		= sleep_ep.merge_close_intervals(threshold=1.e3)		
 		sws_ep 			= sleep_ep.intersect(sws_ep)	
-		rem_ep 			= sleep_ep.intersect(rem_ep)
+		rem_ep 			= sleep_ep.intersect(rem_ep)		
 		# hd
 		hd_info 			= scipy.io.loadmat(data_directory+m+'/'+s+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
 		hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])		
@@ -143,9 +143,9 @@ autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center =
 autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
 
 
-autocorr_wak = autocorr_wak[2:100]
-autocorr_rem = autocorr_rem[2:100]
-autocorr_sws = autocorr_sws[2:100]
+autocorr_wak = autocorr_wak[2:200]
+autocorr_rem = autocorr_rem[2:200]
+autocorr_sws = autocorr_sws[2:200]
 
 # isi_wak = isi_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
 # isi_rem = isi_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
@@ -191,7 +191,7 @@ for i in range(n):
 
 tsne = pd.DataFrame(index = neurons, data = TSNE[0].T)
 
-
+sys.exit()
 
 
 ####################################################################################
@@ -199,7 +199,7 @@ tsne = pd.DataFrame(index = neurons, data = TSNE[0].T)
 ####################################################################################
 from sklearn.cluster import KMeans
 n_clusters = 2
-km = KMeans(n_clusters = n_clusters).fit(data)
+km = KMeans(n_clusters = n_clusters, init = 'random', random_state = np.random.randint(0, 100)).fit(data)
 
 tsne['cluster'] = km.labels_
 tsne['theta'] = theta.loc[tsne.index.values]['pvalue'] < 0.05

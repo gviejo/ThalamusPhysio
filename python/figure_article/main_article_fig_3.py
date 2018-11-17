@@ -51,7 +51,7 @@ allthetamodth['phase'] %= 2*np.pi
 
 spikes_theta_phase = cPickle.load(open('/mnt/DataGuillaume/MergedData/SPIKE_THETA_PHASE.pickle', 'rb'))
 
-
+sys.exit()
 ###############################################################################################################
 # PLOT11
 ###############################################################################################################
@@ -121,7 +121,7 @@ cb.set_label("z", labelpad = -13, y = 1.08, rotation = 0)
 ylabel("Thalamic neurons", labelpad = -5.0, y = 0.6)
 xlabel("Time from SWR (ms)")
 title("Sharp-waves Ripples \n modulation", fontsize = 7)
-text(-0.15, 1.17, "A", transform = gca().transAxes, fontsize = 8)
+text(-0.15, 1.17, "A", transform = gca().transAxes, fontsize = 9)
 
 ########################################################################
 # B. JPCA
@@ -134,7 +134,7 @@ plot(times, jX[:,1], color = '#58b09c')
 ylabel('jPC')
 xlabel('Time from SWR (ms)')
 title('jPCA', fontsize = 7, y = 1)
-text(-0.1, 1.14, "B", transform = gca().transAxes, fontsize = 8)
+text(-0.1, 1.14, "B", transform = gca().transAxes, fontsize = 9)
 
 ########################################################################
 # C. ORBIT
@@ -159,13 +159,13 @@ ax.xaxis.set_label_coords(0.15, -0.02)
 ax.yaxis.set_label_coords(-0.02, 0.15)
 ylabel('jPC2')
 xlabel('jPC1')
-text(-0.1, 1.14, "C", transform = gca().transAxes, fontsize = 8)
+text(-0.1, 1.14, "C", transform = gca().transAxes, fontsize = 9)
 
 ########################################################################
 # D circle
 ########################################################################
 ax = subplot(gs[1:,0:2])
-text(-0.05, 1.05, "D", transform = gca().transAxes, fontsize = 8)
+text(-0.05, 1.05, "D", transform = gca().transAxes, fontsize = 9)
 axis('off')
 axhline(0, xmin = 0.25, xmax = 0.75, color = '#386150', linewidth = 0.7)
 axvline(0, ymin = 0.25, ymax = 0.75, color = '#58b09c', linewidth = 0.7)
@@ -286,14 +286,14 @@ yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$',
 xlabel('Theta phase (rad)', labelpad = 1.2)
 ylabel('SWR jPCA phase (rad)')
 title(r'$r = 0.18, p = 2.3 \times 10^{-7}$',fontsize = 6)
-text(-0.1, 1.1, "E", transform = gca().transAxes, fontsize = 8)
+text(-0.1, 1.1, "E", transform = gca().transAxes, fontsize = 9)
 
 ########################################################################
 # F PHASE PHASE DENSITY
 ########################################################################
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[5])
 ax = subplot(gs[2,2])
-text(-0.1, 1.1, "F", transform = gca().transAxes, fontsize = 8)
+text(-0.1, 1.1, "F", transform = gca().transAxes, fontsize = 9)
 H, xedges, yedges = np.histogram2d(y, x, 50)
 H = gaussFilt(H, (3,3))
 H = H - H.min()

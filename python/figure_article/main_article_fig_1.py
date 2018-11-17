@@ -111,11 +111,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 4,               # LaTeX default is 10pt font.
-	"font.size": 8,
-	"legend.fontsize": 5,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 5,
-	"ytick.labelsize": 5,
+	"axes.labelsize": 6,               # LaTeX default is 10pt font.
+	"font.size": 7,
+	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 6,
+	"ytick.labelsize": 6,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -128,30 +128,32 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
-from mpl_toolkits.axes_grid.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 colors = ['red', 'green', 'blue', 'purple', 'orange']
 cmaps = ['Reds', 'Greens', 'Blues', 'Purples', 'Oranges']
 markers = ['o', '^', '*', 's']
 
-fig = figure(figsize = figsize(1.0))
+fig = figure(figsize = figsize(1.0), tight_layout=True)
+
+outergs = gridspec.GridSpec(3,2, figure = fig)
 
 #############################################
 # A. HISTOLOGY
 #############################################
-axA = fig.add_subplot(3,2,1)
+axA = fig.add_subplot(outergs[0,0])
 noaxis(axA)
 histo = imread("../../data/histology/Mouse17/Mouse17_2_Slice7_Thalamus_Dapi.png")
-text(5600.0, 500.0, "Shanks", rotation = -7, color = 'white', fontsize = 5)
+text(5600.0, 500.0, "Shanks", rotation = -7, color = 'white', fontsize = 8)
 imshow(histo, interpolation = 'bilinear', aspect= 'equal')
 xticks([], [])
 yticks([], [])
-axA.text(-0.2, 0.95, "A", transform = axA.transAxes, fontsize = 7)
+axA.text(-0.2, 0.95, "A", transform = axA.transAxes, fontsize = 9)
 
 #############################################
 # B. MAP AD + HD
 #############################################
-suB = fig.add_subplot(3,2,2)
+suB = fig.add_subplot(outergs[0,1])
 imshow(carte38_mouse17, extent = bound_map_38, interpolation = 'bilinear', aspect = 'equal')
 
 # for i,m in enumerate(['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']):
@@ -168,10 +170,10 @@ scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = 1, color = 'black', marker = '
 
 
 
-leg = legend(loc = 'lower left', fontsize = 4, title = 'HD recording sites', framealpha=1.0)
+leg = legend(loc = 'lower left', fontsize = 6, title = 'HD recording sites', framealpha=1.0)
 
 noaxis(suB)
-leg.get_title().set_fontsize(4)
+leg.get_title().set_fontsize(7)
 leg.get_frame().set_facecolor('white')
 
 annotate('Antero-dorsal (AD)', xy=(0.9,2.4), xytext=(0.9,2.7), xycoords='data', textcoords='data',
@@ -180,9 +182,9 @@ arrowprops=dict(facecolor='black',
 	headwidth=3,
 	headlength=2,
 	width=0.3),
-fontsize = 5, ha = 'left', va = 'bottom')
+fontsize = 7, ha = 'left', va = 'bottom')
 
-suB.text(-0.12, 0.96, "B", transform = suB.transAxes, fontsize = 7)
+suB.text(-0.12, 0.96, "B", transform = suB.transAxes, fontsize = 9)
 
 #############################################
 # C. Exemples of autocorrelogram
@@ -192,8 +194,8 @@ from matplotlib.lines import Line2D
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-suC = fig.add_subplot(3,2,3)
-gsC = gridspec.GridSpecFromSubplotSpec(3,3,subplot_spec=suC, hspace = 0.2, wspace = 0.6)
+# suC = fig.add_subplot(3,2,3)
+gsC = gridspec.GridSpecFromSubplotSpec(3,3,subplot_spec=outergs[1,0], hspace = 0.2, wspace = 0.6)
 axC = {}
 
 labels = ['1\nHD', '2\nNon-bursty', '3\nBursty']
@@ -220,15 +222,15 @@ for i in range(3):
 			axC[(i,l)].set_xticks([])
 			axC[(i,l)].set_xticklabels([])
 		if i == 0:
-			axC[(i,l)].set_title(titles[l], fontsize = 4)
+			axC[(i,l)].set_title(titles[l], fontsize = 7)
 		if l == 0:
 			# leg = legend(fancybox = False, framealpha = 0, loc='lower left', bbox_to_anchor=(-1, 0))
 			# axB[(i,l)].set_ylabel(labels[i], labelpad = 2.)
-			axC[(i,l)].text(-0.4, 0.5, labels[i], transform = axC[(i,l)].transAxes, ha = 'center', va = 'center', fontsize = 4, rotation = 'vertical')
+			axC[(i,l)].text(-0.5, 0.5, labels[i], transform = axC[(i,l)].transAxes, ha = 'center', va = 'center', fontsize = 7, rotation = 'vertical')
 		if i == 2:
-			axC[(i,l)].set_xlabel("Time (ms)", labelpad = 0.15)
+			axC[(i,l)].set_xlabel("Time (ms)", labelpad = 0.1)
 		if i == 0 and l == 0:
-			axC[(i,l)].text(-0.15, 1.15, "C", transform = axC[(i,l)].transAxes, fontsize = 7)
+			axC[(i,l)].text(-0.15, 1.15, "C", transform = axC[(i,l)].transAxes, fontsize = 9)
 
 
 
@@ -237,14 +239,14 @@ for i in range(3):
 #############################################
 # D. TSNE
 #############################################
-axD = fig.add_subplot(3,2,4)
+axD = fig.add_subplot(outergs[1,1])
 noaxis(axD)
-sc = scatter(space[space['cluster'] == 0][1]*-1.0, space[space['cluster'] == 0][0]*-1.0, s = 5, c = burst['sws'][space['cluster'] == 0].values, edgecolor = 'none', alpha = 1.0, label = '_nolegend_')
+sc = scatter(space[space['cluster'] == 0][1]*-1.0, space[space['cluster'] == 0][0]*-1.0, s = 6, c = burst['sws'][space['cluster'] == 0].values, edgecolor = 'none', alpha = 1.0, label = '_nolegend_')
 # hd
-scatter(space[space['cluster'] == 1][1]*-1.0, space[space['cluster'] == 1][0]*-1.0, s = 5, facecolor = 'red', edgecolor = 'none', alpha = 1.0, label = 'Cluster 2')
-scatter(space[space['hd'] == 1][1]*-1.0, space[space['hd'] == 1][0]*-1.0, s = 1, marker = 'o', facecolor = 'black', edgecolor = 'none', linewidth = 0.0, label = 'Head-direction neurons (HD)')
-axD.legend(fancybox=False, framealpha =0, fontsize = 4, loc = 'lower left', bbox_to_anchor=(-0.06, -0.022))
-title("TSNE Anterior thalamus", fontsize = 5)
+scatter(space[space['cluster'] == 1][1]*-1.0, space[space['cluster'] == 1][0]*-1.0, s = 6, facecolor = 'red', edgecolor = 'none', alpha = 1.0, label = 'Cluster 2')
+scatter(space[space['hd'] == 1][1]*-1.0, space[space['hd'] == 1][0]*-1.0, s = 2, marker = 'o', facecolor = 'black', edgecolor = 'none', linewidth = 0.0, label = 'HD')
+axD.legend(fancybox=False, framealpha =0, fontsize = 6, loc = 'lower left', bbox_to_anchor=(-0.05, -0.14))
+title("TSNE Anterior thalamus", fontsize = 7)
 
 # surrounding examples
 scatter(space.loc[neurontoplot,1]*-1.0, space.loc[neurontoplot,0]*-1.0, s = 12, facecolor = 'none', edgecolor = 'black')
@@ -257,15 +259,15 @@ for i, t in zip(range(3), txts):
 
 #colorbar	
 cax = inset_axes(axD, "30%", "4%",
-                   bbox_to_anchor=(-0.1, 0.17, 1, 1),
+                   bbox_to_anchor=(-0.04, 0.14, 1, 1),
                    bbox_transform=axD.transAxes, 
                    loc = 'lower left')
 cb = colorbar(sc, cax = cax, orientation = 'horizontal', ticks = [1, int(np.floor(burst['sws'].max()))])
 cb.set_label('Burstiness', labelpad = -4)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Cluster 1", fontsize = 4, pad = 2.5)
+cax.set_title("Cluster 1", fontsize = 6, pad = 2.5)
 
-axD.text(-0.1, 1.01, "D", transform = axD.transAxes, fontsize = 7)
+axD.text(-0.1, 1.01, "D", transform = axD.transAxes, fontsize = 9)
 
 
 
@@ -273,12 +275,13 @@ axD.text(-0.1, 1.01, "D", transform = axD.transAxes, fontsize = 7)
 #############################################
 # E. Burstiness 
 #############################################
-suE = fig.add_subplot(3,1,3)
-gs = gridspec.GridSpecFromSubplotSpec(2,5,subplot_spec = suE, width_ratios=[1,1,0.1,1,1], height_ratios=[0.1,1], wspace = 0.5)
+# suE = fig.add_subplot(3,1,3)
+gs = gridspec.GridSpecFromSubplotSpec(2,5,subplot_spec = outergs[2,:], width_ratios=[1,1,0.1,1,1], height_ratios=[0.1,1], wspace = 0.5)
 cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
 
 # cluster 1 HD
-suE1 = subplot(gs[1,0])
+suE1 = Subplot(fig, gs[1,0])
+fig.add_subplot(suE1)
 noaxis(suE1)
 tmp = rotated_images[1]
 tmp[tmp<0.0] = 0.0
@@ -286,33 +289,34 @@ imshow(tmp, extent = bound, alpha = 0.9, aspect = 'equal', cmap = 'Reds')
 imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
 ylabel('Cluster 2')
 #colorbar	
-cax = inset_axes(suE1, "3%", "20%",
-                   bbox_to_anchor=(0.8, 0, 1, 1),
+cax = inset_axes(suE1, "5%", "30%",
+                   bbox_to_anchor=(0.8, -0.2, 1, 1),
                    bbox_transform=suE1.transAxes, 
                    loc = 'lower left')
 cb = matplotlib.colorbar.ColorbarBase(cax, cmap='Reds', ticks = [0, 1])
 # cb = colorbar(sc, cax = cax, orientation = 'horizontal', ticks = [1, int(np.floor(burst['sws'].max()))])
-cb.set_label('Density', labelpad = -16)
+cb.set_label('Density', labelpad = -20)
 cb.ax.xaxis.set_tick_params(pad = 1)
 # cax.set_title("Cluster 2", fontsize = 4, pad = 2.5)
-suE1.text(-0.06, 1.05, "E", transform = suE1.transAxes, fontsize = 7)
+suE1.text(-0.06, 1.05, "E", transform = suE1.transAxes, fontsize = 9)
 
 # cluster 2 burstiness
-suE0 = subplot(gs[1,1])
+suE0 = Subplot(fig, gs[1,1])
+fig.add_subplot(suE0)
 noaxis(suE0)
 tmp = rotated_images[-1]
 imshow(tmp, extent = bound, alpha = 0.9, aspect = 'equal', cmap = 'viridis')
 imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
 ylabel("Cluster 1")
 #colorbar	
-cax = inset_axes(suE0, "3%", "20%",
-                   bbox_to_anchor=(0.8, 0, 1, 1),
+cax = inset_axes(suE0, "5%", "30%",
+                   bbox_to_anchor=(0.8, -0.2, 1, 1),
                    bbox_transform=suE0.transAxes, 
                    loc = 'lower left')
 
 cb = matplotlib.colorbar.ColorbarBase(cax, cmap='viridis', ticks = [0, 1])
 # cb = colorbar(sc, cax = cax, orientation = 'horizontal', ticks = [1, int(np.floor(burst['sws'].max()))])
-cb.set_label('Burstiness', labelpad = -16)
+cb.set_label('Burstiness', labelpad = -20)
 cb.ax.xaxis.set_tick_params(pad = 1)
 # cax.set_title("Cluster 2", fontsize = 4, pad = 2.5)
 # suD0.text(-0.05, 1.01, "E", transform = suD0.transAxes, fontsize = 7)
@@ -332,42 +336,60 @@ for m in ['12', '17','20', '32']:
 
 nucleus = ['AD', 'LDvl', 'AVd', 'MD', 'AVv', 'IAD', 'CM', 'AM', 'VA', 'Re']
 
+# mean all
+meanall = pd.DataFrame(index = nucleus, columns = ['mean','sem'])
+for n in nucleus:
+	tmp = burst[space['nucleus'] == n]
+	if len(tmp)>20:
+		meanall.loc[n,'mean'] = tmp.mean(0)['sws']
+		meanall.loc[n,'sem'] = tmp.sem(0)['sws']
+
+meanall = meanall.dropna()
+nucleus = meanall.index.values
 
 # axF = fig.add_subplot(3,4,11)
-axF = subplot(gs[1,3])
+axF = Subplot(fig, gs[1,3])
+fig.add_subplot(axF)
 simpleaxis(axF)
-mean_burst = mean_burst.loc[nucleus]
-mean_burst[0] = np.arange(len(nucleus))
-for i, m in enumerate(['17', '12','20', '32']):	
-	tmp = mean_burst[[m,0]].dropna()
-	plot(tmp[m], tmp[0], 'o', label = str(i+1), markersize = 2, linewidth = 1)
-plot(mean_burst.mean(1).values, mean_burst[0].values, 'o-', label = 'Mean', markersize = 2, linewidth = 1, color = 'black')
-leg = legend(frameon=False, bbox_to_anchor = (0.4, 1.15))
-leg.set_title("Mouse", prop={'size':5})
+# mean_burst = mean_burst.loc[nucleus]
+# mean_burst[0] = np.arange(len(nucleus))
+# for i, m in enumerate(['17', '12','20', '32']):	
+# 	tmp = mean_burst[[m,0]].dropna()
+# 	plot(tmp[m], tmp[0], 'o', label = str(i+1), markersize = 2, linewidth = 1)
+# plot(mean_burst.mean(1).values, mean_burst[0].values, 'o-', label = 'Mean', markersize = 2, linewidth = 1, color = 'black')
+x, s = (meanall['mean'].values.astype('float32'), meanall['sem'].values.astype('float32'))
+plot(x, np.arange(len(nucleus)), 'o-', label = 'Mean', markersize = 2, linewidth = 1, color = 'black')
+fill_betweenx(np.arange(len(nucleus)), x-s, x+s, color = 'grey', alpha = 0.5)
+leg = legend(frameon=False, bbox_to_anchor = (0.9, 1.15))
+# leg.set_title("Mouse", prop={'size':5})
 yticks(np.arange(len(nucleus)), nucleus)
-xlabel("Burstiness")
+xlabel("Burstiness SWS")
 ylabel("Nucleus")
 # annotate(s='', xy = (4,25), xytext=(6,25), arrowprops=dict(arrowstyle='<->'))
 # text(2.5, 24.5, 'Dorsal')
 # text(6, 24.5, 'Ventral')
 axF.invert_yaxis()
-axF.text(-0.1, 1.05, "F", transform = axF.transAxes, fontsize = 7)
+axF.text(-0.1, 1.05, "F", transform = axF.transAxes, fontsize = 9)
 
 
 #############################################################
 # G TSNE NUCLEUS DENSITY
 #############################################################
-axG = subplot(gs[1,4])
+count = pd.read_hdf("../../figures/figures_articles/figure1/count_time.h5")
+
+axG = Subplot(fig, gs[1,4])
+fig.add_subplot(axG)
 # axF = fig.add_subplot(3,4,12)
 simpleaxis(axG)
-ylabel("Density")
+ylabel("Clustering specificity of HD cells")
 xlabel("Time (ms)")
-axG.text(-0.1, 1.05, 'G', transform = axG.transAxes, fontsize = 7)
+axG.text(-0.1, 1.05, 'G', transform = axG.transAxes, fontsize = 9)
+semilogx(count.mean(1), 'o-', markersize = 2, color = 'black', linewidth = 1)
 
 # subplots_adjust(hspace = 0.9)
 
 
-savefig("../../figures/figures_articles/figart_1.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+savefig("../../figures/figures_articles/figart_1.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_1.pdf &")
 
 # # theta

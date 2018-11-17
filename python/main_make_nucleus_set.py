@@ -69,7 +69,7 @@ for m in mouses:
 				neuron_to_shank[s+'_'+str(n)] = (sessions.index(s),k)
 				neuron_to_channel[s+'_'+str(n)] = channelIndex[n]
 				df_mapping_nucleus.loc[s+'_'+str(n),'session'] = sessions.index(s)
-				df_mapping_nucleus.loc[s+'_'+str(n),'shank'] = k
+				df_mapping_nucleus.loc[s+'_'+str(n),'shank'] = 7-k
 				df_mapping_nucleus.loc[s+'_'+str(n),'channel'] = channelIndex[n]
 				df_mapping_nucleus.loc[s+'_'+str(n),'nucleus'] = data[m].loc[sessions.index(s), 7-k]
 				df_mapping_nucleus.loc[s+'_'+str(n),'hd'] = hd_info_neuron[n]

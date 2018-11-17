@@ -118,11 +118,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
 	# "font.family": "serif",
-	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-	"font.sans-serif": [],
+	# "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+	# "font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 6,               # LaTeX default is 10pt font.
-	"font.size": 6,
+	"axes.labelsize": 7,               # LaTeX default is 10pt font.
+	"font.size": 7,
 	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
 	"xtick.labelsize": 6,
 	"ytick.labelsize": 6,
@@ -138,63 +138,76 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
-from mpl_toolkits.axes_grid.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 colors = ['#444b6e', '#708b75', '#9ab87a']
 
-fig = figure(figsize = figsize(1.0))
+fig = figure(figsize = figsize(1.0), tight_layout = True)
 
-# outer = gridspec.GridSpec(2,1)
+outergs = gridspec.GridSpec(2,2, figure = fig)
 
 #############################################################################
 # A. THETA PHASE MODULATION
 #############################################################################
-axA = fig.add_subplot(2,2,1)
-gsA = gridspec.GridSpecFromSubplotSpec(2,4,subplot_spec = axA, wspace = 0.6,  width_ratios = [1,1,1,0.1])
+# axA = fig.add_subplot(2,2,1)
+gsA = gridspec.GridSpecFromSubplotSpec(2,4,subplot_spec = outergs[0,0], wspace = 0.6,  width_ratios = [1,1,1,0.1])
 
 for i, n in enumerate(neurons):	
 	# spikes
-	ax = subplot(gsA[0,i])
+	# ax = fig.add_subplot(gsA[0,i])
+	ax = Subplot(fig, gsA[0,i])
+	fig.add_subplot(ax)
 	simpleaxis(ax)
 	if neurons.index(n) == 1:
-		text(0.5, 1.17,'Theta phase modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 7)
+		text(0.5, 1.17,'Theta phase modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
 	if neurons.index(n) > 0:
 		ax.spines['left'].set_visible(False)	
 		yticks([], [])
 	if neurons.index(n) == 0:
 		ylabel("Theta cycles")
-		ax.text(-0.6, 1.14, "A", transform = ax.transAxes, fontsize = 8)
+		ax.text(-0.6, 1.14, "A", transform = ax.transAxes, fontsize = 9)
+	ax.spines['bottom'].set_visible(False)
 	sp = phase_spike[n]
 	plot(sp, '|', markersize = 1, color = colors[neurons.index(n)])
-	xticks([0, 2*np.pi], ['0', '$2\pi$'])
-	xlabel("phase (rad)")
+	xticks([], [])
+	# xticks([0, 2*np.pi], ['0', '$2\pi$'])
+	# xlabel("phase (rad)")
 	# polar plot
-	ax = subplot(gsA[1,i], projection = 'polar')	
+	# ax = fig.add_subplot(gsA[1,i], projection = 'polar')	
+	# axp = Subplot(fig, gsA[1,i])
+	axp = fig.add_subplot(gsA[1,i])
+	# fig.add_subplot(axp, projection = 'polar')
+	simpleaxis(axp)
 	tmp = phase_spike_theta[n].values
 	tmp += 2*np.pi
 	tmp %= 2*np.pi
-	hist(tmp,20, color = colors[neurons.index(n)])
+	axp.hist(tmp,20, color = colors[neurons.index(n)], density = True)
+	# a, b = np.histogram(tmp, 20)
+	# polar(np.linspace(0, 2*np.pi, 20), a)
 	# xlabel("Neuron "+str(neurons.index(n)+1), fontsize = 8)
-	xticks(np.arange(0, 2*np.pi, np.pi/4), ['0', '', '$\pi/2$', '', '$\pi$', '', '$3\pi/2$',''])
-	yticks([])	
-	ax.tick_params(axis='x', pad = -5)
-	grid(linestyle = '--')
-	ax.yaxis.grid(False)
-
+	# xticks(np.arange(0, 2*np.pi, np.pi/4), ['0', '', '$\pi/2$', '', '$\pi$', '', '$3\pi/2$',''])
+	xticks([0, 2*np.pi], ['0', '$2\pi$'])
+	# yticks([])	
+	# axp.tick_params(axis='x', pad = -5)
+	# grid(linestyle = '--')
+	# axp.yaxis.grid(False)
+	if i ==1 : xlabel("phase (rad)")
 
 #############################################################################
 # B. RIPPLES MODULATION
 #############################################################################
-axB = fig.add_subplot(2,2,2)
-gsB = gridspec.GridSpecFromSubplotSpec(5,3, subplot_spec = axB, wspace =0.6)
+# axB = fig.add_subplot(2,2,2)
+gsB = gridspec.GridSpecFromSubplotSpec(5,3, subplot_spec = outergs[0,1], wspace =0.6)
 for i, n in enumerate(neurons):	
 	# spikes
-	ax = subplot(gsB[0:2,i])
+	# ax = fig.add_subplot(gsB[0:2,i])
+	ax = Subplot(fig, gsB[0:2,i])
+	fig.add_subplot(ax)
 	simpleaxis(ax)
 	if neurons.index(n) == 1:
-		text(0.5, 1.23,'Ripples modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 7)
+		text(0.5, 1.23,'Ripples modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
 	if neurons.index(n) == 0:
 		ylabel("Ripple events")
-		ax.text(-0.6, 1.18, "B", transform = ax.transAxes, fontsize = 8)
+		ax.text(-0.6, 1.18, "B", transform = ax.transAxes, fontsize = 9)
 	if neurons.index(n) > 0:
 		ax.spines['left'].set_visible(False)	
 		yticks([], [])
@@ -204,7 +217,9 @@ for i, n in enumerate(neurons):
 	plot(sp, '|', markersize = 1, color = colors[neurons.index(n)])
 
 	# firing rate
-	ax = subplot(gsB[2,i])
+	# ax = fig.add_subplot(gsB[2,i])
+	ax = Subplot(fig, gsB[2,i])
+	fig.add_subplot(ax)
 	simpleaxis(ax)
 	ax.spines['bottom'].set_visible(False)	
 	H0[n] = gaussFilt(H0[n].values, (2,))
@@ -214,11 +229,13 @@ for i, n in enumerate(neurons):
 	axvline(0, color = 'grey', linewidth = 0.5)
 	xticks([], [])
 	if neurons.index(n) == 0:
-		ylabel('Firing \n rate (Hz)', verticalalignment = 'top', labelpad = 13.4)
+		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 13.6)
 		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.4, -0.5))	
 
 	# Z score
-	ax = subplot(gsB[3:,i])
+	# ax = fig.add_subplot(gsB[3:,i])
+	ax = Subplot(fig, gsB[3:,i])
+	fig.add_subplot(ax)
 	simpleaxis(ax)
 	z = pd.DataFrame((H0[n] - Hm[n])/Hstd.loc[n][0])
 	z['filt'] = gaussFilt(z.values.flatten(), (10,))
@@ -226,7 +243,7 @@ for i, n in enumerate(neurons):
 	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
 	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
 	if neurons.index(n) == 1:
-		xlabel('Time from ripples (ms)', fontsize = 6)
+		xlabel('Time from ripples (ms)', fontsize = 7)
 	if neurons.index(n) == 0:
 		ylabel('Modulation (z)', verticalalignment = 'bottom')
 	axvline(0, color = 'grey', linewidth = 0.5)	
@@ -236,9 +253,10 @@ for i, n in enumerate(neurons):
 ###############################################################################
 # C. MAPS THETA
 ###############################################################################
-axmap = fig.add_subplot(2,1,2)
-outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = axmap, width_ratios = [1,0.1,1,1,0.1,1])
-noaxis(axmap)
+# axmap = subplot(2,1)
+# axmap = 
+outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = outergs[1,:], width_ratios = [1,0.1,1,1,0.1,1])
+# noaxis(axmap)
 # axC = fig.add_subplot(2,4,5)
 axC = fig.add_subplot(outer[0,0])
 cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
@@ -249,7 +267,7 @@ bound = (tmp.columns[0], tmp.columns[-1], tmp.index[-1], tmp.index[0])
 im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'GnBu', vmin = 0, vmax = 1)
 imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
 # title("Theta spatial modulation", fontsize = 7, y = 1.3)
-axC.text(-0.05, 1.4, "Theta spatial modulation", transform = axC.transAxes, fontsize = 8)
+axC.text(-0.05, 1.3, "Theta spatial modulation", transform = axC.transAxes, fontsize = 8)
 #colorbar	
 cax = inset_axes(axC, "40%", "4%",
                    bbox_to_anchor=(0.2, 1.08, 1, 1),
@@ -258,9 +276,9 @@ cax = inset_axes(axC, "40%", "4%",
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 # cb.set_label('Density (p < 0.05)' , labelpad = -0)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Density (p < 0.01)", fontsize = 6, pad = 2.5)
+cax.set_title("Density (p < 0.01)", fontsize = 7, pad = 2.5)
 pos_nb = (-0.15, 1.1)
-axC.text(pos_nb[0],pos_nb[1], "C", transform = axC.transAxes, fontsize = 8)
+axC.text(pos_nb[0],pos_nb[1], "C", transform = axC.transAxes, fontsize = 9)
 ###############################################################################
 # D. MAPS SWR POS
 ###############################################################################
@@ -278,30 +296,11 @@ cax = inset_axes(axD, "40%", "4%",
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 # cb.set_label('Density (p < 0.05)' , labelpad = -0)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Density $t_{0 ms} > P_{60}$", fontsize = 6, pad = 2.5)
-axD.text(pos_nb[0],pos_nb[1], "D", transform = axD.transAxes, fontsize = 8)
+cax.set_title("Density $t_{0 ms} > P_{60}$", fontsize = 7, pad = 2.5)
+axD.text(pos_nb[0],pos_nb[1], "D", transform = axD.transAxes, fontsize = 9)
 # title("Ripples spatial modulation", fontsize = 7, y = 1.3)
-axD.text(0.4, 1.4, "Ripples spatial modulation", transform = axD.transAxes, fontsize = 8)
-# ###############################################################################
-# # E. MAPS POS SWR
-# ###############################################################################
-# # axE = fig.add_subplot(2,4,7)
-# axE = fig.add_subplot(outer[0,3])
-# noaxis(axE)
-# tmp = modulations['neu_swr']
-# im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Greens', vmin = 0, vmax = 1)
-# imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-# title("Ripples spatial modulation", fontsize = 7, y = 1.3)
-# #colorbar	
-# cax = inset_axes(axE, "40%", "4%",
-#                    bbox_to_anchor=(0.2, 1.08, 1, 1),
-#                    bbox_transform=axE.transAxes, 
-#                    loc = 'lower left')
-# cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
-# # cb.set_label('Density (p < 0.05)' , labelpad = -0)
-# cb.ax.xaxis.set_tick_params(pad = 1)
-# cax.set_title("$P_{40} < t_{0 ms} < P_{60}$", fontsize = 6, pad = 2.5)
-# axE.text(pos_nb[0],pos_nb[1], "E", transform = axE.transAxes, fontsize = 8)
+axD.text(0.4, 1.3, "Ripples spatial modulation", transform = axD.transAxes, fontsize = 8)
+
 ###############################################################################
 # E. MAPS NEG SWR
 ###############################################################################
@@ -319,8 +318,8 @@ cax = inset_axes(axE, "40%", "4%",
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 # cb.set_label('Density (p < 0.05)' , labelpad = -0)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("$t_{0 ms} < P_{40}$", fontsize = 6, pad = 2.5)
-axE.text(pos_nb[0],pos_nb[1], "E", transform = axE.transAxes, fontsize = 8)
+cax.set_title("$t_{0 ms} < P_{40}$", fontsize = 7, pad = 2.5)
+axE.text(pos_nb[0],pos_nb[1], "E", transform = axE.transAxes, fontsize = 9)
 
 ###############################################################################
 # F. THETA RIP MODULATION / NUCLEUS
@@ -362,14 +361,14 @@ for i, k in enumerate(['theta', 'rip']):
 	axes[i].fill_betweenx(np.arange(len(df)), m-s, m+s, alpha = 0.3, color = colors[i])
 yticks(np.arange(len(df)), df.index.values)
 axF.set_xlabel(r"Theta modulation ($\kappa$)", color = colors[0])
-axFF.set_xlabel("Ripples modulation (|z|)", color = colors[1])
+axFF.set_xlabel("Ripples energy (|z|)", color = colors[1])
 
-axF.text(-0.3, 1.0, "F", transform = axF.transAxes, fontsize = 8)
+axF.text(-0.3, 1.0, "F", transform = axF.transAxes, fontsize = 9)
 
 
 fig.subplots_adjust(hspace= 1)
 
-savefig("../../figures/figures_articles/figart_2.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+savefig("../../figures/figures_articles/figart_2.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_2.pdf &")
 
 
