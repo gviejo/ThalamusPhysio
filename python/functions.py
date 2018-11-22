@@ -951,7 +951,7 @@ def makeTSNE(data):
 	tsne = TSNE(n_components=2,
 				# early_exaggeration = 4, 
 				# n_iter = 10000,
-				perplexity = 50,
+				perplexity = 10,
 				# learning_rate = 500,
 				# min_grad_norm = 1e-12,
 				# n_iter_without_progress = 1000,

@@ -1,3 +1,5 @@
+
+
 import numpy as np
 import pandas as pd
 # from matplotlib.pyplot import plot,show,draw
@@ -10,70 +12,62 @@ from sklearn.decomposition import PCA
 import _pickle as cPickle
 import matplotlib.cm as cm
 import os
+from scipy.ndimage import gaussian_filter	
 
+def softmax(x, b1 = 10.0, b2 = 0.5, lb = 0.2):
+	x -= x.min()
+	x /= x.max()
+	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + lb)/(1.0+lb)
 
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-data = cPickle.load(open('../../figures/figures_articles/figure3/dict_fig3_article.pickle', 'rb'))
-allzth 			= 	data['swr_modth'	]
-eigen 			= 	data['eigen'		]		
-times 			= 	data['times' 		]
-allthetamodth 	= 	data['theta_modth'	]		
-phi 			= 	data['phi' 			]		
-zpca 			= 	data['zpca'			]		
-phi2			= 	data['phi2' 		]	 # jpca phase					
-jX				= 	data['rX'			]
-jscore			= 	data['jscore'		]
-force 			= 	data['force'		] # theta modulation
-variance 		= 	data['variance'		] # ripple modulation
-
-
-index = allzth[0].sort_values().index.values
-index = index[::-1]
-allzthsorted = allzth.loc[index]
-phi = phi.loc[index]
-phi2 = phi2.loc[index]
-allthetamodth = allthetamodth.loc[index]
-allthetamodth['phase'] += 2*np.pi
-allthetamodth['phase'] %= 2*np.pi
-
-data = pd.concat([phi2, allthetamodth['phase']], axis =1)
-data.columns = ['swr', 'theta']
-
-space = pd.read_hdf("../../figures/figures_articles/figure1/space.hdf5")
-
-data['nucleus'] = space.loc[index,['nucleus']]
-
-data = data.dropna()
-
 data_directory 	= '/mnt/DataGuillaume/MergedData/'
 datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
-burstiness 				= pd.HDFStore("/mnt/DataGuillaume/MergedData/BURSTINESS.h5")['w']
-theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
-theta 					= pd.DataFrame(	index = theta_ses['rem'], 
-									columns = ['phase', 'pvalue', 'kappa'],
-									data = theta_mod['rem'])
-rippower 				= pd.read_hdf("../../figures/figures_articles/figure2/power_ripples_2.h5")
+swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
+nbins 					= 400
+binsize					= 5
+times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+swr_mod 					= pd.DataFrame(	columns = swr_ses, 
+										index = times,
+										data = gaussFilt(swr_mod, (20,)).transpose())
+swr_mod = swr_mod.drop(swr_mod.columns[swr_mod.isnull().any()].values, axis = 1)
+swr_mod = swr_mod.loc[-500:500]
+
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 
-neurons = np.intersect1d(np.intersect1d(burstiness.index.values, theta.index.values), rippower.index.values)
+nbins 					= 200
+binsize					= 5
+times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+times2 					= swr_mod.index.values
 
+carte38_mouse17_2 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
+bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
 
+shifts = np.array([	[-0.34, 0.56],
+					[0.12, 0.6],
+					[-0.35, 0.75],
+					[-0.3, 0.5]
+				])
 
+angles = np.array([15.0, 10.0, 15.0, 20.0])
 
+nucleus = ['AD', 'AM', 'AVd', 'AVv', 'IAD', 'MD', 'PV', 'sm']
 
+swr_nuc = pd.DataFrame(index = swr_mod.index, columns = pd.MultiIndex.from_product([['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32'],nucleus,['mean', 'sem']]), data = 0)
 
+for m in ['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']:
+	subspace = pd.read_hdf("../../figures/figures_articles/figure1/subspace_"+m+".hdf5")
+	groups = subspace.groupby(['nucleus']).groups
+	for n in nucleus:				
+		swr_nuc[(m,n)] = pd.concat([swr_mod[groups[n]].mean(1),swr_mod[groups[n]].sem(1)], axis = 1).rename(columns={0:'mean',1:'sem'})
 
-
-
-
-
-sys.exit()
-
-
-
-
+swr_all = pd.DataFrame(index = swr_mod.index, columns = nucleus)
+neur = swr_mod.columns.values
+mappings = mappings.loc[neur]
+for n in nucleus:
+	swr_all[n] = swr_mod[mappings[mappings['nucleus'] == n].index.values].mean(1)
 
 
 ###############################################################################################################
@@ -84,7 +78,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*2.0          # height in inches
+	fig_height = fig_width*golden_mean*2.0            # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -113,7 +107,7 @@ def noaxis(ax):
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# mpl.use("pdf")
+mpl.use("pdf")
 pdf_with_latex = {                      # setup matplotlib to use latex for output
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
@@ -134,84 +128,138 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"axes.linewidth"        : 0.5,
 	"ytick.major.size"      : 1.0,
 	"xtick.major.size"      : 1.0
-	}      
+	}    
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
 from mpl_toolkits.axes_grid.inset_locator import inset_axes
-colors = ['#444b6e', '#708b75', '#9ab87a']
 
-fig = figure(figsize = figsize(1.0))
 
-#########################################################################
-# A HIST PHASE RIPPLES
-#########################################################################
-axA = subplot(3,2,1)
-simpleaxis(axA)
+fig = figure(figsize = figsize(1))
+gs = gridspec.GridSpec(3,1, wspace = 0.4, hspace = 0.5)
+# gs.update(hspace = 0.2)
+xs = [-0.4,0.35]
+ys = [-0.3,0.25]
 
-nucleus = np.unique(data['nucleus'])
-bins = np.linspace(0, 2*np.pi, 9)
-hist_rip = pd.DataFrame(index = list(bins[0:-1]+(bins[1]-bins[0])/2)+[2*np.pi+(bins[1]-bins[0])/2], columns = nucleus, data = 0)
+lbs = ['A', 'B', 'C', 'D']
+
+colors = ['blue', 'red', 'green', '#ff934f']
+ 
+toplot = pd.DataFrame(index = ['Mouse12','Mouse17','Mouse20','Mouse32'], columns = pd.MultiIndex.from_product([range(3),['start','end']]))
+for i,j,k in zip(range(3),[-80,120,250],[0,200,330]): 
+	toplot.loc['Mouse17',(i,'start')] = j
+	toplot.loc['Mouse17',(i,'end')] = k	
+
+
+alljpc = dict()
+pos = [1,0,2,3]
+
+i = 0
+m = 'Mouse17'
+gsm = gridspec.GridSpecFromSubplotSpec(2,4, subplot_spec = gs[i,:], height_ratios=[1,2])
+########################################################################
+# 1. Orbit
+########################################################################
+subplot(gsm[0,0])
+# simpleaxis(gca())
+noaxis(gca())
+
+data = cPickle.load(open("../../data/maps/"+m+".pickle", 'rb'))
+theta 	= data['movies']['theta']
+swr 	= data['movies']['swr']
+total 	= data['total']
+x 		= data['x']
+y 		= data['y']
+headdir = data['headdir']
+jpc 	= data['jpc']
+jpc 	= pd.DataFrame(index = times2, data = jpc)
+
+alljpc[m] = jpc
+plot(jpc.iloc[0,0], jpc.iloc[0,1], 'o', markersize = 3, color = 'grey')
+plot(jpc[0], jpc[1], linewidth = 0.8, color = 'grey')
+arrow(jpc.iloc[-3,0],jpc.iloc[-3,1],jpc.iloc[-2,0]-jpc.iloc[-3,0],jpc.iloc[-2,1]-jpc.iloc[-3,1], color = 'grey', head_width = 0.06)
+for j in range(3): 
+	plot(jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],0], jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],1], color = 'blue', alpha = 0.3)		
+
+
+gca().spines['left'].set_bounds(ys[0]+0.1,ys[0]+0.2)
+gca().spines['bottom'].set_bounds(ys[0]+0.1,ys[0]+0.2)
+xticks([], [])
+yticks([], [])	
+xlim(xs[0], xs[1])
+ylim(ys[0], ys[1])
+text(-0.15, 1.17, lbs[i], transform = gca().transAxes, fontsize = 9)
+
+
+
+########################################################################
+# 2. SWR NUCLEUS
+########################################################################
+subplot(gsm[1,0])
+simpleaxis(gca())
+for n in nucleus:
+	plot(swr_nuc[m][n]['mean'], '-', label = n)
+	# fill_between(times2, swr_nuc[m][n]['mean'].values - swr_nuc[m][n]['sem'].values, swr_nuc[m][n]['mean'].values + swr_nuc[m][n]['sem'], facecolor = 'grey', edgecolor = 'grey', alpha = 0.7)	
+for j in range(3): 
+	# axvline(toplot[m][j])
+	axvspan(toplot.loc[m,(j,'start')], toplot.loc[m,(j,'end')], alpha = 0.5)
+ylabel("SWR")
+xlabel("Times (ms)")
+legend(frameon=False,loc = 'lower left', bbox_to_anchor=(1.1,-0.4),handlelength=1,ncol = 4)
+
+########################################################################
+# 3. MAPS 
+########################################################################		
+bound = cPickle.load(open("../../figures/figures_articles/figure1/rotated_images_"+m+".pickle", 'rb'))['bound']
+newswr = []
+# for t in range(len(times2)):	
+for j in range(3):
+	tmp = swr[:,:,np.where(times2 == toplot.loc[m,(j,'start')])[0][0]:np.where(times2 == toplot.loc[m,(j,'end')])[0][0]].mean(-1)
+	xnew, ynew, frame = interpolate(tmp.copy(), x, y, 0.01)
+	frame = gaussian_filter(frame, (10, 10))
+	newswr.append(frame)
+newswr = np.array(newswr)
+newswr = newswr - newswr.min()
+newswr = newswr / newswr.max()	
+newswr = softmax(newswr, 10, 0.5, 0.0)
+for j in range(3):
+	subplot(gsm[:,j+1])
+	if j == 0: title("Mouse "+str(i+1))
+	noaxis(gca())
+	image = newswr[j]
+	h, w = image.shape
+	rotated_image = np.zeros((h*3, w*3))*np.nan
+	rotated_image[h:h*2,w:w*2] = image.copy() + 1.0	
+	rotated_image = rotateImage(rotated_image, -angles[pos[i]])
+	rotated_image[rotated_image == 0.0] = np.nan
+	rotated_image -= 1.0
+	tocrop = np.where(~np.isnan(rotated_image))
+	rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
+	imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'jet')
+	imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+	xlim(np.minimum(cut_bound_map[0],bound[0]),np.maximum(cut_bound_map[1],bound[1]))
+	ylim(np.minimum(cut_bound_map[2],bound[2]),np.maximum(cut_bound_map[3],bound[3]))
+	xlabel(str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
+
+
+########################################################################
+# B. ALL MOUSE
+########################################################################		
+gsm = gridspec.GridSpecFromSubplotSpec(len(nucleus),2, subplot_spec = gs[1,:])
+
 for i, n in enumerate(nucleus):
-	idx = np.digitize(data[data['nucleus'] == n]['swr'], bins)-1
-	for j in range(hist_rip.shape[0]):
-		hist_rip.iloc[j,i] = np.sum(idx == j)	
-
-hist_rip = hist_rip/hist_rip.max()
-hist_rip.iloc[-1] = hist_rip.iloc[0]
-
-# order_nucleus = hist_rip.idxmax().sort_values().index.values
-order_nucleus = ['AD', 'AVd', 'AVv', 'AM']
+	subplot(gsm[i,0])
+	imshow(swr_nuc.xs(n,1,1).xs('mean',1,1).T, aspect = 'auto', cmap = 'jet',
+		vmin = swr_nuc.min().min(),vmax = swr_nuc.max().max())
 
 
-for i, n in enumerate(order_nucleus):
-	plot(hist_rip[n]+i, label = n)
-yticks(np.arange(len(order_nucleus)), order_nucleus)
+# subplot(gsm[0,1])
+# simpleaxis(gca())
 
-#########################################################################
-# C ORBIT PHASE RIPPLES
-#########################################################################
-axC = subplot(3,2,3, projection = 'polar')
-# simpleaxis(axC)
-
-for i, n in enumerate(order_nucleus):
-	plot(hist_rip[n], label = n)
-
-
-#########################################################################
-# B HIST PHASE THETA
-#########################################################################
-axB = subplot(3,2,2)
-simpleaxis(axB)
-
-nucleus = np.unique(data['nucleus'])
-hist_theta = pd.DataFrame(index = list(bins[0:-1]+(bins[1]-bins[0])/2)+[2*np.pi+(bins[1]-bins[0])/2], columns = nucleus, data = 0)
-for i, n in enumerate(nucleus):
-	idx = np.digitize(data[data['nucleus'] == n]['theta'], bins)-1
-	for j in range(hist_theta.shape[0]):
-		hist_theta.iloc[j,i] = np.sum(idx == j)	
-
-hist_theta = hist_theta/hist_theta.max()
-hist_theta.iloc[-1] = hist_theta.iloc[0]
-
-# order_nucleus = hist_theta.idxmax().sort_values().index.values
-order_nucleus = ['AD', 'AVd', 'AVv', 'AM']
-
-for i, n in enumerate(order_nucleus):
-	plot(hist_theta[n]+i, label = n)
-yticks(np.arange(len(order_nucleus)), order_nucleus)
-
-
-
-#########################################################################
-# D ORBIT PHASE THETA
-#########################################################################
-axD = subplot(3,2,4, projection = 'polar')
-# simpleaxis(axD)
-
-for i, n in enumerate(order_nucleus):
-	plot(hist_theta[n], label = n)
+# subplot(gsm[0,2])
+# simpleaxis(gca())
 
 
 savefig("../../figures/figures_articles/figart_5.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_5.pdf &")
+

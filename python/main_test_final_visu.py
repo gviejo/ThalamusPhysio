@@ -75,69 +75,123 @@ autocorr2_sws = autocorr2_sws[2:2000]
 firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
 fr_index = firing_rate.index.values[((firing_rate >= 1.0).sum(1) == 3).values]
 # neurons = reduce(np.intersect1d, (burstiness.index.values, theta.index.values, rippower.index.values, fr_index))
-neurons = reduce(np.intersect1d, (fr_index, autocorr_sws.columns, autocorr2_rem.columns, theta_rem.columns, swr.columns, lambdaa.index.values))
+neurons = reduce(np.intersect1d, (autocorr_sws.columns, autocorr2_rem.columns, theta_rem.columns, swr.columns, lambdaa.index.values))
 
 # neurons = np.array([n for n in neurons if 'Mouse17' in n])
 
 nucleus = ['AD', 'AM', 'AVd', 'AVv', 'VA', 'LDvl', 'CM']
 # neurons = np.intersect1d(neurons, mappings.index[mappings['nucleus'].isin(nucleus)])
 
+###########################################################################################################
+# AVERAGING OVER SHANKS
+###########################################################################################################
+
+shank_swr 			= pd.DataFrame(index = swr.index)
+shank_autoc_rem 	= pd.DataFrame(index = autocorr_rem.index)
+shank_autoc_wak 	= pd.DataFrame(index = autocorr_wak.index)
+shank_autoc_sws 	= pd.DataFrame(index = autocorr_sws.index)
+shank_autoc2_rem 	= pd.DataFrame(index = autocorr2_rem.index)
+shank_autoc2_wak 	= pd.DataFrame(index = autocorr2_wak.index)
+shank_thetahist_wak = pd.DataFrame(index = theta_hist.index)
+shank_thetahist_rem = pd.DataFrame(index = theta_hist.index)
+animals = []
+index = []
+nuc = []
+for m in ['Mouse12','Mouse17','Mouse20','Mouse32']:
+	groups = mappings.loc[neurons][mappings.loc[neurons].index.str.contains(m)].groupby(['shank','session']).groups
+	for k in groups.keys():
+		# if len(groups[k])>=3:
+			shank_swr[(m,k[0],k[1])] 	= swr[groups[k]].mean(1)
+			shank_autoc_rem[(m,k[0],k[1])] 			= autocorr_rem[groups[k]].mean(1)
+			shank_autoc_wak[(m,k[0],k[1])] 			= autocorr_wak[groups[k]].mean(1)
+			shank_autoc_sws[(m,k[0],k[1])] 			= autocorr_sws[groups[k]].mean(1)
+			shank_autoc2_rem[(m,k[0],k[1])] 			= autocorr2_rem[groups[k]].mean(1)
+			shank_autoc2_wak[(m,k[0],k[1])] 			= autocorr2_wak[groups[k]].mean(1)
+			shank_thetahist_wak[(m,k[0],k[1])] 		= theta_hist[groups[k]].xs('wak',1,1).mean(1)
+			shank_thetahist_rem[(m,k[0],k[1])] 		= theta_hist[groups[k]].xs('rem',1,1).mean(1)
+			animals.append(m)
+			index.append((m,k[0],k[1]))
+			nucnuc = np.unique(mappings.loc[groups[k],'nucleus'])
+			if len(nucnuc)>1: sys.exit()
+			nuc.append(nucnuc[0])
+
+shank_info 			= pd.DataFrame(index = index, columns = ['mouse', 'nucleus'])
+shank_info['mouse'] = animals
+shank_info['nucleus'] = nuc
 ############################################################################################################
 # STACKING DIMENSIONS
 ############################################################################################################
 from sklearn.decomposition import PCA
 
 
-pc_short_rem = PCA(n_components=1).fit_transform(autocorr_rem[neurons].values.T)
-pc_short_wak = PCA(n_components=1).fit_transform(autocorr_wak[neurons].values.T)
-pc_short_sws = PCA(n_components=1).fit_transform(autocorr_sws[neurons].values.T)
-pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
-pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
-pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
-pc_long = PCA(n_components=1).fit_transform(autocorr2_rem[neurons].values.T)
-pc_long = np.log((pc_long - pc_long.min(axis=0))+1) 
+pc_short_rem = PCA(n_components=3).fit_transform(shank_autoc_rem.values.T)
+pc_short_wak = PCA(n_components=3).fit_transform(shank_autoc_wak.values.T)
+pc_short_sws = PCA(n_components=3).fit_transform(shank_autoc_sws.values.T)
+# pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
+# pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
+# pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
+pc_long_wak = PCA(n_components=3).fit_transform(shank_autoc2_wak.values.T)
+pc_long_rem = PCA(n_components=3).fit_transform(shank_autoc2_rem.values.T)
+# pc_long = np.log((pc_long - pc_long.min(axis=0))+1) 
+# pc_long = np.log((pc_long - pc_long.min(axis=0))+1) 
 # pc_long = np.log(lambdaa.loc[neurons].values[:,np.newaxis])
 # pc_theta = np.hstack([np.cos(theta.loc[neurons,'phase']).values[:,np.newaxis],np.sin(theta.loc[neurons,'phase']).values[:,np.newaxis],np.log(theta.loc[neurons,'kappa'].values[:,np.newaxis])])
-pc_theta = np.hstack([np.log(theta.loc[neurons,'kappa'].values[:,np.newaxis])])
-pc_swr   = np.hstack([np.log(rippower.loc[neurons].values[:,np.newaxis])])
+# pc_theta = np.hstack([np.log(theta.loc[neurons,'kappa'].values[:,np.newaxis])])
+pc_thta_rem = PCA(n_components = 3).fit_transform(shank_thetahist_rem.values.T)
+pc_thta_wak = PCA(n_components = 3).fit_transform(shank_thetahist_wak.values.T)
 # pc_theta = PCA(n_components=3).fit_transform(theta_rem[neurons].values.T)
 # pc_theta = np.log((pc_theta - pc_theta.min(axis = 0))+1)
-# pc_swr 	 = PCA(n_components=3).fit_transform(swr[neurons].values.T)
+# pc_swr   = np.hstack([np.log(rippower.loc[neurons].values[:,np.newaxis])])
+pc_swr 	 = PCA(n_components=3).fit_transform(shank_swr.values.T)
 # pc_swr 	 = np.log((pc_swr - pc_swr.min(axis = 0))+1)
 # pc_theta -= pc_theta.min(axis = 0)
 # pc_swr 	 -= pc_swr.min(axis = 0)
 # pc_theta = np.log(pc_theta+1)
 # pc_swr 	 = np.log(pc_swr+1)
-# data = []
-# for tmp in [autocorr_sws[neurons].values.T,autocorr2_rem[neurons].values.T,theta_rem[neurons].values.T,swr[neurons].values.T]:
-# 	tmp = tmp - tmp.min()
-# 	tmp = tmp / tmp.max()
-# 	data.append(tmp)
 
-data = np.hstack([pc_short_rem, pc_short_sws, pc_long, pc_short_wak, pc_long, pc_theta, pc_swr])
-# data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
-# data = np.hstack([pc_theta, pc_swr])
+data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak, pc_long_wak, pc_long_rem, pc_thta_rem, pc_thta_wak, pc_swr])
 
-# mds = MDS(n_components = 2, metric = True).fit_transform(data.values)
-# scatter(mds[:,0], mds[:,1])
-# show()
+# data = np.vstack([
+# 					shank_swr.values,
+# 					shank_autoc_rem.values,
+# 					shank_autoc_wak.values,
+# 					shank_autoc_sws.values,
+# 					shank_autoc2_rem.values,
+# 					shank_autoc2_wak.values,
+# 					shank_thetahist_rem.values,
+# 					shank_thetahist_wak.values
+# 				]).T
 
-tsne = TSNE(n_components = 2, perplexity = 5).fit_transform(data)
+
+
+tsne = TSNE(n_components = 2, perplexity = 6).fit_transform(data)
 # tsne = LocallyLinearEmbedding(n_neighbors=20,n_components=2).fit_transform(data)
 # tsne = Isomap(n_neighbors=20,n_components=2).fit_transform(data)
 # tsne = SpectralEmbedding(n_components=2,n_neighbors=50).fit_transform(data)
+allnucleus = list(np.unique(shank_info['nucleus'].values))
+label = np.array([allnucleus.index(n) for n in shank_info['nucleus'].values])
+
+scatter(tsne[:,0], tsne[:,1], c= label)
+show()
 
 #########################################################################################
 # CLUSTERING
 #########################################################################################
 # klu = KMeans(n_clusters=5).fit(data).labels_
-n_clusters = 5
+n_clusters = 4
 klu = AgglomerativeClustering(n_clusters=n_clusters).fit(data).labels_
 
-mappings.loc[neurons,'AC'] = klu
+shank_info['AC'] = klu
 
-names = mappings.loc[neurons, 'nucleus'].copy()
-nuccolors = names.replace(to_replace=np.unique(names), value=np.arange(len(np.unique(names))))
+# names = mappings.loc[neurons, 'nucleus'].copy()
+# nuccolors = names.replace(to_replace=np.unique(names), value=np.arange(len(np.unique(names))))
+
+scatter(tsne[:,0], tsne[:,1], c = klu)
+
+
+
+
+
 
 
 #########################################################################################

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 
 import numpy as np
@@ -11,71 +10,46 @@ from functions import *
 from pylab import *
 from sklearn.decomposition import PCA
 import _pickle as cPickle
-import neuroseries as nts
+import matplotlib.cm as cm
 import os
 
+###############################################################################################################
+# TO LOAD
+###############################################################################################################
+count_nucl = pd.DataFrame(columns = ['12', '17','20', '32'])
 
+for m in ['12', '17','20', '32']:
+	subspace = pd.read_hdf("../../figures/figures_articles/figure1/subspace_Mouse"+m+".hdf5")	
+	nucleus = np.unique(subspace['nucleus'])		
+	total = [np.sum(subspace['nucleus'] == n) for n in nucleus]
+	count_nucl[m] = pd.Series(index = nucleus, data = total)	
+nucleus = list(count_nucl.dropna().index.values)
+nucleus.remove('sm')
+
+
+mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
+lambdaa  = pd.read_hdf("/mnt/DataGuillaume/MergedData/LAMBDA_AUTOCORR.h5")
+# nucleus = np.unique(mappings['nucleus'])
+lambdaa_nucleus = pd.DataFrame(	index = nucleus, 
+								columns = pd.MultiIndex.from_product([['wak', 'rem', 'sws'], ['mean', 'sem']], 
+								names = ['episode', 'mean-sem']))
+for n in nucleus:
+	tmp = lambdaa.loc[mappings.index[mappings['nucleus'] == n]].dropna()
+	tmp = tmp.xs(('b'), 1, 1)
+	tmp = tmp[((tmp>0.0).all(1) & (tmp<3.0).all(1))]
+	for e in ['wak', 'rem', 'sws']:
+		lambdaa_nucleus.loc[n,(e,'mean')] = tmp[e].mean(skipna=True)
+		lambdaa_nucleus.loc[n,(e,'sem')] = tmp[e].sem(skipna=True)
 
 data_directory 	= '/mnt/DataGuillaume/MergedData/'
 datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
-session 		= 'Mouse12/Mouse12-120810'
-neurons 		= [session.split("/")[1]+"_"+str(u) for u in [38,37,40]]
-# start_rip, end_rip = (92150000,92950000)
-# start_rip, end_rip = (92550000,92880000)
-# start_theta, end_theta = (5843120000,5844075000)
-
-path_snippet 	= "../../figures/figures_articles/figure2/"
-store 			= pd.HDFStore(path_snippet+'snippet_'+session.split("/")[1]+'.h5')
-phase_spike 	= pd.HDFStore(path_snippet+'spikes_'+session.split("/")[1]+'.h5')
-spike_in_swr 	= pd.HDFStore(path_snippet+'spikes_in_swr_'+session.split("/")[1]+'.h5')		
-modulations 	= pd.HDFStore(path_snippet+'modulation_theta2_swr_Mouse17.h5')
-
-H0 = store['H0']
-Hm = store['Hm']
-Hstd = store['Hstd']
-# lfp_filt_hpc_swr = store['lfp_filt_hpc_swr']
-# lfp_filt_hpc_theta = store['lfp_filt_hpc_theta']
-# lfp_hpc_swr = store['lfp_hpc_swr']
-# lfp_hpc_theta = store['lfp_hpc_theta']
-phase_spike_theta = {
-'Mouse12-120810_37':store['phase_spike_theta_Mouse12-120810_37'],
-'Mouse12-120810_38':store['phase_spike_theta_Mouse12-120810_38'],
-'Mouse12-120810_40':store['phase_spike_theta_Mouse12-120810_40']	
-}
-# spikes_swr_ex = {
-# 'Mouse12-120810_37':store['spike_swrMouse12-120810_37'],
-# 'Mouse12-120810_38':store['spike_swrMouse12-120810_38'],
-# 'Mouse12-120810_40':store['spike_swrMouse12-120810_40']	
-# }
-# spikes_theta_ex = {
-# 'Mouse12-120810_37':store['spike_thetaMouse12-120810_37'],
-# 'Mouse12-120810_38':store['spike_thetaMouse12-120810_38'],
-# 'Mouse12-120810_40':store['spike_thetaMouse12-120810_40']	
-# }
-# swr_ep = store['swr_ep']
-
-# generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
-# shankStructure 	= loadShankStructure(generalinfo)
-# if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
-# 	hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][1][0][0] - 1
-# else:
-# 	hpc_channel 	= generalinfo['channelStructure'][0][0][1][0][0][0][0] - 1	
-# spikes,shank	= loadSpikeData(data_directory+session+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
-# allneurons 		= [session.split("/")[1]+"_"+str(list(spikes.keys())[i]) for i in spikes.keys()]
-
-# theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
-# theta_mod_rem 	= pd.DataFrame(index = theta_ses['rem'], columns = ['phase', 'pvalue', 'kappa'], data = theta_mod['rem'])
-# theta_mod_rem 	= theta_mod_rem.loc[allneurons]
-# theta_mod_rem['phase'] += 2*np.pi
-# theta_mod_rem['phase'] %= 2*np.pi
-# theta_mod_rem 	= theta_mod_rem.sort_values('phase')
-# allneurons_sorted = theta_mod_rem.index.values
-
-carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
-bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
+theta 					= pd.DataFrame(	index = theta_ses['rem'], 
+									columns = ['phase', 'pvalue', 'kappa'],
+									data = theta_mod['rem'])
 
 
-###############################################################################################################
+
 ###############################################################################################################
 # PLOT
 ###############################################################################################################
@@ -84,7 +58,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.2          # height in inches
+	fig_height = fig_width*golden_mean*0.5           # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -107,8 +81,6 @@ def noaxis(ax):
 	ax.set_yticks([])
 	# ax.xaxis.set_tick_params(size=6)
 	# ax.yaxis.set_tick_params(size=6)
-
-
 
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -134,243 +106,172 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"axes.linewidth"        : 0.5,
 	"ytick.major.size"      : 1.0,
 	"xtick.major.size"      : 1.0
-	}      
+	}     
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-colors = ['#444b6e', '#708b75', '#9ab87a']
-
-fig = figure(figsize = figsize(1.0), tight_layout = True)
-
-outergs = gridspec.GridSpec(2,2, figure = fig)
-
-#############################################################################
-# A. THETA PHASE MODULATION
-#############################################################################
-# axA = fig.add_subplot(2,2,1)
-gsA = gridspec.GridSpecFromSubplotSpec(2,4,subplot_spec = outergs[0,0], wspace = 0.6,  width_ratios = [1,1,1,0.1])
-
-for i, n in enumerate(neurons):	
-	# spikes
-	# ax = fig.add_subplot(gsA[0,i])
-	ax = Subplot(fig, gsA[0,i])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	if neurons.index(n) == 1:
-		text(0.5, 1.17,'Theta phase modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
-	if neurons.index(n) > 0:
-		ax.spines['left'].set_visible(False)	
-		yticks([], [])
-	if neurons.index(n) == 0:
-		ylabel("Theta cycles")
-		ax.text(-0.6, 1.14, "A", transform = ax.transAxes, fontsize = 9)
-	ax.spines['bottom'].set_visible(False)
-	sp = phase_spike[n]
-	plot(sp, '|', markersize = 1, color = colors[neurons.index(n)])
-	xticks([], [])
-	# xticks([0, 2*np.pi], ['0', '$2\pi$'])
-	# xlabel("phase (rad)")
-	# polar plot
-	# ax = fig.add_subplot(gsA[1,i], projection = 'polar')	
-	# axp = Subplot(fig, gsA[1,i])
-	axp = fig.add_subplot(gsA[1,i])
-	# fig.add_subplot(axp, projection = 'polar')
-	simpleaxis(axp)
-	tmp = phase_spike_theta[n].values
-	tmp += 2*np.pi
-	tmp %= 2*np.pi
-	axp.hist(tmp,20, color = colors[neurons.index(n)], density = True)
-	# a, b = np.histogram(tmp, 20)
-	# polar(np.linspace(0, 2*np.pi, 20), a)
-	# xlabel("Neuron "+str(neurons.index(n)+1), fontsize = 8)
-	# xticks(np.arange(0, 2*np.pi, np.pi/4), ['0', '', '$\pi/2$', '', '$\pi$', '', '$3\pi/2$',''])
-	xticks([0, 2*np.pi], ['0', '$2\pi$'])
-	# yticks([])	
-	# axp.tick_params(axis='x', pad = -5)
-	# grid(linestyle = '--')
-	# axp.yaxis.grid(False)
-	if i ==1 : xlabel("phase (rad)")
-
-#############################################################################
-# B. RIPPLES MODULATION
-#############################################################################
-# axB = fig.add_subplot(2,2,2)
-gsB = gridspec.GridSpecFromSubplotSpec(5,3, subplot_spec = outergs[0,1], wspace =0.6)
-for i, n in enumerate(neurons):	
-	# spikes
-	# ax = fig.add_subplot(gsB[0:2,i])
-	ax = Subplot(fig, gsB[0:2,i])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	if neurons.index(n) == 1:
-		text(0.5, 1.23,'Ripples modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
-	if neurons.index(n) == 0:
-		ylabel("Ripple events")
-		ax.text(-0.6, 1.18, "B", transform = ax.transAxes, fontsize = 9)
-	if neurons.index(n) > 0:
-		ax.spines['left'].set_visible(False)	
-		yticks([], [])
-	ax.spines['bottom'].set_visible(False)	
-	xticks([], [])
-	sp = spike_in_swr[n][np.arange(0, 500)]
-	plot(sp, '|', markersize = 1, color = colors[neurons.index(n)])
-
-	# firing rate
-	# ax = fig.add_subplot(gsB[2,i])
-	ax = Subplot(fig, gsB[2,i])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	ax.spines['bottom'].set_visible(False)	
-	H0[n] = gaussFilt(H0[n].values, (2,))
-	plot(H0[n].loc[-500:500], color = colors[neurons.index(n)], label = '', linewidth = 0.7)
-	plot(Hm[n].loc[-500:500], ':', color = colors[neurons.index(n)], label = 'Jitter', linewidth = 0.7)
-
-	axvline(0, color = 'grey', linewidth = 0.5)
-	xticks([], [])
-	if neurons.index(n) == 0:
-		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 13.6)
-		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.4, -0.5))	
-
-	# Z score
-	# ax = fig.add_subplot(gsB[3:,i])
-	ax = Subplot(fig, gsB[3:,i])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	z = pd.DataFrame((H0[n] - Hm[n])/Hstd.loc[n][0])
-	z['filt'] = gaussFilt(z.values.flatten(), (10,))
-
-	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
-	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
-	if neurons.index(n) == 1:
-		xlabel('Time from ripples (ms)', fontsize = 7)
-	if neurons.index(n) == 0:
-		ylabel('Modulation (z)', verticalalignment = 'bottom')
-	axvline(0, color = 'grey', linewidth = 0.5)	
-	ylim(-2,3)
-	yticks([-1,0,1,2,3])
-
-###############################################################################
-# C. MAPS THETA
-###############################################################################
-# axmap = subplot(2,1)
-# axmap = 
-outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = outergs[1,:], width_ratios = [1,0.1,1,1,0.1,1])
-# noaxis(axmap)
-# axC = fig.add_subplot(2,4,5)
-axC = fig.add_subplot(outer[0,0])
-cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
-
-noaxis(axC)
-tmp = modulations['theta']
-bound = (tmp.columns[0], tmp.columns[-1], tmp.index[-1], tmp.index[0])
-im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'GnBu', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-# title("Theta spatial modulation", fontsize = 7, y = 1.3)
-axC.text(-0.05, 1.3, "Theta spatial modulation", transform = axC.transAxes, fontsize = 8)
-#colorbar	
-cax = inset_axes(axC, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
-                   bbox_transform=axC.transAxes, 
-                   loc = 'lower left')
-cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
-# cb.set_label('Density (p < 0.05)' , labelpad = -0)
-cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Density (p < 0.01)", fontsize = 7, pad = 2.5)
-pos_nb = (-0.15, 1.1)
-axC.text(pos_nb[0],pos_nb[1], "C", transform = axC.transAxes, fontsize = 9)
-###############################################################################
-# D. MAPS SWR POS
-###############################################################################
-# axD = fig.add_subplot(2,4,6)
-axD = fig.add_subplot(outer[0,2])
-noaxis(axD)
-tmp = modulations['pos_swr']
-im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Reds', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-#colorbar	
-cax = inset_axes(axD, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
-                   bbox_transform=axD.transAxes, 
-                   loc = 'lower left')
-cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
-# cb.set_label('Density (p < 0.05)' , labelpad = -0)
-cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Density $t_{0 ms} > P_{60}$", fontsize = 7, pad = 2.5)
-axD.text(pos_nb[0],pos_nb[1], "D", transform = axD.transAxes, fontsize = 9)
-# title("Ripples spatial modulation", fontsize = 7, y = 1.3)
-axD.text(0.4, 1.3, "Ripples spatial modulation", transform = axD.transAxes, fontsize = 8)
-
-###############################################################################
-# E. MAPS NEG SWR
-###############################################################################
-# axF = fig.add_subplot(2,4,8)
-axE = fig.add_subplot(outer[0,3])
-noaxis(axE)
-tmp = modulations['neg_swr']
-im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Greens', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-#colorbar	
-cax = inset_axes(axE, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
-                   bbox_transform=axE.transAxes, 
-                   loc = 'lower left')
-cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
-# cb.set_label('Density (p < 0.05)' , labelpad = -0)
-cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("$t_{0 ms} < P_{40}$", fontsize = 7, pad = 2.5)
-axE.text(pos_nb[0],pos_nb[1], "E", transform = axE.transAxes, fontsize = 9)
-
-###############################################################################
-# F. THETA RIP MODULATION / NUCLEUS
-###############################################################################
-# axF = fig.add_subplot(2,4,8)
-axF = fig.add_subplot(outer[0,5])
-simpleaxis(axF)
-# theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
-# theta 					= pd.DataFrame(	index = theta_ses['rem'], 
-# 									columns = ['phase', 'pvalue', 'kappa'],
-# 									data = theta_mod['rem'])
-rippower 				= pd.read_hdf("../../figures/figures_articles/figure2/power_ripples_2.h5")
-mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
-nucleus = np.unique(mappings['nucleus'])
-df = pd.DataFrame(index = nucleus, columns = pd.MultiIndex.from_product([['theta', 'rip'], ['mean', 'sem']]))
-
-theta2 = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5")
-
-theta = theta2['rem']
-
-for n in nucleus:
-	neurons = mappings[mappings['nucleus'] == n].index.values
-	df.loc[n,('theta','mean')] = theta.loc[neurons,'kappa'].mean(skipna=True)
-	df.loc[n,('theta','sem')] = theta.loc[neurons,'kappa'].sem(skipna=True)
-	df.loc[n,('rip','mean')] = rippower.loc[neurons].mean(skipna=True)
-	df.loc[n,('rip','sem')] = rippower.loc[neurons].sem(skipna=True)
-
-df = df.sort_values([('rip', 'mean')])
-
-df = df.drop(['sm', 'U'])
-labels = ['Theta', 'Ripples']
-axFF = axF.twiny()
-axes = [axF, axFF]
-colors = ['royalblue', 'firebrick']
-for i, k in enumerate(['theta', 'rip']):
-	m = df[k]['mean'].values.astype('float32')
-	s = df[k]['sem'].values.astype('float32')
-	axes[i].plot(m, np.arange(len(df)), 'o-', label = labels[i], markersize = 3, linewidth = 1, color = colors[i])
-	axes[i].fill_betweenx(np.arange(len(df)), m-s, m+s, alpha = 0.3, color = colors[i])
-yticks(np.arange(len(df)), df.index.values)
-axF.set_xlabel(r"Theta modulation ($\kappa$)", color = colors[0])
-axFF.set_xlabel("Ripples energy (|z|)", color = colors[1])
-
-axF.text(-0.3, 1.0, "F", transform = axF.transAxes, fontsize = 9)
+from mpl_toolkits.axes_grid.inset_locator import inset_axes
 
 
-fig.subplots_adjust(hspace= 1)
+fig = figure(figsize = figsize(1))
 
-savefig("../../figures/figures_articles/figart_2.pdf", dpi = 900, facecolor = 'white')
+ax1 = subplot(211)
+
+# outer = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)#, height_ratios = [1,3])#, width_ratios = [1.6,0.7]) 
+# gs = gridspec.GridSpec(2,3, wspace = 0.35, hspace = 0.35)#, wspace = 0.4, hspace = 0.4)
+# gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[0])
+# gs = gridspec.GridSpecFromSubplotSpec(3, 4, subplot_spec = ax1)
+colors = ['red', 'blue', 'green']
+
+###################################################################################################
+# A. AUTOCORRELOGRAM EXEMPLE
+###################################################################################################
+autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_LONG.h5")
+axA = subplot(1,3,1)
+simpleaxis(axA)
+
+
+def func(x, a, b, c):
+	return a*np.exp(-(1./b)*x) + c
+
+
+labels = ['AD (HD)', 'AM', 'IAD']
+colors = ['darkgreen', 'darkblue', 'darkred']
+
+
+hd = 'Mouse12-120807_28'
+iad = 'Mouse12-120817_52'
+nhd = 'Mouse12-120819_3'
+###########
+index = mappings[np.logical_and(mappings['hd'] == 1, mappings['nucleus'] == 'AD')].index.values
+best = (lambdaa.loc[index,('wak','b')] - lambdaa_nucleus.loc['AD', ('wak', 'mean')]).dropna().abs().sort_values().index.values
+hd = best[0]
+
+index = mappings[np.logical_and(mappings['hd'] == 0, mappings['nucleus'] == 'AVd')].index.values
+best = (lambdaa.loc[index,('wak','b')] - lambdaa_nucleus.loc['AVd', ('wak', 'mean')]).dropna().abs().sort_values().index.values
+nhd = best[0]
+
+index = mappings[np.logical_and(mappings['hd'] == 0, mappings['nucleus'] == 'IAD')].index.values
+best = (lambdaa.loc[index,('wak','b')] - lambdaa_nucleus.loc['IAD', ('wak', 'mean')]).dropna().abs().sort_values().index.values
+iad = best[0]
+
+	
+
+for i, n in enumerate([hd, nhd, iad]):	
+	tmp = autocorr['wak'][n].copy()
+	tmp.loc[0] = 0.0
+	tmp = tmp.loc[tmp.loc[0.1:25.0].argmax():]
+	tmp2 = tmp.rolling(window = 100, win_type='gaussian', center=True, min_periods=1).mean(std=5.0)
+	tmp3 = tmp2 - tmp2.min()
+	tmp3 = tmp3 / tmp3.max()
+
+	tmp3 = tmp3.loc[:2500]
+
+	plot(tmp3.index.values*1e-3, tmp3.values, label = labels[i], color = colors[i])
+	x = tmp3.index.values*1e-3
+	y = func(x, *lambdaa.loc[n, 'wak'].values)
+	if i == 2:
+		plot(x, y, '--', color = 'grey', label = "Exp fit \n " r"$y=a e^{\frac{-t}{\tau}} + b$")
+	else:
+		plot(x, y, '--', color = 'grey')
+
+# show()
+
+
+legend(edgecolor = None, facecolor = None, frameon = False, bbox_to_anchor=(0.5, 1.1), bbox_transform=axA.transAxes)
+xlabel("Time (s)")
+ylabel("Autocorrelation (a.u)")
+locator_params(nbins = 4)
+
+axA.text(-0.1, 1.05, "A", transform = axA.transAxes, fontsize = 9)
+
+###################################################################################################
+# B. LAMBDA AUTOCORRELOGRAM / NUCLEUS
+###################################################################################################
+axB = subplot(1,3,2)
+simpleaxis(axB)
+order = lambdaa_nucleus[('wak', 'mean')].sort_values().index
+
+labels = ['Wake', 'REM']
+
+for i, ep in enumerate(['wak', 'rem']):
+	m = lambdaa_nucleus.loc[order,(ep,'mean')].values.astype('float32')
+	s = lambdaa_nucleus.loc[order,(ep,'sem')].values.astype('float32')
+	plot(m, np.arange(len(order)), 'o-', color = colors[i], label = labels[i], markersize = 3, linewidth = 1)
+	fill_betweenx(np.arange(len(order)), m+s, m-s, color = colors[i], alpha = 0.3)
+
+legend(edgecolor = None, facecolor = None, frameon = False)
+yticks(np.arange(len(order)), order)
+ylabel("Nucleus")	
+xlabel(r"Exp fit $\tau$ (s)")
+locator_params(axis = 'x', nbins = 4)
+
+axB.text(-0.1, 1.05, "B", transform = axB.transAxes, fontsize = 9)
+
+###################################################################################################
+# C. BURSTINESS VS LAMBDA
+###################################################################################################
+axC = subplot(1, 3,3)
+simpleaxis(axC)
+
+# firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
+# fr_index = firing_rate.index.values[((firing_rate[['wake', 'rem']] > 1.0).sum(1) == 2).values]
+
+
+burst = pd.HDFStore("/mnt/DataGuillaume/MergedData/BURSTINESS.h5")['w']
+idx = lambdaa['rem']['b'].index
+
+df = pd.concat([burst['sws'].loc[idx], lambdaa['wak']['b'].loc[idx]], axis = 1).rename(columns={'sws':'burst','b':'lambda'})
+
+df = df[np.logical_and(df['burst']<25,df['lambda']<3)]
+
+
+from scipy.stats import pearsonr
+
+scatter(df['burst'].values, df['lambda'].values, 4, color = colors[0], alpha = 0.5, edgecolors = 'none')
+xlabel("Burstiness")
+ylabel(r"Exp fit $\tau$ (s)")
+
+a, b = pearsonr(df['burst'].values, df['lambda'].values)
+
+print(a, b)
+axC.text(0.5, 1.0, "r="+str(np.round(a, 3))+" (p<0.001)", transform = axC.transAxes, fontsize = 6)
+
+
+axC.text(-0.1, 1.05, "C", transform = axC.transAxes, fontsize = 9)
+
+
+###################################################################################################
+# C. BURSTINESS VS LAMBDA
+###################################################################################################
+df = pd.concat([theta['kappa'].loc[idx], lambdaa['rem']['b'].loc[idx]], axis = 1).rename(columns={'b':'lambda'})
+df = df[np.logical_and(df['kappa']<1,df['lambda']<3)]
+df = df[df['lambda'] > 0]
+
+####################################################################################
+# ANOVAS
+####################################################################################
+import scipy.stats as stats
+neurons = [n for n in lambdaa.index.values if mappings.loc[n,'nucleus'] in nucleus]
+
+
+# 1 tau vs nucleus
+group1 = mappings.loc[neurons].groupby('nucleus').groups
+F1 = stats.f_oneway(*[lambdaa.loc[group1[n]].xs(('b'),1,1)[['wak', 'rem']].values.flatten() for n in nucleus])
+# 2 tau vs brain-states
+group2 = {	'wak':lambdaa.loc[neurons,('wak','b')].values,
+			'rem':lambdaa.loc[neurons,('rem','b')].values}
+F2 = stats.f_oneway(*[group2[k] for k in group2.keys()])
+# 3 tau vs animal
+group3 = {m:np.hstack([lambdaa.loc[n,[('wak','b'), ('rem','b')]].values for n in neurons if m in n]) for m in ['Mouse12', 'Mouse17','Mouse20','Mouse32']}
+F3 = stats.f_oneway(*[group3[k] for k in group3.keys()])
+
+
+
+
+fig.subplots_adjust(wspace= 0.4, hspace = 0.6)
+
+
+savefig("../../figures/figures_articles/figart_2.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_2.pdf &")
-
-
-
 

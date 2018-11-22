@@ -106,102 +106,72 @@ autocorr_wak = store_autocorr['wake']
 autocorr_rem = store_autocorr['rem']
 autocorr_sws = store_autocorr['sws']
 
-# sws_index = autocorr_sws.columns.values[((autocorr_sws.loc[0.5:1.0]<0.4).all()).values]
-# wak_index = autocorr_wak.columns.values[((autocorr_wak.loc[0.5:1.0]<0.4).all()).values]
-# rem_index = autocorr_rem.columns.values[((autocorr_rem.loc[0.5:1.0]<0.4).all()).values]
-
-# neurons = np.intersect1d(np.intersect1d(wak_index, rem_index), sws_index)
-# neurons = np.intersect1d(np.intersect1d(rem_index, sws_index), fr_index)
-
 # 1. starting at 2
 autocorr_wak = store_autocorr['wake'].loc[0.5:]
 autocorr_rem = 	store_autocorr['rem'].loc[0.5:]
 autocorr_sws = 	store_autocorr['sws'].loc[0.5:]
-# autocorr_wak.loc[0.0] = 0.0
-# autocorr_rem.loc[0.0] = 0.0
-# autocorr_sws.loc[0.0] = 0.0
 
-# sws_index = autocorr_sws.columns.values[((autocorr_sws.loc[0.5:1.0]<0.4).all()).values]
-
-# 2. ISI 2 to 50
-# store_isi = pd.HDFStore("/mnt/DataGuillaume/MergedData/ISI_ALL.h5")
-# isi_wak = store_isi['wake'][2:30]
-# isi_rem = store_isi['rem'][2:30]
-# isi_sws = store_isi['sws'][2:30]
-
- # # # 2. greater than 0
-# autocorr_wak = autocorr_wak.drop(autocorr_wak.columns[autocorr_wak.apply(lambda col: (col == 0).sum() >= 4)], axis = 1)
-# autocorr_rem = autocorr_rem.drop(autocorr_rem.columns[autocorr_rem.apply(lambda col: (col == 0).sum() >= 4)], axis = 1)
-# autocorr_sws = autocorr_sws.drop(autocorr_sws.columns[autocorr_sws.apply(lambda col: (col == 0).sum() >= 4)], axis = 1)
-# # # # # 3. lower than 200 
+# 3. lower than 200 
 autocorr_wak = autocorr_wak.drop(autocorr_wak.columns[autocorr_wak.apply(lambda col: col.max() > 100.0)], axis = 1)
 autocorr_rem = autocorr_rem.drop(autocorr_rem.columns[autocorr_rem.apply(lambda col: col.max() > 100.0)], axis = 1)
 autocorr_sws = autocorr_sws.drop(autocorr_sws.columns[autocorr_sws.apply(lambda col: col.max() > 100.0)], axis = 1)
 # # 4. gauss filt
-autocorr_wak = autocorr_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
-autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
-autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
-
+autocorr_wak = autocorr_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
+autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
+autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
 
 autocorr_wak = autocorr_wak[2:200]
 autocorr_rem = autocorr_rem[2:200]
 autocorr_sws = autocorr_sws[2:200]
 
-# isi_wak = isi_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
-# isi_rem = isi_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
-# isi_sws = isi_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 1.0)
-
 # 6 combining all 
 neurons = np.intersect1d(np.intersect1d(autocorr_wak.columns, autocorr_rem.columns), autocorr_sws.columns)
 neurons = np.intersect1d(neurons, fr_index)
-# neurons = fr_index
-# neurons = autocorr_sws.columns
 
-# autocorr = pd.concat([autocorr_wak[neurons],autocorr_rem[neurons],autocorr_sws[neurons],isi_wak[neurons],isi_rem[neurons],isi_sws[neurons]], ignore_index = False)
-# autocorr = pd.concat([autocorr_sws[neurons]], ignore_index = False)
-autocorr = pd.concat([autocorr_sws[neurons],autocorr_rem[neurons],autocorr_wak[neurons]], ignore_index = False)
-# autocorr = autocorr_sws[neurons]
-# autocorr = pd.concat([autocorr_rem.loc[2.5:20,neurons],autocorr_sws.loc[2.5:20,neurons]], ignore_index = False)
-# autocorr = autocorr.apply(zscore)
+# # 7 doing PCA
+# pc_short_rem = PCA(n_components=10).fit_transform(autocorr_rem[neurons].values.T)
+# pc_short_wak = PCA(n_components=10).fit_transform(autocorr_wak[neurons].values.T)
+# pc_short_sws = PCA(n_components=10).fit_transform(autocorr_sws[neurons].values.T)
+# # pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
+# # pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
+# # pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
 
-if autocorr.isnull().any().any(): autocorr = autocorr.dropna(axis = 1, how = 'any')
+# data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
 
-
-# data = np.hstack((pca_wak, pca_rem, pca_sws))
-
-data = autocorr.values.T
-
-# data = autocorr_sws[neurons].values.T
-
-neurons = autocorr.columns
+data = np.hstack([autocorr_sws[neurons].values.T,autocorr_rem[neurons].values.T,autocorr_wak[neurons].values.T])
 
 ####################################################################################
 # TSNE
 ####################################################################################
-n = 10
+n = 20
 TSNE, divergence = makeAllTSNE(data, n)
 
+figure()
 for i in range(n):
+	subplot(4,5,i+1)
 	tmp = pd.DataFrame(index = neurons, data = TSNE[i].T)
-	figure()	
 	scatter(tmp[0], tmp[1], s = 10)
 	scatter(tmp.loc[hd_index,0], tmp.loc[hd_index,1], s = 3)
-	show()
-
-
-tsne = pd.DataFrame(index = neurons, data = TSNE[0].T)
+	title(i)
+show()
 
 sys.exit()
+
+tsne = pd.DataFrame(index = neurons, data = TSNE[16].T)
+
+
 
 
 ####################################################################################
 # K MEANS
 ####################################################################################
-from sklearn.cluster import KMeans
+from sklearn.cluster import *
 n_clusters = 2
-km = KMeans(n_clusters = n_clusters, init = 'random', random_state = np.random.randint(0, 100)).fit(data)
 
-tsne['cluster'] = km.labels_
+labels = KMeans(n_clusters = n_clusters, init = 'random', random_state = np.random.randint(0, 1000000)).fit(data).labels_
+# labels = AgglomerativeClustering(n_clusters).fit(data).labels_
+
+tsne['cluster'] = labels
 tsne['theta'] = theta.loc[tsne.index.values]['pvalue'] < 0.05
 tsne['hd'] = 0
 tsne.loc[np.intersect1d(hd_index, tsne.index.values), 'hd'] = 1
