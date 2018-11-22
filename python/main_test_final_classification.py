@@ -29,7 +29,7 @@ theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_m
 theta 					= pd.DataFrame(	index = theta_ses['rem'], 
 									columns = ['phase', 'pvalue', 'kappa'],
 									data = theta_mod['rem'])
-rippower 				= pd.read_hdf("../figures/figures_articles/figure2/power_ripples_2.h5")
+# rippower 				= pd.read_hdf("../figures/figures_articles/figure2/power_ripples_2.h5")
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 swr_phase = pd.read_hdf("/mnt/DataGuillaume/MergedData/SWR_PHASE.h5")
 
@@ -158,13 +158,13 @@ for i,n in enumerate(nucleus):
 mean_score = mean_score.loc[nucleus].sort_values('score', ascending=False)
 
 
-mean_score_random = pd.DataFrame(index = nucleus,columns = np.arange(5))
-for i in mean_score_random.columns:
+mean_score_random = pd.DataFrame(index = nucleus,columns = np.arange(10))
+for i in range(mean_score_random.shape[1]):
 	tmp = labels.copy()
 	np.random.shuffle(tmp)
-	clf_random = LogisticRegressionCV(cv = 8, random_state = np.random.randint(100), multi_class='multinomial', verbose = 3, n_jobs = 8, max_iter = 100).fit(data, tmp)
+	clf_random = LogisticRegressionCV(cv = 5, random_state = np.random.randint(100), multi_class='multinomial', verbose = 3, n_jobs = 8, max_iter = 100).fit(data, tmp)
 	for j,n in enumerate(nucleus):
-		mean_score_random.loc[n,i] = clf.score(data[labels==j], labels[labels==j])
+		mean_score_random.loc[n,i] = clf_random.score(data[labels==j], labels[labels==j])
 
 
 p = clf.predict_proba(data)
