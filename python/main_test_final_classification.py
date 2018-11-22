@@ -88,7 +88,7 @@ neurons = reduce(np.intersect1d, (fr_index, autocorr_sws.columns, autocorr2_rem.
 count_nucl = pd.DataFrame(columns = ['12', '17','20', '32'])
 
 for m in ['12', '17','20', '32']:
-	subspace = pd.read_hdf("../figures/figures_articles/figure1/subspace_Mouse"+m+".hdf5")	
+	subspace = pd.read_hdf("/mnt/DataGuillaume/MergedData/subspace_Mouse"+m+".hdf5")
 	nucleus = np.unique(subspace['nucleus'])
 	total = [np.sum(subspace['nucleus'] == n) for n in nucleus]
 	count_nucl[m] = pd.Series(index = nucleus, data = total)
