@@ -129,17 +129,17 @@ neurons = np.intersect1d(np.intersect1d(autocorr_wak.columns, autocorr_rem.colum
 neurons = np.intersect1d(neurons, fr_index)
 
 # # 7 doing PCA
-# pc_short_rem = PCA(n_components=10).fit_transform(autocorr_rem[neurons].values.T)
-# pc_short_wak = PCA(n_components=10).fit_transform(autocorr_wak[neurons].values.T)
-# pc_short_sws = PCA(n_components=10).fit_transform(autocorr_sws[neurons].values.T)
-# # pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
-# # pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
-# # pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
+# pc_short_rem = PCA(n_components=30).fit_transform(autocorr_rem[neurons].values.T)
+# pc_short_wak = PCA(n_components=30).fit_transform(autocorr_wak[neurons].values.T)
+# pc_short_sws = PCA(n_components=30).fit_transform(autocorr_sws[neurons].values.T)
+# pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
+# pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
+# pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
 
 # data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
 
 data = np.hstack([autocorr_sws[neurons].values.T,autocorr_rem[neurons].values.T,autocorr_wak[neurons].values.T])
-
+# data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
 ####################################################################################
 # TSNE
 ####################################################################################
@@ -157,7 +157,7 @@ show()
 
 sys.exit()
 
-tsne = pd.DataFrame(index = neurons, data = TSNE[16].T)
+tsne = pd.DataFrame(index = neurons, data = TSNE[0].T)
 
 
 
@@ -168,8 +168,22 @@ tsne = pd.DataFrame(index = neurons, data = TSNE[16].T)
 from sklearn.cluster import *
 n_clusters = 2
 
-labels = KMeans(n_clusters = n_clusters, init = 'random', random_state = np.random.randint(0, 1000000)).fit(data).labels_
-# labels = AgglomerativeClustering(n_clusters).fit(data).labels_
+# data2 = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
+
+# labels = KMeans(n_clusters = n_clusters, algorithm = 'elkan', init = 'random', n_init = 100, max_iter = 100000, tol = 1e-2, random_state = np.random.randint(0, 1000000)).fit(data).labels_
+# labels = KMeans(n_clusters = n_clusters, init = 'random', n_init = 100, max_iter = 100000, tol = 1e-10, random_state = np.random.randint(0, 1000000)).fit(data).labels_
+# labels = AgglomerativeClustering(n_clusters, affinity = 'cosine', linkage = 'complete').fit(data).labels_
+# scatter(tsne[0], tsne[1], c = labels);show()
+# labels = GaussianMixture(n_components = 2,
+# 						covariance_type='tied',
+# 						tol=1e-6,
+# 						max_iter = 1000,
+# 						n_init = 10).fit(data).predict(data)
+# labels = DBSCAN(eps = 20.0, min_samples=10, algorithm = 'kd_tree').fit(data).labels_
+
+
+
+
 
 tsne['cluster'] = labels
 tsne['theta'] = theta.loc[tsne.index.values]['pvalue'] < 0.05
@@ -177,7 +191,7 @@ tsne['hd'] = 0
 tsne.loc[np.intersect1d(hd_index, tsne.index.values), 'hd'] = 1
 
 
-scatter(tsne[0], tsne[1], c = tsne['cluster']);show()
+
 
 
 

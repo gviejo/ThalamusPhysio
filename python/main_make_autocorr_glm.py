@@ -36,17 +36,15 @@ mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 # COMPARING LENGTH OF AUTOCORR FOR KMEANS
 #########################################################################################
 # cuttime = np.arange(10,5000,10)
-cuttime = np.geomspace(10, 5000, num = 40, dtype = np.int)
+cuttime = np.unique(np.geomspace(2, 5000, num = 40, dtype = np.int))
 n_repeat = 100
 score = pd.DataFrame(index = cuttime, columns = ['score'])
 ct = 0
 
+
 for c in cuttime:
 	print(ct)
 	ct+=1
-	autocorr_wak = store_autocorr['wak']
-	autocorr_rem = store_autocorr['rem']
-	autocorr_sws = store_autocorr['sws']
 	autocorr_wak = store_autocorr['wak'].loc[0.5:]
 	autocorr_rem = store_autocorr['rem'].loc[0.5:]
 	autocorr_sws = store_autocorr['sws'].loc[0.5:]
@@ -60,7 +58,7 @@ for c in cuttime:
 	neurons = autocorr.columns
 	hd = mappings.loc[neurons, 'hd'].values.astype('int')
 	data = autocorr.values.T	
-	clf = LogisticRegressionCV(cv = 8, random_state = 0).fit(data, hd)
+	clf = LogisticRegressionCV(cv = 8, random_state = 0, n_jobs = 8).fit(data, hd)
 	# test
 	# idx = np.hstack((np.where(hd)[0],np.random.choice(np.where(~hd)[0], np.sum(hd), replace=False)))
 	idx = np.where(hd)[0]
@@ -68,9 +66,11 @@ for c in cuttime:
 	# score.loc[c] = clf.predict_proba(data[idx])[:,1].mean()
 	
 
+sys.exit()
+
 score.to_hdf("../figures/figures_articles/figure1/score_logreg.h5", 'count')
 
-sys.exit()
+
 
 
 

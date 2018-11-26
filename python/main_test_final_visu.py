@@ -23,8 +23,9 @@ lambdaa = lambdaa[np.logical_and(lambdaa>0.0,lambdaa<30.0)]
 
 theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
 theta 					= pd.DataFrame(	index = theta_ses['rem'], 
-									columns = ['phase', 'pvalue', 'kappa'],
-									data = theta_mod['rem'])
+										columns = pd.MultiIndex.from_product([['wak', 'rem'], ['phase', 'pvalue', 'kappa']]),
+										data = np.hstack((theta_mod['wake'], theta_mod['rem'])))
+theta 					= theta.dropna()
 rippower 				= pd.read_hdf("../figures/figures_articles/figure2/power_ripples_2.h5")
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 swr_phase = pd.read_hdf("/mnt/DataGuillaume/MergedData/SWR_PHASE.h5")
@@ -74,9 +75,9 @@ autocorr2_sws = autocorr2_sws[2:2000]
 ############################################################################################################
 firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
 fr_index = firing_rate.index.values[((firing_rate >= 1.0).sum(1) == 3).values]
-# neurons = reduce(np.intersect1d, (burstiness.index.values, theta.index.values, rippower.index.values, fr_index))
-neurons = reduce(np.intersect1d, (autocorr_sws.columns, autocorr2_rem.columns, theta_rem.columns, swr.columns, lambdaa.index.values))
-
+# neurons = reduce(np.intersect1d, (burstiness.index.values, theta.index.values, rippower.index.values))
+# neurons = reduce(np.intersect1d, (autocorr_sws.columns, autocorr2_rem.columns, theta_rem.columns, swr.columns, lambdaa.index.values))
+neurons = reduce(np.intersect1d, (autocorr_rem.columns, autocorr_wak.columns, autocorr_sws.columns, autocorr2_wak.columns, autocorr2_rem.columns, theta.index.values, rippower.index.values))
 # neurons = np.array([n for n in neurons if 'Mouse17' in n])
 
 nucleus = ['AD', 'AM', 'AVd', 'AVv', 'VA', 'LDvl', 'CM']
@@ -94,6 +95,8 @@ shank_autoc2_rem 	= pd.DataFrame(index = autocorr2_rem.index)
 shank_autoc2_wak 	= pd.DataFrame(index = autocorr2_wak.index)
 shank_thetahist_wak = pd.DataFrame(index = theta_hist.index)
 shank_thetahist_rem = pd.DataFrame(index = theta_hist.index)
+shank_theta_mod		= pd.DataFrame(columns = ['wak', 'rem'])
+shank_swr_mod 		= pd.DataFrame(columns = ['power'])
 animals = []
 index = []
 nuc = []
@@ -101,19 +104,22 @@ for m in ['Mouse12','Mouse17','Mouse20','Mouse32']:
 	groups = mappings.loc[neurons][mappings.loc[neurons].index.str.contains(m)].groupby(['shank','session']).groups
 	for k in groups.keys():
 		# if len(groups[k])>=3:
-			shank_swr[(m,k[0],k[1])] 	= swr[groups[k]].mean(1)
-			shank_autoc_rem[(m,k[0],k[1])] 			= autocorr_rem[groups[k]].mean(1)
-			shank_autoc_wak[(m,k[0],k[1])] 			= autocorr_wak[groups[k]].mean(1)
-			shank_autoc_sws[(m,k[0],k[1])] 			= autocorr_sws[groups[k]].mean(1)
-			shank_autoc2_rem[(m,k[0],k[1])] 			= autocorr2_rem[groups[k]].mean(1)
-			shank_autoc2_wak[(m,k[0],k[1])] 			= autocorr2_wak[groups[k]].mean(1)
-			shank_thetahist_wak[(m,k[0],k[1])] 		= theta_hist[groups[k]].xs('wak',1,1).mean(1)
-			shank_thetahist_rem[(m,k[0],k[1])] 		= theta_hist[groups[k]].xs('rem',1,1).mean(1)
+			ind = m+'_'+str(k[0])+'_'+str(k[1])
+			shank_swr[ind] 	= swr[groups[k]].mean(1)
+			shank_autoc_rem[ind] 			= autocorr_rem[groups[k]].mean(1)
+			shank_autoc_wak[ind] 			= autocorr_wak[groups[k]].mean(1)
+			shank_autoc_sws[ind] 			= autocorr_sws[groups[k]].mean(1)
+			shank_autoc2_rem[ind] 			= autocorr2_rem[groups[k]].mean(1)
+			shank_autoc2_wak[ind] 			= autocorr2_wak[groups[k]].mean(1)
+			shank_thetahist_wak[ind] 		= theta_hist[groups[k]].xs('wak',1,1).mean(1)
+			shank_thetahist_rem[ind] 		= theta_hist[groups[k]].xs('rem',1,1).mean(1)
+			shank_theta_mod.loc[ind]		= theta.loc[groups[k]].xs('kappa',1,1).mean(0)
+			shank_swr_mod.loc[ind] 		= rippower.loc[groups[k]].mean()
 			animals.append(m)
-			index.append((m,k[0],k[1]))
+			index.append(ind)
 			nucnuc = np.unique(mappings.loc[groups[k],'nucleus'])
 			if len(nucnuc)>1: sys.exit()
-			nuc.append(nucnuc[0])
+			nuc.append(nucnuc[0])			
 
 shank_info 			= pd.DataFrame(index = index, columns = ['mouse', 'nucleus'])
 shank_info['mouse'] = animals
@@ -124,32 +130,36 @@ shank_info['nucleus'] = nuc
 from sklearn.decomposition import PCA
 
 
-pc_short_rem = PCA(n_components=3).fit_transform(shank_autoc_rem.values.T)
-pc_short_wak = PCA(n_components=3).fit_transform(shank_autoc_wak.values.T)
-pc_short_sws = PCA(n_components=3).fit_transform(shank_autoc_sws.values.T)
+pc_short_rem = PCA(n_components=2).fit_transform(shank_autoc_rem.values.T)
+pc_short_wak = PCA(n_components=2).fit_transform(shank_autoc_wak.values.T)
+pc_short_sws = PCA(n_components=2).fit_transform(shank_autoc_sws.values.T)
 # pc_short_rem = np.log((pc_short_rem - pc_short_rem.min(axis = 0))+1)
 # pc_short_wak = np.log((pc_short_wak - pc_short_wak.min(axis = 0))+1)
 # pc_short_sws = np.log((pc_short_sws - pc_short_sws.min(axis = 0))+1)
-pc_long_wak = PCA(n_components=3).fit_transform(shank_autoc2_wak.values.T)
-pc_long_rem = PCA(n_components=3).fit_transform(shank_autoc2_rem.values.T)
+pc_long_wak = PCA(n_components=2).fit_transform(shank_autoc2_wak.values.T)
+pc_long_rem = PCA(n_components=2).fit_transform(shank_autoc2_rem.values.T)
 # pc_long = np.log((pc_long - pc_long.min(axis=0))+1) 
 # pc_long = np.log((pc_long - pc_long.min(axis=0))+1) 
 # pc_long = np.log(lambdaa.loc[neurons].values[:,np.newaxis])
 # pc_theta = np.hstack([np.cos(theta.loc[neurons,'phase']).values[:,np.newaxis],np.sin(theta.loc[neurons,'phase']).values[:,np.newaxis],np.log(theta.loc[neurons,'kappa'].values[:,np.newaxis])])
 # pc_theta = np.hstack([np.log(theta.loc[neurons,'kappa'].values[:,np.newaxis])])
-pc_thta_rem = PCA(n_components = 3).fit_transform(shank_thetahist_rem.values.T)
-pc_thta_wak = PCA(n_components = 3).fit_transform(shank_thetahist_wak.values.T)
+pc_theta = shank_theta_mod.values
+# pc_thta_rem = PCA(n_components = 3).fit_transform(shank_thetahist_rem.values.T)
+# pc_thta_wak = PCA(n_components = 3).fit_transform(shank_thetahist_wak.values.T)
 # pc_theta = PCA(n_components=3).fit_transform(theta_rem[neurons].values.T)
 # pc_theta = np.log((pc_theta - pc_theta.min(axis = 0))+1)
+pc_swr 	= shank_swr_mod.values
 # pc_swr   = np.hstack([np.log(rippower.loc[neurons].values[:,np.newaxis])])
-pc_swr 	 = PCA(n_components=3).fit_transform(shank_swr.values.T)
+# pc_swr 	 = PCA(n_components=3).fit_transform(shank_swr.values.T)
 # pc_swr 	 = np.log((pc_swr - pc_swr.min(axis = 0))+1)
 # pc_theta -= pc_theta.min(axis = 0)
 # pc_swr 	 -= pc_swr.min(axis = 0)
 # pc_theta = np.log(pc_theta+1)
 # pc_swr 	 = np.log(pc_swr+1)
 
-data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak, pc_long_wak, pc_long_rem, pc_thta_rem, pc_thta_wak, pc_swr])
+# data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak, pc_long_wak, pc_long_rem, pc_thta_rem, pc_thta_wak, pc_swr])
+
+data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak, pc_long_wak, pc_long_rem, pc_theta, pc_swr])
 
 # data = np.vstack([
 # 					shank_swr.values,
@@ -162,9 +172,10 @@ data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak, pc_long_wak, pc_long
 # 					shank_thetahist_wak.values
 # 				]).T
 
+# ONLY MOUSE 17
+# idx = np.where(shank_info['mouse'].values == 'Mouse17')[0]
 
-
-tsne = TSNE(n_components = 2, perplexity = 6).fit_transform(data)
+tsne = TSNE(n_components = 2, perplexity = 20).fit_transform(data)
 # tsne = LocallyLinearEmbedding(n_neighbors=20,n_components=2).fit_transform(data)
 # tsne = Isomap(n_neighbors=20,n_components=2).fit_transform(data)
 # tsne = SpectralEmbedding(n_components=2,n_neighbors=50).fit_transform(data)
@@ -177,9 +188,9 @@ show()
 #########################################################################################
 # CLUSTERING
 #########################################################################################
-# klu = KMeans(n_clusters=5).fit(data).labels_
+klu = KMeans(n_clusters=5).fit(data).labels_
 n_clusters = 4
-klu = AgglomerativeClustering(n_clusters=n_clusters).fit(data).labels_
+# klu = AgglomerativeClustering(n_clusters=n_clusters).fit(data).labels_
 
 shank_info['AC'] = klu
 
@@ -188,7 +199,8 @@ shank_info['AC'] = klu
 
 scatter(tsne[:,0], tsne[:,1], c = klu)
 
-
+show()
+sys.exit()
 
 
 

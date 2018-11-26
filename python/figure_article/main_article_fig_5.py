@@ -55,17 +55,19 @@ angles = np.array([15.0, 10.0, 15.0, 20.0])
 
 nucleus = ['AD', 'AM', 'AVd', 'AVv', 'IAD', 'MD', 'PV', 'sm']
 
-swr_nuc = pd.DataFrame(index = swr_mod.index, columns = pd.MultiIndex.from_product([['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32'],nucleus,['mean', 'sem']]), data = 0)
+swr_nuc = pd.DataFrame(index = swr_mod.index, columns = pd.MultiIndex.from_product([['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32'],nucleus,['mean', 'sem']]))
+
+neurons = np.intersect1d(swr_mod.columns.values, mappings.index.values)
 
 for m in ['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']:
-	subspace = pd.read_hdf("../../figures/figures_articles/figure1/subspace_"+m+".hdf5")
+	subspace = mappings.loc[neurons][mappings.loc[neurons].index.str.contains(m)]
 	groups = subspace.groupby(['nucleus']).groups
-	for n in nucleus:				
-		swr_nuc[(m,n)] = pd.concat([swr_mod[groups[n]].mean(1),swr_mod[groups[n]].sem(1)], axis = 1).rename(columns={0:'mean',1:'sem'})
+	for n in nucleus:
+		if len(groups[n])>3:				
+			swr_nuc[(m,n)] = pd.concat([swr_mod[groups[n]].mean(1),swr_mod[groups[n]].sem(1)], axis = 1).rename(columns={0:'mean',1:'sem'})
 
 swr_all = pd.DataFrame(index = swr_mod.index, columns = nucleus)
-neur = swr_mod.columns.values
-mappings = mappings.loc[neur]
+mappings = mappings.loc[neurons]
 for n in nucleus:
 	swr_all[n] = swr_mod[mappings[mappings['nucleus'] == n].index.values].mean(1)
 
@@ -78,7 +80,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*2.0            # height in inches
+	fig_height = fig_width*golden_mean*1.3           # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -132,11 +134,11 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
-from mpl_toolkits.axes_grid.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
-fig = figure(figsize = figsize(1))
-gs = gridspec.GridSpec(3,1, wspace = 0.4, hspace = 0.5)
+fig = figure(figsize = figsize(1), tight_layout=True)
+gs = gridspec.GridSpec(2,1, wspace = 0.4, hspace = 0.2, left = 0.08, right = 0.96, top = 0.96, bottom = 0.08)
 # gs.update(hspace = 0.2)
 xs = [-0.4,0.35]
 ys = [-0.3,0.25]
@@ -188,7 +190,7 @@ xticks([], [])
 yticks([], [])	
 xlim(xs[0], xs[1])
 ylim(ys[0], ys[1])
-text(-0.15, 1.17, lbs[i], transform = gca().transAxes, fontsize = 9)
+text(-0.3, 1.12, lbs[i], transform = gca().transAxes, fontsize = 9)
 
 
 
@@ -205,7 +207,7 @@ for j in range(3):
 	axvspan(toplot.loc[m,(j,'start')], toplot.loc[m,(j,'end')], alpha = 0.5)
 ylabel("SWR")
 xlabel("Times (ms)")
-legend(frameon=False,loc = 'lower left', bbox_to_anchor=(1.1,-0.4),handlelength=1,ncol = 4)
+legend(frameon=False,loc = 'lower left', bbox_to_anchor=(1.1,-0.2),handlelength=1,ncol = 4)
 
 ########################################################################
 # 3. MAPS 
@@ -235,31 +237,137 @@ for j in range(3):
 	rotated_image -= 1.0
 	tocrop = np.where(~np.isnan(rotated_image))
 	rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
-	imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'jet')
+	im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'jet')
 	imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
 	xlim(np.minimum(cut_bound_map[0],bound[0]),np.maximum(cut_bound_map[1],bound[1]))
 	ylim(np.minimum(cut_bound_map[2],bound[2]),np.maximum(cut_bound_map[3],bound[3]))
 	xlabel(str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
 
+	#colorbar	
+	cax = inset_axes(gca(), "4%", "20%",
+	                   bbox_to_anchor=(0.8, 0.0, 1, 1),
+	                   bbox_transform=gca().transAxes, 
+	                   loc = 'lower left')
+	cb = colorbar(im, cax = cax, orientation = 'vertical', ticks = [0.25, 0.75])
+	# cb.set_label('Burstiness', labelpad = -4)
+	# cb.ax.xaxis.set_tick_params(pad = 1)
+	# cax.set_title("Cluster 2", fontsize = 6, pad = 2.5)
+
+
 
 ########################################################################
 # B. ALL MOUSE
 ########################################################################		
-gsm = gridspec.GridSpecFromSubplotSpec(len(nucleus),2, subplot_spec = gs[1,:])
+gsm = gridspec.GridSpecFromSubplotSpec(len(nucleus)+1,2, subplot_spec = gs[1,:], height_ratios = [1]+[0.1]*len(nucleus))
 
-for i, n in enumerate(nucleus):
-	subplot(gsm[i,0])
-	imshow(swr_nuc.xs(n,1,1).xs('mean',1,1).T, aspect = 'auto', cmap = 'jet',
-		vmin = swr_nuc.min().min(),vmax = swr_nuc.max().max())
+idm = swr_all.idxmax()
+idm = idm.sort_values()
+order = idm.index.values
+
+subplot(gsm[0,0])
+simpleaxis(gca())
+for n in nucleus:
+	plot(swr_all[n])
+xticks([], [])
+text(-0.15, 1.1, lbs[1], transform = gca().transAxes, fontsize = 9)
+ylabel("SWR")
+xlim(-500,500)
+
+######################################################################
+for i, n in enumerate(order):
+	subplot(gsm[i+1,0])
+	tmp = swr_nuc.xs(n,1,1).xs('mean',1,1).T.values.astype(np.float32)
+	imshow(tmp, aspect = 'auto', cmap = 'jet')
+	if i == len(nucleus)-1:	
+		xticks([0,100,200],[-500,0,500])		
+		xlabel("Times (ms)")	
+	else:
+		xticks([], [])
+	if i == 0:
+		yticks([0,3], [1,4])
+		ylabel(n, rotation = 0, labelpad = 8, y = 0.2)
+	else:
+		yticks([0,3], ['',''])
+		ylabel(n, rotation = 0, labelpad = 11, y = 0.2)
+	
+	
+		
+####################################################################
+# C. ORBIT ALL MOUSE
+####################################################################
+subplot(gsm[:,1])
+simpleaxis(gca())
+
+data = cPickle.load(open('../../figures/figures_articles/figure3/dict_fig3_article.pickle', 'rb'))
+allzth 			= 	data['swr_modth'	]
+eigen 			= 	data['eigen'		]		
+times 			= 	data['times' 		]
+allthetamodth 	= 	data['theta_modth'	]		
+phi 			= 	data['phi' 			]		
+zpca 			= 	data['zpca'			]		
+phi2			= 	data['phi2' 		]	 					
+jX				= 	data['rX'			]
+jscore			= 	data['jscore'		]
+force 			= 	data['force'		] # theta modulation
+variance 		= 	data['variance'		] # ripple modulation
 
 
-# subplot(gsm[0,1])
-# simpleaxis(gca())
+plot(jX[0,0], jX[0,1], 'o', markersize = 3, color = 'black')
+plot(jX[:,0], jX[:,1], linewidth = 1, color = 'black')
+arrow(jX[-10,0],jX[-10,1],jX[-1,0]-jX[-10,0],jX[-1,1]-jX[-10,1], color = 'black', head_width = 0.01)
+gca().spines['left'].set_bounds(np.min(jX[:,1]), np.min(jX[:,1]+0.1))
+gca().spines['bottom'].set_bounds(np.min(jX[:,0]), np.min(jX[:,0]+0.1))
+xticks([], [])
+yticks([], [])
+gca().xaxis.set_label_coords(0.15, -0.02)
+gca().yaxis.set_label_coords(-0.02, 0.15)
+ylabel('jPC2')
+xlabel('jPC1')
+text(-0.1, 1.02, "C", transform = gca().transAxes, fontsize = 9)
 
-# subplot(gsm[0,2])
-# simpleaxis(gca())
+jpca = pd.DataFrame(index = times2, data = jX)
+
+fontsize = np.array([swr_all.loc[idm[n],n]*100.0 for n in order])
+fontsize -= np.min(fontsize)
+fontsize /= np.max(fontsize)
+fontsize = 1/(1+np.exp(-8*(fontsize-0.5)))
+fontsize = fontsize*6 + 7.0
+fontsize = pd.Series(index = order, data = fontsize)
+
+for n in order :	
+	if n == 'PV':
+		text(jpca.loc[idm[n],0]-0.04,jpca.loc[idm[n],1]+0.03,n, 
+			ha = 'center', 
+			va = 'center', 
+			bbox = dict(boxstyle='square,pad=0.1',fc='white',ec='none'),
+			fontsize = fontsize[n])
+	else:
+		text(jpca.loc[idm[n],0],jpca.loc[idm[n],1],n, 
+			ha = 'center', 
+			va = 'center', 
+			bbox = dict(boxstyle='square,pad=0.1',fc='white',ec='none'),
+			fontsize = fontsize[n])
+
+# threshold = swr_all.mean() + (swr_all.max() - swr_all.mean())/2
+# phase = swr_all - threshold
+# phase[phase < 0.0] = np.nan
+# # putting nucleus name
+# ct = 0
+# for n in order:
+# 	# excitatory phase
+# 	text(jpca.loc[idm[n],0],jpca.loc[idm[n],1],n, ha = 'center', va = 'center')
+# 	tx = phase[n].dropna().index
+# 	if np.max(np.diff(tx)) > 5.:
+# 		tx1 = tx[0:np.argmax(np.diff(tx))+1]
+# 		tx2 = tx[np.argmax(np.diff(tx))+1:]
+# 		plot(jpca.loc[tx1, 0]+np.sign(jpca.loc[tx1, 0])*ct, jpca.loc[tx1, 1]+np.sign(jpca.loc[tx1, 1])*ct, linewidth = 2)
+# 		plot(jpca.loc[tx2, 0]+np.sign(jpca.loc[tx2, 0])*ct, jpca.loc[tx2, 1]+np.sign(jpca.loc[tx2, 1])*ct, linewidth = 2)
+# 	else:
+# 		plot(jpca.loc[tx, 0]+np.sign(jpca.loc[tx, 0])*ct, jpca.loc[tx, 1]+np.sign(jpca.loc[tx, 1])*ct, linewidth = 2)
+# 	ct+=0.0018
 
 
-savefig("../../figures/figures_articles/figart_5.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+
+savefig("../../figures/figures_articles/figart_5.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_5.pdf &")
 

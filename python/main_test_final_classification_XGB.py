@@ -13,6 +13,49 @@ import _pickle as cPickle
 from skimage.filters import gaussian
 from sklearn.model_selection import cross_val_score
 from sklearn.decomposition import PCA
+from sklearn.model_selection import KFold
+import xgboost as xgb
+
+def xgb_decodage(Xr, Yr, Xt, n_class):          
+	dtrain = xgb.DMatrix(Xr, label=Yr)
+	dtest = xgb.DMatrix(Xt)
+
+	params = {'objective': "multi:softprob",
+	'eval_metric': "mlogloss", #loglikelihood loss
+	'seed': 2925, #for reproducibility
+	'silent': 0,
+	'learning_rate': 0.05,
+	'min_child_weight': 2, 
+	'n_estimators': 1000,
+	# 'subsample': 0.5,
+	'max_depth': 5, 
+	'gamma': 0.5,
+	'num_class':n_class}
+
+	num_round = 100
+	bst = xgb.train(params, dtrain, num_round)
+	ymat = bst.predict(dtest)
+	pclas = np.argmax(ymat, 1)
+	return pclas
+
+def fit_cv(X, Y, n_cv=10, verbose=1, shuffle = False):
+	if np.ndim(X)==1:
+		X = np.transpose(np.atleast_2d(X))
+	cv_kf = KFold(n_splits=n_cv, shuffle=True, random_state=42)
+	skf  = cv_kf.split(X)    
+	Y_hat=np.zeros(len(Y))*np.nan
+	n_class = len(np.unique(Y))
+
+	for idx_r, idx_t in skf:        
+		Xr = np.copy(X[idx_r, :])
+		Yr = np.copy(Y[idx_r])
+		Xt = np.copy(X[idx_t, :])
+		Yt = np.copy(Y[idx_t])
+		if shuffle: np.random.shuffle(Yr)
+		Yt_hat = xgb_decodage(Xr, Yr, Xt, n_class)
+		Y_hat[idx_t] = Yt_hat
+		
+	return Y_hat
 
 ############################################################################################################
 # LOADING DATA
@@ -130,59 +173,59 @@ tokeep = np.array([n for n in neurons if mappings.loc[n,'nucleus'] in nucleus])
 # data = np.hstack([pc_short_rem, pc_short_sws, pc_long, pc_short_wak, pc_long, pc_theta, pc_swr])
 # data = np.hstack([pc_short_rem, pc_short_sws, pc_short_wak])
 # data = np.hstack([pc_theta, pc_swr])
-
-
+# data = np.vstack([	autocorr_wak[neurons].values,autocorr_rem[neurons].values,autocorr_sws[neurons].values]).T
 data = np.vstack([	autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values,
 					autocorr2_wak[tokeep].values,autocorr2_rem[tokeep].values,autocorr2_sws[tokeep].values,
 					theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values,
 					swr[tokeep].values]).T
 
-# data = np.vstack([	autocorr_wak[neurons].values,autocorr_rem[neurons].values,autocorr_sws[neurons].values]).T
-
+labels = np.array([nucleus.index(mappings.loc[n,'nucleus']) for n in tokeep])
 ##########################################################################################################
-# CLASSIFIER
+# XGB
 ##########################################################################################################
-labels = np.array([nucleus.index(n) for n in mappings.loc[tokeep,'nucleus']])
+mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','auto+auto2','auto+auto2+theta','auto+auto2+theta+swr']]))
 
+alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),
+			np.vstack([autocorr2_wak[tokeep].values,autocorr2_rem[tokeep].values,autocorr2_sws[tokeep].values]),
+			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values]),
+			swr[tokeep].values
+			]
 
+cols = np.unique(mean_score.columns.get_level_values(1))
 
-clf = LogisticRegressionCV(cv = 5, random_state = 0, multi_class='multinomial', verbose = 3, n_jobs = 8, max_iter = 100).fit(data, labels)
+sys.exit()
 
+for i, m in enumerate(cols):
+	data = np.vstack(alldata[0:i+1]).T
+	test = fit_cv(data, labels, 10, verbose = 0)
 
+	random = np.zeros((10,len(labels)))
+	for j in range(len(random)):	
+		print(m, j)
+		Yhat = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
+		random[j] = Yhat.copy()
 
-
-
-
-mean_score = pd.DataFrame(index = nucleus,columns=['score'])
-for i,n in enumerate(nucleus):
-	mean_score.loc[n] = clf.score(data[labels == i], labels[labels==i])
-
-mean_score = mean_score.loc[nucleus].sort_values('score', ascending=False)
-
-
-mean_score_random = pd.DataFrame(index = nucleus,columns = np.arange(20))
-for i in range(mean_score_random.shape[1]):
-	print(i)
-	tmp = labels.copy()
-	np.random.shuffle(tmp)
-	clf_random = LogisticRegressionCV(cv = 5, random_state = np.random.randint(100), multi_class='multinomial', verbose = 3, n_jobs = 16, max_iter = 100).fit(data, tmp)
+	mean_score_random = pd.DataFrame(index = np.arange(len(random)), columns = nucleus)
 	for j,n in enumerate(nucleus):
-		mean_score_random.loc[n,i] = clf_random.score(data[labels==j], labels[labels==j])
+		idx = labels == nucleus.index(n)
+		mean_score.loc[n,('score',m)] = (test[idx] == nucleus.index(n)).sum()/np.sum(labels == nucleus.index(n))
+		mean_score_random[n] = np.sum(random[:,idx] == labels[idx],1)/np.sum(labels == nucleus.index(n))
+
+	mean_score[('shuffle',m)] = mean_score_random.mean(0)
 
 
-p = clf.predict_proba(data)
-mean_p = pd.DataFrame(index = nucleus, columns = nucleus)
-for i, n in enumerate(nucleus):
-	mean_p.loc[n] = p[labels==i].mean(0)
+mean_score = mean_score.sort_values(('score','auto+auto2+theta+swr'))
+
+
 
 figure()
-subplot(121)
-imshow(mean_p.values.astype('float'))
-xticks(np.arange(len(nucleus)),mean_p.index.values)
-yticks(np.arange(len(nucleus)),mean_p.index.values)
-subplot(122)
-bar(np.arange(len(nucleus)), mean_score.T[nucleus].values[0])
-bar(np.arange(len(nucleus)), mean_score_random.mean(1)[nucleus].values)
-xticks(np.arange(len(nucleus)), nucleus)
+ct = 0
+for i, c in enumerate(cols):
+	bar(np.arange(len(nucleus))+ct, mean_score[('score',c)].values.flatten(), 0.2)
+	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c)].values.flatten(), 0.2, alpha = 0.5)
+	xticks(np.arange(len(nucleus)), mean_score.index.values)
+	ct += 0.2
 show()
 
+# mean_score = pd.read_hdf("../figures/figures_articles/figure6/mean_score.h5")
+# mean_score.to_hdf("../figures/figures_articles/figure6/mean_score.h5", 'xgb')
