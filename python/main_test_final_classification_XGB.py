@@ -16,23 +16,43 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold
 import xgboost as xgb
 
+def extract_tree_threshold(trees):
+    """ Take BST TREE and return a dict = {features index : [splits position 1, splits position 2, ...]}
+    """
+    n = len(trees.get_dump())
+    thr = {}
+    for t in range(n):
+        gv = xgb.to_graphviz(trees, num_trees=t)
+        body = gv.body		
+        for i in range(len(body)):
+            for l in body[i].split('"'):
+                if 'f' in l and '<' in l:
+                    tmp = l.split("<")
+                    if tmp[0] in thr:
+                        thr[tmp[0]].append(float(tmp[1]))
+                    else:
+                        thr[tmp[0]] = [float(tmp[1])]
+    for k in thr:
+        thr[k] = np.sort(np.array(thr[k]))
+    return thr
+
 def xgb_decodage(Xr, Yr, Xt, n_class):          
 	dtrain = xgb.DMatrix(Xr, label=Yr)
 	dtest = xgb.DMatrix(Xt)
 
 	params = {'objective': "multi:softprob",
 	'eval_metric': "mlogloss", #loglikelihood loss
-	'seed': 2925, #for reproducibility
-	'silent': 0,
+	'seed': np.random.randint(1, 10000), #for reproducibility
+	'silent': 1,
 	'learning_rate': 0.05,
 	'min_child_weight': 2, 
-	'n_estimators': 1000,
+	'n_estimators': 100,
 	# 'subsample': 0.5,
 	'max_depth': 5, 
 	'gamma': 0.5,
 	'num_class':n_class}
 
-	num_round = 100
+	num_round = 1000
 	bst = xgb.train(params, dtrain, num_round)
 	ymat = bst.predict(dtest)
 	pclas = np.argmax(ymat, 1)
@@ -183,46 +203,85 @@ labels = np.array([nucleus.index(mappings.loc[n,'nucleus']) for n in tokeep])
 ##########################################################################################################
 # XGB
 ##########################################################################################################
-mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','auto+auto2','auto+auto2+theta','auto+auto2+theta+swr']]))
-
 alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),
 			np.vstack([autocorr2_wak[tokeep].values,autocorr2_rem[tokeep].values,autocorr2_sws[tokeep].values]),
 			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values]),
 			swr[tokeep].values
 			]
 
+mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','auto+auto2','auto+auto2+theta','auto+auto2+theta+swr'], ['mean', 'sem']]))
 cols = np.unique(mean_score.columns.get_level_values(1))
 
-sys.exit()
+n_repeat = 10
 
 for i, m in enumerate(cols):
 	data = np.vstack(alldata[0:i+1]).T
-	test = fit_cv(data, labels, 10, verbose = 0)
+	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))
+	for j in range(n_repeat):
+		test = fit_cv(data, labels, 10, verbose = 0)
+		rand = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
+		print(i,j)
+		for k, n in enumerate(nucleus):
+			idx = labels == nucleus.index(n)
+			test_score.loc[j,('test',n)] = np.sum(test[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
+			test_score.loc[j,('shuffle',n)] = np.sum(rand[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
+	
+	mean_score[('score',m,'mean')] = test_score['test'].mean(0)
+	mean_score[('score',m,'sem')] = test_score['test'].sem(0)
+	mean_score[('shuffle',m,'mean')] = test_score['shuffle'].mean(0)
+	mean_score[('shuffle',m,'sem')] =  test_score['shuffle'].sem(0)
 
-	random = np.zeros((10,len(labels)))
-	for j in range(len(random)):	
-		print(m, j)
-		Yhat = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
-		random[j] = Yhat.copy()
 
-	mean_score_random = pd.DataFrame(index = np.arange(len(random)), columns = nucleus)
-	for j,n in enumerate(nucleus):
-		idx = labels == nucleus.index(n)
-		mean_score.loc[n,('score',m)] = (test[idx] == nucleus.index(n)).sum()/np.sum(labels == nucleus.index(n))
-		mean_score_random[n] = np.sum(random[:,idx] == labels[idx],1)/np.sum(labels == nucleus.index(n))
+mean_score = mean_score.sort_values(('score','auto+auto2+theta+swr', 'mean'))
 
-	mean_score[('shuffle',m)] = mean_score_random.mean(0)
+###########################################################################################################
+# LOOKING AT SPLITS
+###########################################################################################################
 
+# data = np.vstack(alldata).T
 
-mean_score = mean_score.sort_values(('score','auto+auto2+theta+swr'))
+# dtrain = xgb.DMatrix(data, label=labels)
+# params = {'objective': "multi:softprob",
+# 	'eval_metric': "mlogloss", #loglikelihood loss
+# 	'seed': 2925, #for reproducibility
+# 	'silent': 1,
+# 	'learning_rate': 0.05,
+# 	'min_child_weight': 2, 
+# 	'n_estimators': 100,
+# 	# 'subsample': 0.5,
+# 	'max_depth': 5, 
+# 	'gamma': 0.5,
+# 	'num_class':len(nucleus)}
+
+# num_round = 100
+# bst = xgb.train(params, dtrain, num_round)
+
+# splits = extract_tree_threshold(bst)
+
+# features_id = np.hstack([np.ones(alldata[i].shape[0])*i for i in range(4)])
+
+# features = np.zeros(data.shape[1])
+# for k in splits: features[int(k[1:])] = len(splits[k])
+
 
 
 
 figure()
 ct = 0
 for i, c in enumerate(cols):
-	bar(np.arange(len(nucleus))+ct, mean_score[('score',c)].values.flatten(), 0.2)
-	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c)].values.flatten(), 0.2, alpha = 0.5)
+	bar(np.arange(len(nucleus))+ct, mean_score[('score',c, 'mean')].values.flatten(), 0.2)
+	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c, 'mean')].values.flatten(), 0.2, alpha = 0.5)
+	xticks(np.arange(len(nucleus)), mean_score.index.values)
+	ct += 0.2
+
+show()
+
+tmp = mean_score['score'] - mean_score['shuffle']
+tmp = tmp.sort_values('auto')
+figure()
+ct = 0
+for i, c in enumerate(cols):
+	bar(np.arange(len(nucleus))+ct, tmp[c].values.flatten(), 0.2)
 	xticks(np.arange(len(nucleus)), mean_score.index.values)
 	ct += 0.2
 show()
