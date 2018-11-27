@@ -44,9 +44,9 @@ def xgb_decodage(Xr, Yr, Xt, n_class):
 	'eval_metric': "mlogloss", #loglikelihood loss
 	'seed': np.random.randint(1, 10000), #for reproducibility
 	'silent': 1,
-	'learning_rate': 0.05,
+	'learning_rate': 0.01,
 	'min_child_weight': 2, 
-	'n_estimators': 100,
+	'n_estimators': 1000,
 	# 'subsample': 0.5,
 	'max_depth': 5, 
 	'gamma': 0.5,
@@ -203,19 +203,23 @@ labels = np.array([nucleus.index(mappings.loc[n,'nucleus']) for n in tokeep])
 ##########################################################################################################
 # XGB
 ##########################################################################################################
-alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),
-			np.vstack([autocorr2_wak[tokeep].values,autocorr2_rem[tokeep].values,autocorr2_sws[tokeep].values]),
-			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values]),
-			swr[tokeep].values
+# alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),
+# 			np.vstack([autocorr2_wak[tokeep].values,autocorr2_rem[tokeep].values,autocorr2_sws[tokeep].values]),
+# 			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values]),
+# 			swr[tokeep].values
+# 			]
+
+alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),			
+			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values, swr[tokeep].values])
 			]
 
-mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','auto+auto2','auto+auto2+theta','auto+auto2+theta+swr'], ['mean', 'sem']]))
+mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','theta+swr'], ['mean', 'sem']]))
 cols = np.unique(mean_score.columns.get_level_values(1))
 
-n_repeat = 10
+n_repeat = 1000
 
 for i, m in enumerate(cols):
-	data = np.vstack(alldata[0:i+1]).T
+	data = np.vstack(alldata[i]).T
 	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))
 	for j in range(n_repeat):
 		test = fit_cv(data, labels, 10, verbose = 0)
@@ -232,7 +236,7 @@ for i, m in enumerate(cols):
 	mean_score[('shuffle',m,'sem')] =  test_score['shuffle'].sem(0)
 
 
-mean_score = mean_score.sort_values(('score','auto+auto2+theta+swr', 'mean'))
+mean_score = mean_score.sort_values(('score','auto', 'mean'))
 
 ###########################################################################################################
 # LOOKING AT SPLITS
@@ -288,3 +292,12 @@ show()
 
 # mean_score = pd.read_hdf("../figures/figures_articles/figure6/mean_score.h5")
 # mean_score.to_hdf("../figures/figures_articles/figure6/mean_score.h5", 'xgb')
+figure()
+ct = 0
+for i, c in enumerate(cols):
+	bar(np.arange(len(nucleus))+ct, mean_score[('score',c )].values.flatten(), 0.2)
+	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c)].values.flatten(), 0.2, alpha = 0.5)
+	xticks(np.arange(len(nucleus)), mean_score.index.values)
+	ct += 0.2
+
+show()
