@@ -273,34 +273,14 @@ cax.set_title("Cluster 2", fontsize = 6, pad = 2.5)
 axD.text(-0.1, 1.01, "D", transform = axD.transAxes, fontsize = 9)
 
 #############################################################
-# E TSNE NUCLEUS DENSITY
+# E MAPS
 #############################################################
 # suE = fig.add_subplot(3,1,3)
-gs = gridspec.GridSpecFromSubplotSpec(2,6,subplot_spec = outergs[2,:], width_ratios=[1,0.01,1,1,0.1,1], height_ratios=[0.1,1], wspace = 0.5)
+gs = gridspec.GridSpecFromSubplotSpec(3,6,subplot_spec = outergs[2,:], width_ratios=[1,1,0.1,1,0.02,1], height_ratios=[0.03,1,1], wspace = 0.2, hspace = 0.5)
 
-count = pd.read_hdf("../../figures/figures_articles/figure1/count_time.h5")
-score = pd.read_hdf("../../figures/figures_articles/figure1/score_logreg.h5")
-
-
-axE = Subplot(fig, gs[1,0])
-fig.add_subplot(axE)
-simpleaxis(axE)
-ylabel("Clustering specificity of HD cells")
-xlabel("Time (ms)")
-axE.text(-0.1, 1.05, 'E', transform = axE.transAxes, fontsize = 9)
-axE.semilogx(count.mean(1).loc[0:3000], 'o-', markersize = 2, color = 'black', linewidth = 1.5)
-axE2 = axE.twinx()
-axE2.spines['top'].set_visible(False)
-axE2.semilogx(score.loc[0:3000], '+-', markersize = 2, color = 'firebrick', linewidth = 1.5)
-axE2.set_ylabel("Logit score for HD classification", rotation = -90, labelpad = 10)
-axE2.yaxis.label.set_color('firebrick')
-axE2.tick_params(axis='y', labelcolor='firebrick')
-#############################################
-# F. Burstiness 
-#############################################
 cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
 # cluster 1 HD
-suF1 = Subplot(fig, gs[1,2])
+suF1 = Subplot(fig, gs[1:,0])
 fig.add_subplot(suF1)
 noaxis(suF1)
 tmp = rotated_images[1]
@@ -318,10 +298,10 @@ cb = matplotlib.colorbar.ColorbarBase(cax, cmap='Reds', ticks = [0, 1])
 cb.set_label('Density', labelpad = -20)
 cb.ax.xaxis.set_tick_params(pad = 1)
 # cax.set_title("Cluster 2", fontsize = 4, pad = 2.5)
-suF1.text(-0.06, 1.15, "F", transform = suF1.transAxes, fontsize = 9)
+suF1.text(-0.06, 1.15, "E", transform = suF1.transAxes, fontsize = 9)
 
 # cluster 2 burstiness
-suF0 = Subplot(fig, gs[1,3])
+suF0 = Subplot(fig, gs[1:,1])
 fig.add_subplot(suF0)
 noaxis(suF0)
 tmp = rotated_images[-1]
@@ -369,7 +349,7 @@ for n in nucleus:
 meanall = meanall.sort_values('mean')
 
 # axF = fig.add_subplot(3,4,11)
-axG = Subplot(fig, gs[1,5])
+axG = Subplot(fig, gs[1:,3])
 fig.add_subplot(axG)
 simpleaxis(axG)
 # mean_burst = mean_burst.loc[nucleus]
@@ -390,7 +370,40 @@ ylabel("Nucleus")
 # text(2.5, 24.5, 'Dorsal')
 # text(6, 24.5, 'Ventral')
 axG.invert_yaxis()
-axG.text(-0.1, 1.05, "G", transform = axG.transAxes, fontsize = 9)
+axG.text(-0.1, 1.05, "F", transform = axG.transAxes, fontsize = 9)
+
+
+###########################################################################
+# G SCORES XGB HD/NOHD
+###########################################################################
+count = pd.read_hdf("../../figures/figures_articles/figure1/count_time.h5")
+score = pd.read_hdf("../../figures/figures_articles/figure1/score_logreg.h5")
+
+
+axE = Subplot(fig, gs[1,5])
+fig.add_subplot(axE)
+simpleaxis(axE)
+semilogx(score.loc[0:3000], '+-', markersize = 2, color = 'firebrick', linewidth = 1.5)
+title("HD classification")
+xlabel("Time (ms)")
+axE.text(-0.1, 1.10, 'G', transform = axE.transAxes, fontsize = 9)
+# axE.semilogx(count.mean(1).loc[0:3000], 'o-', markersize = 2, color = 'black', linewidth = 1.5)
+# axE2 = axE.twinx()
+# axE2.spines['top'].set_visible(False)
+# axE2.set_ylabel("Logit score for HD classification", rotation = -90, labelpad = 10)
+# axE2.yaxis.label.set_color('firebrick')
+# axE2.tick_params(axis='y', labelcolor='firebrick')
+
+# ylabel("Clustering specificity of HD cells")
+
+###########################################################################
+# H SCORE NUCLEUS
+###########################################################################
+axH = Subplot(fig, gs[2,5])
+fig.add_subplot(axH)
+simpleaxis(axH)
+axH.text(-0.1, 1.10, 'H', transform = axH.transAxes, fontsize = 9)
+
 
 ##########################################################################
 # ANOVAS

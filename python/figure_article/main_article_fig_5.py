@@ -180,9 +180,11 @@ alljpc[m] = jpc
 plot(jpc.iloc[0,0], jpc.iloc[0,1], 'o', markersize = 3, color = 'grey')
 plot(jpc[0], jpc[1], linewidth = 0.8, color = 'grey')
 arrow(jpc.iloc[-3,0],jpc.iloc[-3,1],jpc.iloc[-2,0]-jpc.iloc[-3,0],jpc.iloc[-2,1]-jpc.iloc[-3,1], color = 'grey', head_width = 0.06)
+offsets = [-0.08,0.01,0.01]
 for j in range(3): 
 	plot(jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],0], jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],1], color = 'blue', alpha = 0.3)		
-
+	tmp = toplot.loc[m,(j,'start')] + (toplot.loc[m,(j,'end')]-toplot.loc[m,(j,'start')])/2
+	text(jpc.loc[tmp,0], jpc.loc[tmp,1]+offsets[j], str(j), horizontalalignment = 'center')
 
 gca().spines['left'].set_bounds(ys[0]+0.1,ys[0]+0.2)
 gca().spines['bottom'].set_bounds(ys[0]+0.1,ys[0]+0.2)
@@ -205,6 +207,7 @@ for n in nucleus:
 for j in range(3): 
 	# axvline(toplot[m][j])
 	axvspan(toplot.loc[m,(j,'start')], toplot.loc[m,(j,'end')], alpha = 0.5)
+	text(toplot.loc[m,(j,'start')] + (toplot.loc[m,(j,'end')]-toplot.loc[m,(j,'start')])/2, gca().get_ylim()[1], str(j), horizontalalignment = 'center')
 ylabel("SWR")
 xlabel("Times (ms)")
 legend(frameon=False,loc = 'lower left', bbox_to_anchor=(1.1,-0.2),handlelength=1,ncol = 4)
@@ -237,11 +240,11 @@ for j in range(3):
 	rotated_image -= 1.0
 	tocrop = np.where(~np.isnan(rotated_image))
 	rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
-	im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'jet')
+	im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'bwr')
 	imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
 	xlim(np.minimum(cut_bound_map[0],bound[0]),np.maximum(cut_bound_map[1],bound[1]))
 	ylim(np.minimum(cut_bound_map[2],bound[2]),np.maximum(cut_bound_map[3],bound[3]))
-	xlabel(str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
+	xlabel(str(j)+': '+str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
 
 	#colorbar	
 	cax = inset_axes(gca(), "4%", "20%",
@@ -277,7 +280,7 @@ xlim(-500,500)
 for i, n in enumerate(order):
 	subplot(gsm[i+1,0])
 	tmp = swr_nuc.xs(n,1,1).xs('mean',1,1).T.values.astype(np.float32)
-	imshow(tmp, aspect = 'auto', cmap = 'jet')
+	imshow(tmp, aspect = 'auto', cmap = 'bwr')
 	if i == len(nucleus)-1:	
 		xticks([0,100,200],[-500,0,500])		
 		xlabel("Times (ms)")	
@@ -348,6 +351,12 @@ for n in order :
 			bbox = dict(boxstyle='square,pad=0.1',fc='white',ec='none'),
 			fontsize = fontsize[n])
 
+tx = [-100,0]
+# plot(jpca.loc[tx,0], jpca.loc[tx,1], '.', color = 'black')
+
+annotate('0 ms', (jpca.loc[0,0],jpca.loc[0,1]), (jpca.loc[0,0]+0.009,jpca.loc[0,1]-0.02))
+annotate('-100 ms', (jpca.loc[-100,0],jpca.loc[-100,1]), (jpca.loc[-100,0]-0.0,jpca.loc[-100,1]-0.03))
+annotate('100 ms', (jpca.loc[100,0],jpca.loc[100,1]), (jpca.loc[100,0]-0.0,jpca.loc[100,1]+0.02))
 # threshold = swr_all.mean() + (swr_all.max() - swr_all.mean())/2
 # phase = swr_all - threshold
 # phase[phase < 0.0] = np.nan

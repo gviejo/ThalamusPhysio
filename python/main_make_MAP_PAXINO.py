@@ -164,6 +164,7 @@ for i, m in enumerate(['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']):
 		pos_swr_density[subspace.loc[n,'session'],subspace.loc[n,'shank']] += float(swr.loc[0,n]>p60)
 		neu_swr_density[subspace.loc[n,'session'],subspace.loc[n,'shank']] += float(np.logical_and(swr.loc[0,n]>p40, swr.loc[0,n]<p60))
 
+	print(m, p40, p60)
 
 
 	# clusters | theta | pos swr | neg swr | frate wake | frate rem | frate sws | burst_wake | burst_rem | burst_sws | count
@@ -197,14 +198,14 @@ for i, m in enumerate(['Mouse12', 'Mouse17', 'Mouse20', 'Mouse32']):
 	################################################################################
 	# SAVING DATA FOR FIGURE ARTICLE
 	################################################################################
-	store = pd.HDFStore('../figures/figures_articles/figure2/modulation_theta2_swr_'+m+'.h5', 'a')
-	_, h, w = rotated_images.shape
-	for i, n in zip(range(len(rotated_images)), ['theta', 'pos_swr', 'neg_swr', 'neu_swr']):
-		tmp = pd.DataFrame(	index = np.linspace(bound[3], bound[2], h), 
-							columns = np.linspace(bound[0], bound[1], w), 
-							data = rotated_images[i])
-		store[n] = tmp
-	store.close()
+	# store = pd.HDFStore('../figures/figures_articles/figure2/modulation_theta2_swr_'+m+'.h5', 'a')
+	# _, h, w = rotated_images.shape
+	# for i, n in zip(range(len(rotated_images)), ['theta', 'pos_swr', 'neg_swr', 'neu_swr']):
+	# 	tmp = pd.DataFrame(	index = np.linspace(bound[3], bound[2], h), 
+	# 						columns = np.linspace(bound[0], bound[1], w), 
+	# 						data = rotated_images[i])
+	# 	store[n] = tmp
+	# store.close()
 
 
 

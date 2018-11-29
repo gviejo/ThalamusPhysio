@@ -44,15 +44,15 @@ def xgb_decodage(Xr, Yr, Xt, n_class):
 	'eval_metric': "mlogloss", #loglikelihood loss
 	'seed': np.random.randint(1, 10000), #for reproducibility
 	'silent': 1,
-	'learning_rate': 0.01,
+	'learning_rate': 0.05,
 	'min_child_weight': 2, 
-	'n_estimators': 1000,
+	'n_estimators': 2,
 	# 'subsample': 0.5,
 	'max_depth': 5, 
 	'gamma': 0.5,
 	'num_class':n_class}
 
-	num_round = 1000
+	num_round = 2
 	bst = xgb.train(params, dtrain, num_round)
 	ymat = bst.predict(dtest)
 	pclas = np.argmax(ymat, 1)
@@ -104,7 +104,7 @@ times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 swr 					= pd.DataFrame(	columns = swr_ses, 
 										index = times,
 										data = gaussFilt(swr_mod, (5,)).transpose())
-swr = swr.loc[-200:200]
+swr = swr.loc[-500:500]
 
 # AUTOCORR FAST
 store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_ALL.h5")
@@ -210,17 +210,18 @@ labels = np.array([nucleus.index(mappings.loc[n,'nucleus']) for n in tokeep])
 # 			]
 
 alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),			
-			np.vstack([theta_hist.xs(('wak'),1,1)[tokeep].values,theta_hist.xs(('rem'),1,1)[tokeep].values, swr[tokeep].values])
+			swr[tokeep].values
 			]
 
-mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','theta+swr'], ['mean', 'sem']]))
+mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','swr'], ['mean', 'sem']]))
 cols = np.unique(mean_score.columns.get_level_values(1))
 
-n_repeat = 1000
+n_repeat = 10
 
 for i, m in enumerate(cols):
-	data = np.vstack(alldata[i]).T
+	data = alldata[i].T
 	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))
+	print(i,m)
 	for j in range(n_repeat):
 		test = fit_cv(data, labels, 10, verbose = 0)
 		rand = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
@@ -237,6 +238,8 @@ for i, m in enumerate(cols):
 
 
 mean_score = mean_score.sort_values(('score','auto', 'mean'))
+
+mean_score.to_hdf(data_directory+'SCORE_XGB.h5', 'mean_score')
 
 ###########################################################################################################
 # LOOKING AT SPLITS
@@ -280,24 +283,27 @@ for i, c in enumerate(cols):
 
 show()
 
-tmp = mean_score['score'] - mean_score['shuffle']
-tmp = tmp.sort_values('auto')
-figure()
-ct = 0
-for i, c in enumerate(cols):
-	bar(np.arange(len(nucleus))+ct, tmp[c].values.flatten(), 0.2)
-	xticks(np.arange(len(nucleus)), mean_score.index.values)
-	ct += 0.2
-show()
 
-# mean_score = pd.read_hdf("../figures/figures_articles/figure6/mean_score.h5")
-# mean_score.to_hdf("../figures/figures_articles/figure6/mean_score.h5", 'xgb')
-figure()
-ct = 0
-for i, c in enumerate(cols):
-	bar(np.arange(len(nucleus))+ct, mean_score[('score',c )].values.flatten(), 0.2)
-	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c)].values.flatten(), 0.2, alpha = 0.5)
-	xticks(np.arange(len(nucleus)), mean_score.index.values)
-	ct += 0.2
 
-show()
+
+# tmp = mean_score['score'] - mean_score['shuffle']
+# tmp = tmp.sort_values('auto')
+# figure()
+# ct = 0
+# for i, c in enumerate(cols):
+# 	bar(np.arange(len(nucleus))+ct, tmp[c].values.flatten(), 0.2)
+# 	xticks(np.arange(len(nucleus)), mean_score.index.values)
+# 	ct += 0.2
+# show()
+
+# # mean_score = pd.read_hdf("../figures/figures_articles/figure6/mean_score.h5")
+# # mean_score.to_hdf("../figures/figures_articles/figure6/mean_score.h5", 'xgb')
+# figure()
+# ct = 0
+# for i, c in enumerate(cols):
+# 	bar(np.arange(len(nucleus))+ct, mean_score[('score',c )].values.flatten(), 0.2)
+# 	bar(np.arange(len(nucleus))+ct, mean_score[('shuffle',c)].values.flatten(), 0.2, alpha = 0.5)
+# 	xticks(np.arange(len(nucleus)), mean_score.index.values)
+# 	ct += 0.2
+
+# show()

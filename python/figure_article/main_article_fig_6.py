@@ -15,88 +15,70 @@ import os
 ###############################################################################################################
 # TO LOAD
 ###############################################################################################################
-data = cPickle.load(open('../../figures/figures_articles/figure3/dict_fig3_article.pickle', 'rb'))
-allzth 			= 	data['swr_modth'	]
-eigen 			= 	data['eigen'		]		
-times 			= 	data['times' 		]
-allthetamodth 	= 	data['theta_modth'	]		
-phi 			= 	data['phi' 			]		
-zpca 			= 	data['zpca'			]		
-phi2			= 	data['phi2' 		]	 # jpca phase					
-jX				= 	data['rX'			]
-jscore			= 	data['jscore'		]
-force 			= 	data['force'		] # theta modulation
-variance 		= 	data['variance'		] # ripple modulation
+store = pd.HDFStore("../../figures/figures_articles/figure6/determinant_corr.h5", 'r')
+det_all = store['det_all']
+shufflings = store['shufflings']
+store.close()
 
-
-index = allzth[0].sort_values().index.values
-index = index[::-1]
-allzthsorted = allzth.loc[index]
-phi = phi.loc[index]
-phi2 = phi2.loc[index]
-allthetamodth = allthetamodth.loc[index]
-allthetamodth['phase'] += 2*np.pi
-allthetamodth['phase'] %= 2*np.pi
-
-data = pd.concat([phi2, allthetamodth['phase']], axis =1)
-data.columns = ['swr', 'theta']
-
-space = pd.read_hdf("../../figures/figures_articles/figure1/space.hdf5")
-
-data['nucleus'] = space.loc[index,['nucleus']]
-
-data = data.dropna()
 
 data_directory 	= '/mnt/DataGuillaume/MergedData/'
 datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
-burstiness 				= pd.HDFStore("/mnt/DataGuillaume/MergedData/BURSTINESS.h5")['w']
-theta_mod, theta_ses 	= loadThetaMod('/mnt/DataGuillaume/MergedData/THETA_THAL_mod.pickle', datasets, return_index=True)
-theta 					= pd.DataFrame(	index = theta_ses['rem'], 
-									columns = ['phase', 'pvalue', 'kappa'],
-									data = theta_mod['rem'])
-rippower 				= pd.read_hdf("../../figures/figures_articles/figure2/power_ripples_2.h5")
-mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 
-neurons = np.intersect1d(np.intersect1d(burstiness.index.values, theta.index.values), rippower.index.values)
+# WHICH NEURONS
+space = pd.read_hdf("../../figures/figures_articles/figure1/space.hdf5")
+burst = pd.HDFStore("/mnt/DataGuillaume/MergedData/BURSTINESS.h5")['w']
+burst = burst.loc[space.index]
 
-carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17.png')
-carte38_mouse17_2 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
-bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
-cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+hd_index = space.index.values[space['hd'] == 1]
+
+neurontoplot = [np.intersect1d(hd_index, space.index.values[space['cluster'] == 1])[0],
+				burst.loc[space.index.values[space['cluster'] == 0]].sort_values('sws').index[3],
+				burst.sort_values('sws').index.values[-20]]
 
 
+# SWR MODULATION
+swr_mod, swr_ses 		= loadSWRMod('/mnt/DataGuillaume/MergedData/SWR_THAL_corr.pickle', datasets, return_index=True)
+nbins 					= 400
+binsize					= 5
+times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
+swr 					= pd.DataFrame(	columns = swr_ses, 
+										index = times,
+										data = gaussFilt(swr_mod, (5,)).transpose())
+swr = swr.loc[-500:500]
+
+# AUTOCORR FAST
+store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_ALL.h5")
+autocorr_wak = store_autocorr['wake'].loc[0.5:]
+autocorr_rem = 	store_autocorr['rem'].loc[0.5:]
+autocorr_sws = 	store_autocorr['sws'].loc[0.5:]
+autocorr_wak = autocorr_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+autocorr_wak = autocorr_wak[2:150]
+autocorr_rem = autocorr_rem[2:150]
+autocorr_sws = autocorr_sws[2:150]
 
 
+neurons = np.intersect1d(swr.dropna(1).columns.values, autocorr_sws.dropna(1).columns.values)
+X = np.copy(swr[neurons].values.T)
+Y = np.copy(np.vstack((autocorr_wak[neurons].values,autocorr_rem[neurons].values, autocorr_sws[neurons].values))).T
+pca_swr = PCA(n_components=10).fit(X)
+pca_aut = PCA(n_components=10).fit(Y)
+pc_swr = pca_swr.transform(X)
+pc_aut = pca_aut.transform(Y)
 
-mean_burst = pd.DataFrame(columns = ['12', '17','20', '32'])
-count_nucl = pd.DataFrame(columns = ['12', '17','20', '32'])
+All = np.hstack((pc_swr, pc_aut))
+corr = np.corrcoef(All.T)
 
-for m in ['12', '17','20', '32']:
-	subspace = pd.read_hdf("../../figures/figures_articles/figure1/subspace_Mouse"+m+".hdf5")	
-	nucleus = np.unique(subspace['nucleus'])
-	mean_burstiness = [burstiness.loc[subspace.index, 'sws'][subspace['nucleus'] == nu].mean() for nu in nucleus]
-	mean_burst[m] = pd.Series(index = nucleus, data = mean_burstiness)	
-	total = [np.sum(subspace['nucleus'] == n) for n in nucleus]
-	count_nucl[m] = pd.Series(index = nucleus, data = total)
-# nucleus = ['AD', 'LDvl', 'AVd', 'MD', 'AVv', 'IAD', 'CM', 'AM', 'VA', 'Re']
-nucleus = list(count_nucl.dropna().index.values)
-
-
-
-
-positions = {	'AD':[1.0,3.0],
-				'LD':[1.5,3.0],
-				'AVd':[2.0,2.5],
-				'AVv':[2.2,2.0],
-				'VA':[2.0,0.5],
-				'CM':[-1.0,0.5],
-				'PV':[-1.0,1.5],
-				'MD':[-1.0,2.5],
-				'sm':[0.0,3.0],
-				'AM':[2.0,0.0],
-				'IAD':[-1.0,2.0]}
-
-
+#shuffle
+Xs = np.copy(X)
+Ys = np.copy(Y)
+np.random.shuffle(Xs)
+np.random.shuffle(Ys)
+pc_swr_sh = PCA(n_components=10).fit_transform(Xs)
+pc_aut_sh = PCA(n_components=10).fit_transform(Ys)
+Alls = np.hstack((pc_swr_sh, pc_aut_sh))
+corrsh = np.corrcoef(Alls.T)
 
 
 
@@ -108,7 +90,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*2.0          # height in inches
+	fig_height = fig_width*golden_mean*0.8          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -162,30 +144,132 @@ mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-colors = ['#444b6e', '#708b75', '#9ab87a']
+import matplotlib.cm as cmx
+import matplotlib.colors as colors
+# colors = ['#444b6e', '#708b75', '#9ab87a']
 
 fig = figure(figsize = figsize(1.0))
-gs = gridspec.GridSpec(2,1, wspace = 0.4, hspace = 0.5)
+gs = gridspec.GridSpec(2,3, wspace = 0.4, hspace = 0.5, width_ratios = [1,0.5,1])
+
 #########################################################################
-# RECAPITULATIVE MAPS
+# A. Exemple 
 #########################################################################
-axbig = subplot(gs[0,0])
-simpleaxis(axbig)
+labels = ['1\nHD', '2\nNon-bursty', '3\nBursty']
+titles = ['Wake', 'REM', 'SWS']
+viridis = get_cmap('viridis')
+cNorm = colors.Normalize(vmin=burst['sws'].min(), vmax = burst['sws'].max())
+scalarMap = cmx.ScalarMappable(norm=cNorm, cmap = viridis)
+color_ex = ['red', scalarMap.to_rgba(burst.loc[neurontoplot[1], 'sws']), scalarMap.to_rgba(burst.loc[neurontoplot[2], 'sws'])] 
 
-imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-xlim(cut_bound_map[0]-2.0, cut_bound_map[1]+1.0)
-ylim(cut_bound_map[2], cut_bound_map[3]+1.0)
-grid()
+gsA = gridspec.GridSpecFromSubplotSpec(2,2,subplot_spec=gs[:,0], width_ratios = [1, 0.5], hspace = 0.4, wspace = 0.1)
+
+# SWR EXAMPLES
+subplot(gsA[0,0])
+simpleaxis(gca())
+for i,n in enumerate(neurontoplot):
+	plot(swr[n], color = color_ex[i], linewidth = 0.8)
+xlabel("Times (ms)")
+ylabel("SWR modulation (z)")
+locator_params(axis='y', nbins=4)
+gca().text(-0.15, 1.05, "A", transform = gca().transAxes, fontsize = 9)
+# AUTOCORR EXAMPLES
+# subplot(gsA[1,0])
+titles = ['Wake', 'REM', "SWS"]
+tickss = [[0,4], [5], [36]]
+gsAA = gridspec.GridSpecFromSubplotSpec(1,3,subplot_spec=gsA[1,0], wspace = 0.1)
+for j,auto in zip(range(3),[autocorr_wak,autocorr_rem,autocorr_sws]):
+	subplot(gsAA[0,j])
+	simpleaxis(gca())
+	for i, n in enumerate(neurontoplot):
+		plot(auto[n], color = color_ex[i], linewidth = 0.8)
+	if j == 1:
+		xlabel("Times (ms)")
+	if j == 0:
+		ylabel("Autocorrelogram")
+	ylim(0)
+	title(titles[j])
+	yticks(tickss[j])
+
+# EXEMPLE PCA SWR
+subplot(gsA[0,1])
+simpleaxis(gca())
+gca().spines['left'].set_visible(False)
+gca().set_yticks([])
+axvline(0, linewidth = 0.5, color = 'black')
+for i, n in enumerate(neurontoplot):
+	idx = np.where(n == neurons)[0][0]
+	scatter(pc_swr[idx], np.arange(pc_swr.shape[1])+i*0.2, 3, color = color_ex[i])
+	for j in np.arange(pc_swr.shape[1]):
+		plot([0, pc_swr[idx][j]], [j+i*0.2, j+i*0.2], linewidth = 0.7, color = color_ex[i])
+
+title("PCA")
+
+# EXEMPLE PCA AUTOCORR
+subplot(gsA[1,1])
+simpleaxis(gca())
+gca().spines['left'].set_visible(False)
+gca().set_yticks([])
+axvline(0, linewidth = 0.5, color = 'black')
+for i, n in enumerate(neurontoplot):
+	idx = np.where(n == neurons)[0][0]
+	scatter(pc_aut[idx], np.arange(pc_aut.shape[1])+i*0.2, 3, color = color_ex[i])
+	for j in np.arange(pc_aut.shape[1]):
+		plot([0, pc_aut[idx][j]], [j+i*0.2, j+i*0.2], linewidth = 0.7, color = color_ex[i])
+
+title("PCA")
 
 
-cax = inset_axes(axbig, "20%", "20%",
-               bbox_to_anchor=(0, 2.5, 1, 1),
-               bbox_transform=axbig.transData, 
-               loc = 'lower left')
+#########################################################################
+# B. Matrixes
+#########################################################################
+subplot(gs[0,1])
+noaxis(gca())
+vmin = np.minimum(corr[0:10,10:].min(), corrsh[0:10,10:].min())
+vmax = np.maximum(corr[0:10,10:].max(), corrsh[0:10,10:].max())
+imshow(corr[0:10,10:], vmin = vmin, vmax = vmax)
+xlabel("PCA(SWR)")
+ylabel("PCA(AUTOCORR)")
+title("Correlation", fontsize = 8)
+gca().text(-0.25, 1.15, "B", transform = gca().transAxes, fontsize = 9)
+gca().text(0.08, -0.3, "|C| = "+str(np.round(np.linalg.det(corr),2)), transform = gca().transAxes, fontsize = 9)
+
+subplot(gs[1,1])
+noaxis(gca())
+imshow(corrsh[0:10,10:], vmin = vmin, vmax = vmax)
+title("Shuffle", fontsize = 8)
+xlabel("PCA(SWR)") 
+ylabel("PCA(AUTOCORR)")
+gca().text(0.08, -0.3, "|C| = "+str(np.round(np.linalg.det(corrsh),2)), transform = gca().transAxes, fontsize = 9)
 
 
 
+#########################################################################
+# C. SHUFFLING + CORR
+#########################################################################
+subplot(gs[0,2])
+simpleaxis(gca())
+axvline(1-det_all['all'], color = 'black')
+hist(1-shufflings['all'], 100, color = 'black', density = True, stacked = True)
+xlabel("1 - |C|")
+ylabel("Density (%)")
+gca().text(-0.15, 1.05, "C", transform = gca().transAxes, fontsize = 9)
 
+#########################################################################
+# D. Kullbacj Leibler
+#########################################################################
+subplot(gs[1,2])
+simpleaxis(gca())
+gca().text(-0.15, 1.05, "D", transform = gca().transAxes, fontsize = 9)
+
+
+# cax = inset_axes(axbig, "20%", "20%",
+#                bbox_to_anchor=(0, 2.5, 1, 1),
+#                bbox_transform=axbig.transData, 
+#                loc = 'lower left')
+
+
+
+subplots_adjust(top = 0.93, bottom = 0.1, right = 0.96, left = 0.08)
 
 savefig("../../figures/figures_articles/figart_6.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_6.pdf &")

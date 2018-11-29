@@ -44,7 +44,7 @@ store.close()
 ###################################################################################################################
 # LFP EXEMPLE
 ###################################################################################################################
-# session_ex = 'Mouse12/Mouse12-120807'
+session_ex = 'Mouse12/Mouse12-120807'
 # generalinfo 	= scipy.io.loadmat(data_directory+session_ex+'/Analysis/GeneralInfo.mat')
 # shankStructure 	= loadShankStructure(generalinfo)	
 # if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
@@ -61,7 +61,7 @@ store.close()
 # lfp_sws_ex 		= lfp_hpc.restrict(sws_ex)
 # lfp_rem_ex 		= lfp_hpc.restrict(rem_ex)
 # spikes_sws_ex 	= pd.concat({n:spikes[n].restrict(sws_ex).isnull()*n for n in spikes}, axis = 1)
-# spikes_rem_ex 	= pd.concat({n:spikes[n].restrict(sws_ex).isnull()*n for n in spikes}, axis = 1)
+# spikes_rem_ex 	= pd.concat({n:spikes[n].restrict(rem_ex).isnull()*n for n in spikes}, axis = 1)
 # rip_ep,rip_tsd 	= loadRipples(data_directory+session)
 
 # store_ex = pd.HDFStore('../../figures/figures_articles/figure3/lfp_exemple.h5', 'w')
@@ -73,6 +73,7 @@ store.close()
 # store_ex.put('rip_ep', pd.DataFrame(rip_ep.intersect(sws_ex)))
 # store_ex.put('rip_tsd', rip_tsd.restrict(sws_ex).as_series())
 # store_ex.close()
+
 
 store_ex = pd.HDFStore('../../figures/figures_articles/figure3/lfp_exemple.h5', 'r')
 lfp_sws_ex  = store_ex['lfp_sws_ex']
@@ -135,6 +136,14 @@ store_ex.close()
 carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
 bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
 
+mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
+
+# from figure 5
+nucleus = ['AD', 'AVd', 'IAD', 'PV', 'AM ', 'AVv', 'MD', 'sm']
+
+p_40 = "-0.03"
+p_60 = "0.06"
+
 
 ###############################################################################################################
 ###############################################################################################################
@@ -145,7 +154,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.4          # height in inches
+	fig_height = fig_width*golden_mean*1.5          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -202,40 +211,59 @@ from matplotlib.pyplot import *
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 colors = ['#444b6e', '#708b75', '#9ab87a']
 
-fig = figure(figsize = figsize(1.0), tight_layout = True)
+fig = figure(figsize = figsize(1.0))
 
-outergs = gridspec.GridSpec(3,2, figure = fig)
+outergs = gridspec.GridSpec(4,2, figure = fig, height_ratios = [1,1.5,0.01,1])
 
 #############################################################################
 # A. B LFP EXEMPLE
 #############################################################################
-gsEx = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outergs[0,:])
+gsEx = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outergs[0,:], hspace = 0, wspace = 0)
 
+lbs = ['A', 'B']
 # 1 lfps
 for i, lfp in zip(range(2),[lfp_rem_ex, lfp_sws_ex]):
-	ax = Subplot(fig, gsEx[0,i])
-	fig.add_subplot(ax)
+	# ax = Subplot(fig, )
+	ax = fig.add_subplot(gsEx[0,i])
 	noaxis(ax)
-	plot(lfp, color = 'black', linewidth = 0.5)
-
+	plot(lfp, color = 'black', linewidth = 0.4)
+	if i == 0:
+		text(-0.12, 0.9, lbs[i], transform=ax.transAxes, fontsize = 9)
+	else:
+		text(-0.01, 0.9, lbs[i], transform=ax.transAxes, fontsize = 9)
 # 2 spikes
-for i in range(2):
-	ax = Subplot(fig, gsEx[1,i])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
+for i, spikes in zip(range(2), [spikes_rem_ex, spikes_sws_ex]):
+	# ax = Subplot(fig, )
+	ax = fig.add_subplot(gsEx[1,i])
+	noaxis(ax)
+	# no hd
+	id = 0
+	for n in np.where(hd_info_neuron == 0)[0]:
+		plot(spikes[n].dropna().replace(n, id), '|', markersize = 1, color = 'black')
+		id += 1
+	# hd 
+	for n in np.where(hd_info_neuron == 1)[0]:
+		plot(spikes[n].dropna().replace(n, id), '|', markersize = 1, color = 'red')
+		id += 1
 
+	if i == 0:
+		start = spikes_rem_ex.index.min()
+		plot([start, start+1e6], [-2, -2], color = 'black', linewidth = 2)
+		text(0.1, -0.15,'1 s', transform=ax.transAxes, fontsize = 8)
 
+	ylim(-2, id)
 #############################################################################
 # C. THETA PHASE MODULATION
 #############################################################################
 # axC = fig.add_subplot(2,2,1)
-gsC = gridspec.GridSpecFromSubplotSpec(2,4,subplot_spec = outergs[1,0], wspace = 0.6,  width_ratios = [1,1,1,0.1])
+# gsC = gridspec.GridSpecFromSubplotSpec(2,4,subplot_spec = outergs[1,0], wspace = 0.6,  width_ratios = [1,1,1,0.1])
+gsC = gridspec.GridSpecFromSubplotSpec(2,3,subplot_spec = outergs[1,0], wspace = 0.6)
 
 for i, n in enumerate(neurons):	
 	# spikes
 	# ax = fig.add_subplot(gsC[0,i])
-	ax = Subplot(fig, gsC[0,i])
-	fig.add_subplot(ax)
+	# ax = Subplot(fig, )
+	ax = fig.add_subplot(gsC[0,i])
 	simpleaxis(ax)
 	if neurons.index(n) == 1:
 		text(0.5, 1.17,'Theta phase modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
@@ -253,9 +281,9 @@ for i, n in enumerate(neurons):
 	# xlabel("phase (rad)")
 	# polar plot
 	# ax = fig.add_subplot(gsC[1,i], projection = 'polar')	
-	# axp = Subplot(fig, gsC[1,i])
+	# axp = Subplot(fig, )
 	axp = fig.add_subplot(gsC[1,i])
-	# fig.add_subplot(axp, projection = 'polar')
+	# fig.add_subplot(axp, projection = 'polar')	
 	simpleaxis(axp)
 	tmp = phase_spike_theta[n].values
 	tmp += 2*np.pi
@@ -309,8 +337,8 @@ for i, n in enumerate(neurons):
 	axvline(0, color = 'grey', linewidth = 0.5)
 	xticks([], [])
 	if neurons.index(n) == 0:
-		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 13.6)
-		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.4, -0.5))	
+		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 18)
+		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.4, -0.6))	
 
 	# Z score
 	# ax = fig.add_subplot(gsD[3:,i])
@@ -335,7 +363,7 @@ for i, n in enumerate(neurons):
 ###############################################################################
 # axmap = subplot(2,1)
 # axmap = 
-outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = outergs[2,:], width_ratios = [1,0.1,1,1,0.1,1])
+outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = outergs[3,:], width_ratios = [1,0.1,1,1,0.1,1])
 # noaxis(axmap)
 # axE = fig.add_subplot(2,4,5)
 axE = fig.add_subplot(outer[0,0])
@@ -376,7 +404,7 @@ cax = inset_axes(axF, "40%", "4%",
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 # cb.set_label('Density (p < 0.05)' , labelpad = -0)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("Density $t_{0 ms} > P_{60}$", fontsize = 7, pad = 2.5)
+cax.set_title("Density $z_{0 ms} > $"+p_60, fontsize = 7, pad = 2.5)
 axF.text(pos_nb[0],pos_nb[1], "F", transform = axF.transAxes, fontsize = 9)
 # title("Ripples spatial modulation", fontsize = 7, y = 1.3)
 axF.text(0.4, 1.3, "Ripples spatial modulation", transform = axF.transAxes, fontsize = 8)
@@ -398,7 +426,7 @@ cax = inset_axes(axG, "40%", "4%",
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 # cb.set_label('Density (p < 0.05)' , labelpad = -0)
 cb.ax.xaxis.set_tick_params(pad = 1)
-cax.set_title("$t_{0 ms} < P_{40}$", fontsize = 7, pad = 2.5)
+cax.set_title("$z_{0 ms} <$"+p_40, fontsize = 7, pad = 2.5)
 axG.text(pos_nb[0],pos_nb[1], "G", transform = axG.transAxes, fontsize = 9)
 
 ###############################################################################
@@ -412,8 +440,7 @@ simpleaxis(axH)
 # 									columns = ['phase', 'pvalue', 'kappa'],
 # 									data = theta_mod['rem'])
 rippower 				= pd.read_hdf("../../figures/figures_articles/figure2/power_ripples_2.h5")
-mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
-nucleus = np.unique(mappings['nucleus'])
+# nucleus = np.unique(mappings['nucleus'])
 df = pd.DataFrame(index = nucleus, columns = pd.MultiIndex.from_product([['theta', 'rip'], ['mean', 'sem']]))
 
 theta2 = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5")
@@ -429,7 +456,7 @@ for n in nucleus:
 
 df = df.sort_values([('rip', 'mean')])
 
-df = df.drop(['sm', 'U'])
+# df = df.drop(['sm', 'U'])
 labels = ['Theta', 'Ripples']
 axHH = axH.twiny()
 axes = [axH, axHH]
@@ -441,12 +468,13 @@ for i, k in enumerate(['theta', 'rip']):
 	axes[i].fill_betweenx(np.arange(len(df)), m-s, m+s, alpha = 0.3, color = colors[i])
 yticks(np.arange(len(df)), df.index.values)
 axH.set_xlabel(r"Theta modulation ($\kappa$)", color = colors[0])
+axH.tick_params(axis='x', colors=colors[0])
 axHH.set_xlabel("Ripples energy (|z|)", color = colors[1])
-
+axHH.tick_params(axis='x', colors=colors[1])
 axH.text(-0.3, 1.0, "H", transform = axH.transAxes, fontsize = 9)
 
 
-fig.subplots_adjust(hspace= 1)
+fig.subplots_adjust(wspace = 0.3, hspace= 0.4, top = 0.99, bottom = 0.05, right = 0.98, left = 0.08)
 
 savefig("../../figures/figures_articles/figart_3.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_3.pdf &")

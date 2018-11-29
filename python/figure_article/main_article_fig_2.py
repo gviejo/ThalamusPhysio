@@ -171,14 +171,14 @@ for i, n in enumerate([hd, nhd, iad]):
 	x = tmp3.index.values*1e-3
 	y = func(x, *lambdaa.loc[n, 'wak'].values)
 	if i == 2:
-		plot(x, y, '--', color = 'grey', label = "Exp fit \n " r"$y=a e^{\frac{-t}{\tau}} + b$")
+		plot(x, y, '--', color = 'grey', label = "Exp. fit \n " r"$y = a \ exp(-t/\tau) + b$")
 	else:
 		plot(x, y, '--', color = 'grey')
 
 # show()
 
 
-legend(edgecolor = None, facecolor = None, frameon = False, bbox_to_anchor=(0.5, 1.1), bbox_transform=axA.transAxes)
+legend(edgecolor = None, facecolor = None, frameon = False, bbox_to_anchor=(0.3, 1.1), bbox_transform=axA.transAxes)
 xlabel("Time (s)")
 ylabel("Autocorrelation (a.u)")
 locator_params(nbins = 4)
@@ -202,8 +202,8 @@ for i, ep in enumerate(['wak', 'rem']):
 
 legend(edgecolor = None, facecolor = None, frameon = False)
 yticks(np.arange(len(order)), order)
-ylabel("Nucleus")	
-xlabel(r"Exp fit $\tau$ (s)")
+ylabel("Nuclei")	
+xlabel(r"Exp. fit $\tau$ (s)")
 locator_params(axis = 'x', nbins = 4)
 
 axB.text(-0.1, 1.05, "B", transform = axB.transAxes, fontsize = 9)
@@ -230,7 +230,7 @@ from scipy.stats import pearsonr
 
 scatter(df['burst'].values, df['lambda'].values, 4, color = colors[0], alpha = 0.5, edgecolors = 'none')
 xlabel("Burstiness")
-ylabel(r"Exp fit $\tau$ (s)")
+ylabel(r"Exp. fit $\tau$ (s)")
 
 a, b = pearsonr(df['burst'].values, df['lambda'].values)
 
