@@ -44,15 +44,15 @@ def xgb_decodage(Xr, Yr, Xt, n_class):
 	'eval_metric': "mlogloss", #loglikelihood loss
 	'seed': np.random.randint(1, 10000), #for reproducibility
 	'silent': 1,
-	'learning_rate': 0.05,
+	'learning_rate': 0.01,
 	'min_child_weight': 2, 
-	'n_estimators': 2,
+	'n_estimators': 500,
 	# 'subsample': 0.5,
 	'max_depth': 5, 
 	'gamma': 0.5,
 	'num_class':n_class}
 
-	num_round = 2
+	num_round = 1000
 	bst = xgb.train(params, dtrain, num_round)
 	ymat = bst.predict(dtest)
 	pclas = np.argmax(ymat, 1)
@@ -216,7 +216,7 @@ alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,a
 mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','swr'], ['mean', 'sem']]))
 cols = np.unique(mean_score.columns.get_level_values(1))
 
-n_repeat = 10
+n_repeat = 1000
 
 for i, m in enumerate(cols):
 	data = alldata[i].T
