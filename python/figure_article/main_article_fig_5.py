@@ -357,6 +357,11 @@ tx = [-100,0]
 annotate('0 ms', (jpca.loc[0,0],jpca.loc[0,1]), (jpca.loc[0,0]+0.009,jpca.loc[0,1]-0.02))
 annotate('-100 ms', (jpca.loc[-100,0],jpca.loc[-100,1]), (jpca.loc[-100,0]-0.0,jpca.loc[-100,1]-0.03))
 annotate('100 ms', (jpca.loc[100,0],jpca.loc[100,1]), (jpca.loc[100,0]-0.0,jpca.loc[100,1]+0.02))
+offs = 0.1
+arrow(jpca.loc[50,0], jpca.loc[50,1], jpca.loc[55,0]-jpca.loc[50,0], jpca.loc[55,1]-jpca.loc[50,1], head_width=.015, fc = 'black', shape='full', lw=0, length_includes_head=True)
+arrow(jpca.loc[0,0], jpca.loc[0,1], jpca.loc[5,0]-jpca.loc[0,0], jpca.loc[5,1]-jpca.loc[0,1], head_width=.015, fc = 'black', shape='full', lw=0, length_includes_head=True)
+arrow(jpca.loc[-45,0], jpca.loc[-45,1], jpca.loc[-40,0]-jpca.loc[-45,0], jpca.loc[-40,1]-jpca.loc[-45,1], head_width=.015, fc = 'black', shape='full', lw=0, length_includes_head=True)
+arrow(jpca.loc[-115,0], jpca.loc[-115,1], jpca.loc[-110,0]-jpca.loc[-115,0], jpca.loc[-110,1]-jpca.loc[-115,1], head_width=.015, fc = 'black', shape='full', lw=0, length_includes_head=True)
 # threshold = swr_all.mean() + (swr_all.max() - swr_all.mean())/2
 # phase = swr_all - threshold
 # phase[phase < 0.0] = np.nan

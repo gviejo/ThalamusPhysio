@@ -15,26 +15,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold
 import xgboost as xgb
-
-def extract_tree_threshold(trees):
-    """ Take BST TREE and return a dict = {features index : [splits position 1, splits position 2, ...]}
-    """
-    n = len(trees.get_dump())
-    thr = {}
-    for t in range(n):
-        gv = xgb.to_graphviz(trees, num_trees=t)
-        body = gv.body		
-        for i in range(len(body)):
-            for l in body[i].split('"'):
-                if 'f' in l and '<' in l:
-                    tmp = l.split("<")
-                    if tmp[0] in thr:
-                        thr[tmp[0]].append(float(tmp[1]))
-                    else:
-                        thr[tmp[0]] = [float(tmp[1])]
-    for k in thr:
-        thr[k] = np.sort(np.array(thr[k]))
-    return thr
+from scipy.stats import entropy
 
 def xgb_decodage(Xr, Yr, Xt, n_class):          
 	dtrain = xgb.DMatrix(Xr, label=Yr)
@@ -55,16 +36,16 @@ def xgb_decodage(Xr, Yr, Xt, n_class):
 	num_round = 1000
 	bst = xgb.train(params, dtrain, num_round)
 	ymat = bst.predict(dtest)
-	pclas = np.argmax(ymat, 1)
-	return pclas
+	return ymat	
 
 def fit_cv(X, Y, n_cv=10, verbose=1, shuffle = False):
 	if np.ndim(X)==1:
 		X = np.transpose(np.atleast_2d(X))
 	cv_kf = KFold(n_splits=n_cv, shuffle=True, random_state=42)
 	skf  = cv_kf.split(X)    
-	Y_hat=np.zeros(len(Y))*np.nan
 	n_class = len(np.unique(Y))
+	Y_hat = np.zeros((len(Y),n_class))*np.nan
+	
 
 	for idx_r, idx_t in skf:        
 		Xr = np.copy(X[idx_r, :])
@@ -210,21 +191,75 @@ labels = np.array([nucleus.index(mappings.loc[n,'nucleus']) for n in tokeep])
 # 			swr[tokeep].values
 # 			]
 
-alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]),			
-			swr[tokeep].values
+alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,autocorr_sws[tokeep].values]).T,			
+			swr[tokeep].values.T
 			]
 
-mean_score = pd.DataFrame(index = nucleus,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','swr'], ['mean', 'sem']]))
-cols = np.unique(mean_score.columns.get_level_values(1))
+# kl = pd.DataFrame(index = nucleus ,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','swr'], ['mean', 'sem']]))
+# cols = np.unique(mean_score.columns.get_level_values(1))
 
-n_repeat = 1000
+n_repeat = 100
+n_cv = 6
+
+_SQRT2 = np.sqrt(2)
+def hellinger(p, q):
+	return np.sqrt(np.sum((np.sqrt(p) - np.sqrt(q)) ** 2)) / _SQRT2
 
 
+
+
+####################################
+# for the three exemple of figure 6
+# nucleus2 = nucleus + ['CM']
+# tokeep2 = np.array([n for n in neurons if mappings.loc[n,'nucleus'] in nucleus2])
+# neurontoplot = ['Mouse12-120806_18', 'Mouse17-130202_24', 'Mouse12-120819_16']
+# idx = [np.where(tokeep2 == n)[0][0] for n in neurontoplot]
+# alldata2 = [	np.vstack([autocorr_wak[tokeep2].values,autocorr_rem[tokeep2].values,autocorr_sws[tokeep2].values]).T,			
+# 			swr[tokeep2].values.T
+# 			]
+# labels2 = np.array([nucleus2.index(mappings.loc[n,'nucleus']) for n in tokeep2])
+# proba_aut = fit_cv(alldata2[0], labels2, n_cv, verbose = 0)
+# proba_swr = fit_cv(alldata2[1], labels2, n_cv, verbose = 0)
+
+# store = pd.HDFStore("../figures/figures_articles/figure6/example_proba.h5", 'w')
+# store.put("proba_aut", pd.DataFrame(data = proba_aut[idx].T, columns = neurontoplot, index = nucleus2))
+# store.put("proba_swr", pd.DataFrame(data = proba_swr[idx].T, columns = neurontoplot, index = nucleus2))
+# store.close()
+
+###################################
+
+proba_aut = fit_cv(alldata[0], labels, n_cv, verbose = 0)
+proba_swr = fit_cv(alldata[1], labels, n_cv, verbose = 0)
+
+HL = pd.Series(index = tokeep, data = np.array([hellinger(proba_swr[i],proba_aut[i]) for i in range(len(tokeep))]))
+KL = pd.Series(index = tokeep, data = np.array([entropy(proba_swr[i],proba_aut[i]) for i in range(len(tokeep))]))
+
+HLS = pd.DataFrame(index = tokeep, columns = np.arange(n_repeat))
+KLS = pd.DataFrame(index = tokeep, columns = np.arange(n_repeat))
+
+for i in range(n_repeat):	
+	print(i)
+	proba_aut = fit_cv(alldata[0], labels, n_cv, verbose = 0, shuffle = False)
+	proba_swr = fit_cv(alldata[1], labels, n_cv, verbose = 0, shuffle = True)
+	tmp = pd.Series(index = tokeep, data = np.array([hellinger(proba_swr[i],proba_aut[i]) for i in range(len(tokeep))]))
+	HLS[i] = tmp
+	tmp = pd.Series(index = tokeep, data = np.array([entropy(proba_swr[i],proba_aut[i]) for i in range(len(tokeep))]))
+	KLS[i] = tmp
+
+
+store = pd.HDFStore("../figures/figures_articles/figure6/score_hellinger.h5", 'w')
+store.put('HL', HL)
+store.put('HLS', HLS)
+store.put('KL', KL)
+store.put('KLS', KLS)
+store.close()
+
+
+sys.exit()
 
 for i, m in enumerate(cols):
 	data = alldata[i].T
-	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))
-	print(i,m)
+	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))	
 	for j in range(n_repeat):
 		test = fit_cv(data, labels, 10, verbose = 0)
 		rand = fit_cv(data, labels, 10, verbose = 0, shuffle = True)

@@ -44,7 +44,7 @@ store.close()
 ###################################################################################################################
 # LFP EXEMPLE
 ###################################################################################################################
-session_ex = 'Mouse12/Mouse12-120807'
+# session_ex = 'Mouse12/Mouse12-120807'
 # generalinfo 	= scipy.io.loadmat(data_directory+session_ex+'/Analysis/GeneralInfo.mat')
 # shankStructure 	= loadShankStructure(generalinfo)	
 # if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
@@ -54,7 +54,9 @@ session_ex = 'Mouse12/Mouse12-120807'
 # spikes,shank	= loadSpikeData(data_directory+session_ex+'/Analysis/SpikeData.mat', shankStructure['thalamus'])		
 # n_channel,fs, shank_to_channel = loadXML(data_directory+session_ex+"/"+session_ex.split("/")[1]+'.xml')	
 # hd_info 			= scipy.io.loadmat(data_directory+session_ex+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
+# hd_phi 				= scipy.io.loadmat(data_directory+session_ex+'/Analysis/HDCells.mat')['hdCellStats'][:,0]
 # hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])
+# hd_phi_neuron 		= np.array([hd_phi[n] for n in spikes.keys()])
 # lfp_hpc 		= loadLFP(data_directory+session_ex+"/"+session_ex.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
 # sws_ex = nts.IntervalSet(start = 3920, end = 3923, time_units = 's')
 # rem_ex = nts.IntervalSet(start = 3189, end = 3195, time_units = 's')
@@ -62,7 +64,7 @@ session_ex = 'Mouse12/Mouse12-120807'
 # lfp_rem_ex 		= lfp_hpc.restrict(rem_ex)
 # spikes_sws_ex 	= pd.concat({n:spikes[n].restrict(sws_ex).isnull()*n for n in spikes}, axis = 1)
 # spikes_rem_ex 	= pd.concat({n:spikes[n].restrict(rem_ex).isnull()*n for n in spikes}, axis = 1)
-# rip_ep,rip_tsd 	= loadRipples(data_directory+session)
+# rip_ep,rip_tsd 	= loadRipples(data_directory+session_ex)
 
 # store_ex = pd.HDFStore('../../figures/figures_articles/figure3/lfp_exemple.h5', 'w')
 # store_ex.put('lfp_sws_ex', lfp_sws_ex.as_series())	
@@ -72,6 +74,7 @@ session_ex = 'Mouse12/Mouse12-120807'
 # store_ex.put('hd_info_neuron', pd.Series(hd_info_neuron))
 # store_ex.put('rip_ep', pd.DataFrame(rip_ep.intersect(sws_ex)))
 # store_ex.put('rip_tsd', rip_tsd.restrict(sws_ex).as_series())
+# store_ex.put('hd_phi_neuron', pd.Series(hd_phi_neuron))
 # store_ex.close()
 
 
@@ -83,6 +86,7 @@ spikes_rem_ex  = store_ex['spikes_rem_ex']
 hd_info_neuron = store_ex['hd_info_neuron']
 rip_ep = store_ex['rip_ep']
 rip_tsd = store_ex['rip_tsd']
+hd_phi_neuron = store_ex['hd_phi_neuron']
 store_ex.close()
 
 
@@ -154,7 +158,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.5          # height in inches
+	fig_height = fig_width*golden_mean*1.7          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -213,12 +217,12 @@ colors = ['#444b6e', '#708b75', '#9ab87a']
 
 fig = figure(figsize = figsize(1.0))
 
-outergs = gridspec.GridSpec(4,2, figure = fig, height_ratios = [1,1.5,0.01,1])
+outergs = gridspec.GridSpec(4,2, figure = fig, height_ratios = [1.3,1.5,0.001,1])
 
 #############################################################################
 # A. B LFP EXEMPLE
 #############################################################################
-gsEx = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outergs[0,:], hspace = 0, wspace = 0)
+gsEx = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outergs[0,:], hspace = 0, wspace = 0, height_ratios = [0.4,1])
 
 lbs = ['A', 'B']
 # 1 lfps
@@ -229,8 +233,10 @@ for i, lfp in zip(range(2),[lfp_rem_ex, lfp_sws_ex]):
 	plot(lfp, color = 'black', linewidth = 0.4)
 	if i == 0:
 		text(-0.12, 0.9, lbs[i], transform=ax.transAxes, fontsize = 9)
+		ylabel("CA1")
 	else:
 		text(-0.01, 0.9, lbs[i], transform=ax.transAxes, fontsize = 9)
+		plot(rip_tsd.index.values, [lfp.max()]*2, '*', color = 'red', markersize = 5)
 # 2 spikes
 for i, spikes in zip(range(2), [spikes_rem_ex, spikes_sws_ex]):
 	# ax = Subplot(fig, )
@@ -239,14 +245,16 @@ for i, spikes in zip(range(2), [spikes_rem_ex, spikes_sws_ex]):
 	# no hd
 	id = 0
 	for n in np.where(hd_info_neuron == 0)[0]:
-		plot(spikes[n].dropna().replace(n, id), '|', markersize = 1, color = 'black')
+		plot(spikes[n].dropna().replace(n, id), '|', markersize = 2, color = 'black')
 		id += 1
 	# hd 
-	for n in np.where(hd_info_neuron == 1)[0]:
-		plot(spikes[n].dropna().replace(n, id), '|', markersize = 1, color = 'red')
+	hd_order = np.where(hd_info_neuron==1)[0][np.argsort(hd_phi_neuron.values[hd_info_neuron==1])]
+	for n in hd_order:
+		plot(spikes[n].dropna().replace(n, id), '|', markersize = 2, color = 'red')
 		id += 1
 
 	if i == 0:
+		ylabel("Thalamus")
 		start = spikes_rem_ex.index.min()
 		plot([start, start+1e6], [-2, -2], color = 'black', linewidth = 2)
 		text(0.1, -0.15,'1 s', transform=ax.transAxes, fontsize = 8)
@@ -474,7 +482,7 @@ axHH.tick_params(axis='x', colors=colors[1])
 axH.text(-0.3, 1.0, "H", transform = axH.transAxes, fontsize = 9)
 
 
-fig.subplots_adjust(wspace = 0.3, hspace= 0.4, top = 0.99, bottom = 0.05, right = 0.98, left = 0.08)
+fig.subplots_adjust(wspace = 0.3, hspace= 0.3, top = 0.99, bottom = 0.05, right = 0.98, left = 0.08)
 
 savefig("../../figures/figures_articles/figart_3.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_3.pdf &")
