@@ -418,7 +418,8 @@ if __name__=="__main__":
     A[512:768]+=B[0:256]
     
     # Wavelet transform the data
-    cw=wavelet(A,maxscale,notes,scaling=scaling)
+    # cw=wavelet(A,maxscale,notes,scaling=scaling)
+    cw=wavelet(A,0, 100, 10, 32, scaling = 'log')
     scales=cw.getscales()     
     cwt=cw.getdata()
     # power spectrum

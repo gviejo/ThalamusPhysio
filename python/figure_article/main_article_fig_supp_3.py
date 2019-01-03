@@ -41,9 +41,15 @@ binsize					= 5
 times 					= np.arange(0, binsize*(nbins+1), binsize) - (nbins*binsize)/2
 times2 					= swr_mod.index.values
 
-carte38_mouse17_2 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
-bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
-cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+# carte38_mouse17_2 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
+# bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+# cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+
+carte_adrien = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_ALL-01.png')
+carte_adrien2 = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_Contour-01.png')
+bound_adrien = (-398/1254, 3319/1254, -(239/1254 - 20/1044), 3278/1254)
+
+
 
 shifts = np.array([	[-0.34, 0.56],
 					[0.12, 0.6],
@@ -73,7 +79,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*2.0            # height in inches
+	fig_height = fig_width*golden_mean*1.5            # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -110,20 +116,20 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 6,               # LaTeX default is 10pt font.
-	"font.size": 6,
-	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 6,
-	"ytick.labelsize": 6,
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
+	"font.size": 7,
+	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 7,
+	"ytick.labelsize": 7,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
 		],
 	"lines.markeredgewidth" : 0.2,
-	"axes.linewidth"        : 0.5,
-	"ytick.major.size"      : 1.0,
-	"xtick.major.size"      : 1.0
-	}    
+	"axes.linewidth"        : 0.8,
+	"ytick.major.size"      : 1.5,
+	"xtick.major.size"      : 1.5
+	}      
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
@@ -177,13 +183,18 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	jpc 	= data['jpc']
 	jpc 	= pd.DataFrame(index = times2, data = jpc)
 
+	gradients = ['#37333f', '#536c7f', '#8fcdbd']
+
 	alljpc[m] = jpc
 	plot(jpc.iloc[0,0], jpc.iloc[0,1], 'o', markersize = 3, color = 'grey')
 	plot(jpc[0], jpc[1], linewidth = 0.8, color = 'grey')
 	arrow(jpc.iloc[-3,0],jpc.iloc[-3,1],jpc.iloc[-2,0]-jpc.iloc[-3,0],jpc.iloc[-2,1]-jpc.iloc[-3,1], color = 'grey', head_width = 0.06)
+	offsets = [-0.08,0.01,0.01]
 	for j in range(3): 
-		plot(jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],0], jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],1], color = 'blue', alpha = 0.3)		
-
+		plot(jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],0], jpc.loc[toplot.loc[m,(j,'start')]:toplot.loc[m,(j,'end')],1], color = gradients[j], linewidth =2, alpha = 1)		
+		tmp = toplot.loc[m,(j,'start')] + (toplot.loc[m,(j,'end')]-toplot.loc[m,(j,'start')])/2
+		tmp = jpc.index.values[np.argmin(np.abs(tmp-jpc.index.values))]
+		# text(jpc.loc[tmp,0], jpc.loc[tmp,1]+offsets[j], str(j), horizontalalignment = 'center', fontsize = 7)
 
 	gca().spines['left'].set_bounds(ys[0]+0.1,ys[0]+0.2)
 	gca().spines['bottom'].set_bounds(ys[0]+0.1,ys[0]+0.2)
@@ -195,8 +206,8 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	# xlabel('jPC1')
 	xlim(xs[0], xs[1])
 	ylim(ys[0], ys[1])
-	text(-0.15, 1.17, lbs[i], transform = gca().transAxes, fontsize = 9)
-
+	text(-0.15, 1.17, lbs[i], transform = gca().transAxes, fontsize = 10)
+	title("Mouse "+str(i+2))
 
 
 	########################################################################
@@ -209,9 +220,10 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 		# fill_between(times2, swr_nuc[m][n]['mean'].values - swr_nuc[m][n]['sem'].values, swr_nuc[m][n]['mean'].values + swr_nuc[m][n]['sem'], facecolor = 'grey', edgecolor = 'grey', alpha = 0.7)	
 	for j in range(3): 
 		# axvline(toplot[m][j])
-		axvspan(toplot.loc[m,(j,'start')], toplot.loc[m,(j,'end')], alpha = 0.5)
+		axvspan(toplot.loc[m,(j,'start')], toplot.loc[m,(j,'end')], alpha = 0.5, color = gradients[j])
+		text(toplot.loc[m,(j,'start')] + (toplot.loc[m,(j,'end')]-toplot.loc[m,(j,'start')])/2, gca().get_ylim()[1], "T"+str(j), horizontalalignment = 'center')
 	ylabel("SWR")
-	xlabel("Times (ms)")
+	xlabel("Time lag (ms)")
 	if i == 0:
 		legend(frameon=False,loc = 'lower left', bbox_to_anchor=(1.1,-0.4),handlelength=1,ncol = len(nucleus)//2)
 
@@ -232,7 +244,7 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	newswr = softmax(newswr, 10, 0.5, 0.0)
 	for j in range(3):
 		subplot(gsm[:,j+1])
-		if j == 0: title("Mouse "+str(i+1))
+		# if j == 0: title("Mouse "+str(i+2))
 		noaxis(gca())
 		image = newswr[j]
 		h, w = image.shape
@@ -242,14 +254,26 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 		rotated_image[rotated_image == 0.0] = np.nan
 		rotated_image -= 1.0
 		tocrop = np.where(~np.isnan(rotated_image))
-		rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
-		imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'jet')
-		imshow(carte38_mouse17_2[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
-		xlim(np.minimum(cut_bound_map[0],bound[0]),np.maximum(cut_bound_map[1],bound[1]))
-		ylim(np.minimum(cut_bound_map[2],bound[2]),np.maximum(cut_bound_map[3],bound[3]))
-		xlabel(str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
+		rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]					
+		imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
+		im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'bwr')
+		xlim(np.minimum(bound_adrien[0],bound[0]),np.maximum(bound_adrien[1],bound[1]))
+		ylim(np.minimum(bound_adrien[2],bound[2]),np.maximum(bound_adrien[3],bound[3]))		
+		title("T"+str(j)+': '+str(toplot.loc[m,(j,'start')])+"ms -> "+str(toplot.loc[m,(j,'end')])+"ms")
 
+		#colorbar	
+		cax = inset_axes(gca(), "4%", "20%",
+		                   bbox_to_anchor=(0.8, 0.0, 1, 1),
+		                   bbox_transform=gca().transAxes, 
+		                   loc = 'lower left')
+		if np.nanmax(rotated_image)<0.75:
+			cb = colorbar(im, cax = cax, orientation = 'vertical', ticks = [0.15, 0.50])
+		else:	
+			cb = colorbar(im, cax = cax, orientation = 'vertical', ticks = [0.25, 0.75])
+	
 
-savefig("../../figures/figures_articles/figart_supp_3.pdf", dpi = 900, bbox_inches = 'tight', facecolor = 'white')
+subplots_adjust(top = 0.95, bottom = 0.05, left = 0.05, right = 0.95, hspace = 0.2)
+
+savefig("../../figures/figures_articles/figart_supp_3.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles/figart_supp_3.pdf &")
 

@@ -59,7 +59,7 @@ store.close()
 # hd_phi_neuron 		= np.array([hd_phi[n] for n in spikes.keys()])
 # lfp_hpc 		= loadLFP(data_directory+session_ex+"/"+session_ex.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
 # sws_ex = nts.IntervalSet(start = 3920, end = 3923, time_units = 's')
-# rem_ex = nts.IntervalSet(start = 3189, end = 3195, time_units = 's')
+# rem_ex = nts.IntervalSet(start = 3191, end = 3195, time_units = 's')
 # lfp_sws_ex 		= lfp_hpc.restrict(sws_ex)
 # lfp_rem_ex 		= lfp_hpc.restrict(rem_ex)
 # spikes_sws_ex 	= pd.concat({n:spikes[n].restrict(sws_ex).isnull()*n for n in spikes}, axis = 1)
@@ -137,13 +137,19 @@ store_ex.close()
 # theta_mod_rem 	= theta_mod_rem.sort_values('phase')
 # allneurons_sorted = theta_mod_rem.index.values
 
-carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
-bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+# carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
+# bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+# cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+
+carte_adrien = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_ALL-01.png')
+carte_adrien2 = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_Contour-01.png')
+bound_adrien = (-398/1254, 3319/1254, -(239/1254 - 20/1044), 3278/1254)
+
 
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 
 # from figure 5
-nucleus = ['AD', 'AVd', 'IAD', 'PV', 'AM ', 'AVv', 'MD', 'sm']
+nucleus = ['AD', 'AVd', 'IAD', 'PV', 'AM', 'AVv', 'MD', 'sm']
 
 p_40 = "-0.03"
 p_60 = "0.06"
@@ -192,23 +198,23 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
 	# "font.family": "serif",
-	# "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-	# "font.sans-serif": [],
+	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 7,               # LaTeX default is 10pt font.
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
 	"font.size": 7,
-	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 6,
-	"ytick.labelsize": 6,
+	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 7,
+	"ytick.labelsize": 7,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
 		],
 	"lines.markeredgewidth" : 0.2,
-	"axes.linewidth"        : 0.5,
-	"ytick.major.size"      : 1.0,
-	"xtick.major.size"      : 1.0
-	}      
+	"axes.linewidth"        : 0.8,
+	"ytick.major.size"      : 1.5,
+	"xtick.major.size"      : 1.5
+	}  
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
@@ -255,9 +261,9 @@ for i, spikes in zip(range(2), [spikes_rem_ex, spikes_sws_ex]):
 
 	if i == 0:
 		ylabel("Thalamus")
-		start = spikes_rem_ex.index.min()
-		plot([start, start+1e6], [-2, -2], color = 'black', linewidth = 2)
-		text(0.1, -0.15,'1 s', transform=ax.transAxes, fontsize = 8)
+	start = spikes.index.min()
+	plot([start, start+5e5], [-2, -2], color = 'black', linewidth = 2)
+	text(0.05, -0.1,'500 ms', transform=ax.transAxes, fontsize = 8)
 
 	ylim(-2, id)
 #############################################################################
@@ -320,9 +326,9 @@ for i, n in enumerate(neurons):
 	fig.add_subplot(ax)
 	simpleaxis(ax)
 	if neurons.index(n) == 1:
-		text(0.5, 1.23,'Ripples modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
+		text(0.5, 1.23,'SWR modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
 	if neurons.index(n) == 0:
-		ylabel("Ripple events")
+		ylabel("SWR events")
 		ax.text(-0.6, 1.18, "D", transform = ax.transAxes, fontsize = 9)
 	if neurons.index(n) > 0:
 		ax.spines['left'].set_visible(False)	
@@ -359,7 +365,7 @@ for i, n in enumerate(neurons):
 	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
 	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
 	if neurons.index(n) == 1:
-		xlabel('Time from ripples (ms)', fontsize = 7)
+		xlabel('Time from SWRs (ms)', fontsize = 7)
 	if neurons.index(n) == 0:
 		ylabel('Modulation (z)', verticalalignment = 'bottom')
 	axvline(0, color = 'grey', linewidth = 0.5)	
@@ -375,18 +381,18 @@ outer = gridspec.GridSpecFromSubplotSpec(1,6, subplot_spec = outergs[3,:], width
 # noaxis(axmap)
 # axE = fig.add_subplot(2,4,5)
 axE = fig.add_subplot(outer[0,0])
-cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+
 
 noaxis(axE)
 tmp = modulations['theta']
 bound = (tmp.columns[0], tmp.columns[-1], tmp.index[-1], tmp.index[0])
 im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'GnBu', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
 # title("Theta spatial modulation", fontsize = 7, y = 1.3)
 axE.text(-0.05, 1.3, "Theta spatial modulation", transform = axE.transAxes, fontsize = 8)
 #colorbar	
-cax = inset_axes(axE, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
+cax = inset_axes(axE, "40%", "8%",
+                   bbox_to_anchor=(0.2, -0.25, 1, 1),
                    bbox_transform=axE.transAxes, 
                    loc = 'lower left')
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
@@ -403,10 +409,10 @@ axF = fig.add_subplot(outer[0,2])
 noaxis(axF)
 tmp = modulations['pos_swr']
 im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Reds', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
 #colorbar	
-cax = inset_axes(axF, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
+cax = inset_axes(axF, "40%", "8%",
+                   bbox_to_anchor=(0.2, -0.25, 1, 1),
                    bbox_transform=axF.transAxes, 
                    loc = 'lower left')
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
@@ -415,7 +421,7 @@ cb.ax.xaxis.set_tick_params(pad = 1)
 cax.set_title("Density $z_{0 ms} > $"+p_60, fontsize = 7, pad = 2.5)
 axF.text(pos_nb[0],pos_nb[1], "F", transform = axF.transAxes, fontsize = 9)
 # title("Ripples spatial modulation", fontsize = 7, y = 1.3)
-axF.text(0.4, 1.3, "Ripples spatial modulation", transform = axF.transAxes, fontsize = 8)
+axF.text(0.4, 1.3, "SWRs spatial modulation", transform = axF.transAxes, fontsize = 8)
 
 ###############################################################################
 # G. MAPS NEG SWR
@@ -425,10 +431,10 @@ axG = fig.add_subplot(outer[0,3])
 noaxis(axG)
 tmp = modulations['neg_swr']
 im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Greens', vmin = 0, vmax = 1)
-imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
 #colorbar	
-cax = inset_axes(axG, "40%", "4%",
-                   bbox_to_anchor=(0.2, 1.08, 1, 1),
+cax = inset_axes(axG, "40%", "8%",
+                   bbox_to_anchor=(0.2, -0.25, 1, 1),
                    bbox_transform=axG.transAxes, 
                    loc = 'lower left')
 cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
@@ -455,17 +461,21 @@ theta2 = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5")
 
 theta = theta2['rem']
 
-for n in nucleus:
+for n in nucleus:	
 	neurons = mappings[mappings['nucleus'] == n].index.values
-	df.loc[n,('theta','mean')] = theta.loc[neurons,'kappa'].mean(skipna=True)
-	df.loc[n,('theta','sem')] = theta.loc[neurons,'kappa'].sem(skipna=True)
-	df.loc[n,('rip','mean')] = rippower.loc[neurons].mean(skipna=True)
-	df.loc[n,('rip','sem')] = rippower.loc[neurons].sem(skipna=True)
+	# df.loc[n,('theta','mean')] 	= theta.loc[neurons,'kappa'].mean(skipna=True)
+	# df.loc[n,('theta','sem')] 	= theta.loc[neurons,'kappa'].sem(skipna=True)
+	# df.loc[n,('rip','mean')] 	= rippower.loc[neurons].mean(skipna=True)
+	# df.loc[n,('rip','sem')] 	= rippower.loc[neurons].sem(skipna=True)
+	df.loc[n,('theta','mean')] 	= theta.reindex(index = neurons, columns = ['kappa']).mean(skipna=True)[0]
+	df.loc[n,('theta','sem')] 	= theta.reindex(index = neurons, columns = ['kappa']).sem(skipna=True)[0]
+	df.loc[n,('rip','mean')] 	= rippower.reindex(index = neurons).mean(skipna=True)
+	df.loc[n,('rip','sem')] 	= rippower.reindex(index = neurons).sem(skipna=True)	
 
 df = df.sort_values([('rip', 'mean')])
 
 # df = df.drop(['sm', 'U'])
-labels = ['Theta', 'Ripples']
+labels = ['Theta', 'SWR']
 axHH = axH.twiny()
 axes = [axH, axHH]
 colors = ['royalblue', 'firebrick']
@@ -477,7 +487,7 @@ for i, k in enumerate(['theta', 'rip']):
 yticks(np.arange(len(df)), df.index.values)
 axH.set_xlabel(r"Theta modulation ($\kappa$)", color = colors[0])
 axH.tick_params(axis='x', colors=colors[0])
-axHH.set_xlabel("Ripples energy (|z|)", color = colors[1])
+axHH.set_xlabel("SWR energy (|z|)", color = colors[1])
 axHH.tick_params(axis='x', colors=colors[1])
 axH.text(-0.3, 1.0, "H", transform = axH.transAxes, fontsize = 9)
 

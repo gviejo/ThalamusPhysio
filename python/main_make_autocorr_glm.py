@@ -20,6 +20,52 @@ from skimage import filters
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegressionCV
+from sklearn.model_selection import KFold
+import xgboost as xgb
+
+
+def xgb_decodage(Xr, Yr, Xt, n_class):          
+	dtrain = xgb.DMatrix(Xr, label=Yr)
+	dtest = xgb.DMatrix(Xt)
+
+	params = {'objective': "multi:softprob",
+	'eval_metric': "mlogloss", #loglikelihood loss
+	'seed': np.random.randint(1, 10000), #for reproducibility
+	'silent': 1,
+	'learning_rate': 0.01,
+	'min_child_weight': 2, 
+	'n_estimators': 100,
+	# 'subsample': 0.5,
+	'max_depth': 5, 
+	'gamma': 0.5,
+	'num_class':n_class}
+
+	num_round = 100
+	bst = xgb.train(params, dtrain, num_round)
+	ymat = bst.predict(dtest)
+	pclas = np.argmax(ymat, 1)
+	return pclas
+
+def fit_cv(X, Y, n_cv=10, verbose=1, shuffle = False):
+	if np.ndim(X)==1:
+		X = np.transpose(np.atleast_2d(X))
+	cv_kf = KFold(n_splits=n_cv, shuffle=True, random_state=42)
+	skf  = cv_kf.split(X)    
+	Y_hat=np.zeros(len(Y))*np.nan
+	n_class = len(np.unique(Y))
+
+	for idx_r, idx_t in skf:        
+		Xr = np.copy(X[idx_r, :])
+		Yr = np.copy(Y[idx_r])
+		Xt = np.copy(X[idx_t, :])
+		Yt = np.copy(Y[idx_t])
+		if shuffle: np.random.shuffle(Yr)
+		Yt_hat = xgb_decodage(Xr, Yr, Xt, n_class)
+		Y_hat[idx_t] = Yt_hat
+		
+	return Y_hat
+
+
 
 # store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_ALL.h5")
 store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_LONG_SMALLBINS.h5")
@@ -37,8 +83,9 @@ mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 #########################################################################################
 # cuttime = np.arange(10,5000,10)
 cuttime = np.unique(np.geomspace(2, 5000, num = 40, dtype = np.int))
-n_repeat = 100
-score = pd.DataFrame(index = cuttime, columns = ['score'])
+n_repeat = 1000
+score = pd.DataFrame(index = cuttime, columns = np.arange(n_repeat))
+shuff = pd.DataFrame(index = cuttime, columns = np.arange(n_repeat))
 ct = 0
 
 
@@ -58,17 +105,35 @@ for c in cuttime:
 	neurons = autocorr.columns
 	hd = mappings.loc[neurons, 'hd'].values.astype('int')
 	data = autocorr.values.T	
-	clf = LogisticRegressionCV(cv = 8, random_state = 0, n_jobs = 8).fit(data, hd)
-	# test
-	# idx = np.hstack((np.where(hd)[0],np.random.choice(np.where(~hd)[0], np.sum(hd), replace=False)))
-	idx = np.where(hd)[0]
-	score.loc[c] = clf.score(data[idx], hd[idx])
-	# score.loc[c] = clf.predict_proba(data[idx])[:,1].mean()
+
+	for j in range(n_repeat):
+		test = fit_cv(data, hd, 10, verbose = 0)
+		rand = fit_cv(data, hd, 10, verbose = 0, shuffle = True)
+		score.loc[c,j] = np.sum(test == hd)/np.size(hd)
+		shuff.loc[c,j] = np.sum(rand == hd)/np.size(hd)
 	
+
+	# clf = LogisticRegressionCV(cv = 8, random_state = 0, n_jobs = 8).fit(data, hd)
+	# # test
+	# # idx = np.hstack((np.where(hd)[0],np.random.choice(np.where(~hd)[0], np.sum(hd), replace=False)))
+	# idx = np.where(hd)[0]
+	# score.loc[c] = clf.score(data[idx], hd[idx])
+	# # score.loc[c] = clf.predict_proba(data[idx])[:,1].mean()
+	
+
+store = pd.HDFStore("../figures/figures_articles/figure1/score_XGB_HDNOHD.h5", 'w')
+store.put('score', score)
+store.put('shuff', shuff)
+store.close()
+
+a = (score.mean(1)-shuff.mean(1))/(1.0 - shuff.mean(1))
+semilogx(a.index.values, a.values)
+show()
+
 
 sys.exit()
 
-score.to_hdf("../figures/figures_articles/figure1/score_logreg.h5", 'count')
+# score.to_hdf("../figures/figures_articles/figure1/score_logreg.h5", 'count')
 
 
 

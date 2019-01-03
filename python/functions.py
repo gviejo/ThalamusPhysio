@@ -416,7 +416,7 @@ def getPhaseCoherence(phase):
 def computeBurstiness(spikes, epoch, start = 2.0, stop = 8.0):
 	s = spikes.restrict(epoch)
 	dt = np.diff(s.as_units('ms').index.values)
-	Nobs = float(np.logical_and(dt>2.0, dt<8.0).sum())
+	Nobs = float(np.logical_and(dt>start, dt<stop).sum())
 	r = len(s)/epoch.tot_length('s')
 	Nthe = len(dt)*(np.exp(-r*(start/1000)) - np.exp(-r*(stop/1000)))
 	return Nobs/(Nthe+1.0)

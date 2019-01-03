@@ -94,6 +94,7 @@ space = pd.DataFrame(index = neurons, columns = ['session', 'shank'])
 space['session'] = session_shank[:,0]
 space['shank'] = 7 - session_shank[:,1]
 
+sys.exit()
 ##################################################################################
 # DOING IT BY HAND
 ##################################################################################

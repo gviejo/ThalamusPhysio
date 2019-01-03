@@ -19,9 +19,14 @@ import os
 data_directory 	= '/mnt/DataGuillaume/MergedData/'
 datasets 		= np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
-carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
-bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
-cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+# carte38_mouse17 = imread('../../figures/mapping_to_align/paxino/paxino_38_mouse17_2.png')
+# bound_map_38 = (-2336/1044, 2480/1044, 0, 2663/1044)
+# cut_bound_map = (-86/1044, 2480/1044, 0, 2663/1044)
+
+carte_adrien = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_ALL-01.png')
+carte_adrien2 = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_Contour-01.png')
+bound_adrien = (-398/1254, 3319/1254, -(239/1254 - 20/1044), 3278/1254)
+
 
 path_snippet 	= "../../figures/figures_articles/figure2/"
 
@@ -68,23 +73,23 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
 	# "font.family": "serif",
-	# "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-	# "font.sans-serif": [],
+	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 7,               # LaTeX default is 10pt font.
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
 	"font.size": 7,
-	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 6,
-	"ytick.labelsize": 6,
+	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 7,
+	"ytick.labelsize": 7,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
 		],
 	"lines.markeredgewidth" : 0.2,
-	"axes.linewidth"        : 0.5,
-	"ytick.major.size"      : 1.0,
-	"xtick.major.size"      : 1.0
-	}      
+	"axes.linewidth"        : 0.8,
+	"ytick.major.size"      : 1.5,
+	"xtick.major.size"      : 1.5
+	}     
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
@@ -109,7 +114,7 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	tmp = modulations['theta']
 	bound = (tmp.columns[0], tmp.columns[-1], tmp.index[-1], tmp.index[0])
 	im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'GnBu', vmin = 0, vmax = 1)
-	imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')		
+	imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')		
 	pos_nb = (1.0, 1.0)		
 	ax1.text(pos_nb[0],pos_nb[1], mn[i], transform = ax1.transAxes, fontsize = 9)
 	if i == 0:
@@ -120,8 +125,8 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	                   loc = 'lower left')
 		cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])
 		cb.ax.xaxis.set_tick_params(pad = 1)
-		cax.set_title("Density (p < 0.01)", fontsize = 7, pad = 2.5)		
-		ax1.text(-0.05, 1.3, "Theta spatial modulation", transform = ax1.transAxes, fontsize = 8)
+		cax.set_title("Density", fontsize = 7, pad = 2.5)		
+		ax1.text(-0.05, 1.3, "Theta modulation", transform = ax1.transAxes, fontsize = 8)
 	###############################################################################
 	# 2. MAPS SWR POS
 	###############################################################################
@@ -129,7 +134,7 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	noaxis(ax2)
 	tmp = modulations['pos_swr']
 	im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Reds', vmin = 0, vmax = 1)
-	imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+	imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
 	if i == 0:
 		#colorbar	
 		cax = inset_axes(ax2, "40%", "4%",
@@ -139,7 +144,7 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 		cb = colorbar(im, cax = cax, orientation = 'horizontal', ticks = [0,1])	
 		cb.ax.xaxis.set_tick_params(pad = 1)
 		cax.set_title("Density $t_{0 ms} > P_{60}$", fontsize = 7, pad = 2.5)		
-		ax2.text(0.4, 1.3, "Ripples spatial modulation", transform = ax2.transAxes, fontsize = 8)
+		ax2.text(0.4, 1.3, "SWRs modulation", transform = ax2.transAxes, fontsize = 8)
 
 	###############################################################################
 	# 3. MAPS NEG SWR
@@ -148,7 +153,7 @@ for i, m in enumerate(['Mouse12', 'Mouse20', 'Mouse32']):
 	noaxis(ax3)
 	tmp = modulations['neg_swr']
 	im = imshow(tmp, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'Greens', vmin = 0, vmax = 1)
-	imshow(carte38_mouse17[:,2250:], extent = cut_bound_map, interpolation = 'bilinear', aspect = 'equal')
+	imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
 	if i == 0:
 		#colorbar	
 		cax = inset_axes(ax3, "40%", "4%",

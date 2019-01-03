@@ -198,8 +198,8 @@ alldata = [	np.vstack([autocorr_wak[tokeep].values,autocorr_rem[tokeep].values,a
 # kl = pd.DataFrame(index = nucleus ,columns=pd.MultiIndex.from_product([['score', 'shuffle'],['auto','swr'], ['mean', 'sem']]))
 # cols = np.unique(mean_score.columns.get_level_values(1))
 
-n_repeat = 100
-n_cv = 6
+n_repeat = 1000
+n_cv = 10
 
 _SQRT2 = np.sqrt(2)
 def hellinger(p, q):
@@ -247,7 +247,9 @@ for i in range(n_repeat):
 	KLS[i] = tmp
 
 
-store = pd.HDFStore("../figures/figures_articles/figure6/score_hellinger.h5", 'w')
+data_directory 	= '/mnt/DataGuillaume/MergedData/'
+# store = pd.HDFStore("../figures/figures_articles/figure6/score_hellinger.h5", 'w')
+store = pd.HDFStore(data_directory+'score_hellinger.h5', 'w')
 store.put('HL', HL)
 store.put('HLS', HLS)
 store.put('KL', KL)

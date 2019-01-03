@@ -78,6 +78,8 @@ zpca = pca.fit_transform(swr_modth)
 pc = zpca[:,0:2]
 eigen = pca.components_
 
+sys.exit()
+
 phi = np.mod(np.arctan2(zpca[:,1], zpca[:,0]), 2*np.pi)
 
 # times = np.arange(0, 1005, 5) - 500 # BAD

@@ -50,6 +50,7 @@ for session in datasets:
 	speed_ep 		= nts.IntervalSet(speed[speed>2.5].index.values[0:-1], speed[speed>2.5].index.values[1:]).drop_long_intervals(26000).merge_close_intervals(50000)
 	wake_ep 		= wake_ep.intersect(speed_ep).drop_short_intervals(3000000)
 	# to match main_make_SWRinfo.py
+	sys.exit()
 	spikes 			= {n:spikes[n] for n in spikes.keys() if len(spikes[n].restrict(sws_ep))}
 	n_neuron 		= len(spikes)
 	n_channel,fs, shank_to_channel = loadXML(data_directory+session+"/"+session.split("/")[1]+'.xml')	

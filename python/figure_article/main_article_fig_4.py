@@ -96,19 +96,19 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
 	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 6,               # LaTeX default is 10pt font.
-	"font.size": 6,
-	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 6,
-	"ytick.labelsize": 6,
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
+	"font.size": 7,
+	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 7,
+	"ytick.labelsize": 7,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
 		],
 	"lines.markeredgewidth" : 0.2,
-	"axes.linewidth"        : 0.5,
-	"ytick.major.size"      : 1.0,
-	"xtick.major.size"      : 1.0
+	"axes.linewidth"        : 0.8,
+	"ytick.major.size"      : 1.5,
+	"xtick.major.size"      : 1.5
 	}    
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
@@ -127,13 +127,13 @@ gs = gridspec.GridSpec(3,3, wspace = 0.4, hspace = 0.5)
 subplot(gs[0,0])
 imshow(allzthsorted, aspect = 'auto', cmap = 'viridis')
 xticks(np.arange(20,200,40), (times[np.arange(20,200,40)]).astype('int'))
-yticks([0,700], ['0', '700'])
+yticks([0,700], ['1', '700'])
 cb = colorbar()
 cb.set_label("z", labelpad = -13, y = 1.08, rotation = 0)
 ylabel("Thalamic neurons", labelpad = -5.0, y = 0.6)
-xlabel("Time from SWR (ms)")
-title("Sharp-waves Ripples \n modulation", fontsize = 7)
-text(-0.15, 1.17, "A", transform = gca().transAxes, fontsize = 9)
+xlabel("Time from SWRs (ms)")
+title("SWR modulation", fontsize = 7)
+text(-0.15, 1.17, "A", transform = gca().transAxes, fontsize = 10)
 
 ########################################################################
 # B. JPCA
@@ -143,10 +143,10 @@ ax = subplot(gs[0, 1])
 simpleaxis(ax)	
 plot(times, jX[:,0], color = '#386150')
 plot(times, jX[:,1], color = '#58b09c')
-ylabel('jPC')
-xlabel('Time from SWR (ms)')
+ylabel('jPC', labelpad = 0.1)
+xlabel('Time from SWRs (ms)')
 title('jPCA', fontsize = 7, y = 1)
-text(-0.1, 1.14, "B", transform = gca().transAxes, fontsize = 9)
+text(-0.1, 1.14, "B", transform = gca().transAxes, fontsize = 10)
 
 ########################################################################
 # C. ORBIT
@@ -157,12 +157,12 @@ simpleaxis(ax)
 plot(jX[0,0], jX[0,1], 'o', markersize = 3, color = '#5c7d6f')
 plot(jX[:,0], jX[:,1], linewidth = 0.8, color = '#5c7d6f')
 arrow(jX[-10,0],jX[-10,1],jX[-1,0]-jX[-10,0],jX[-1,1]-jX[-10,1], color = '#5c7d6f', head_width = 0.01)
-plot(jX[np.where(times==-250),0], jX[np.where(times==-250),1], 'o', color = '#5c7d6f', markersize = 2)
-plot(jX[np.where(times== 250),0], jX[np.where(times== 250),1], 'o', color = '#5c7d6f', markersize = 2)
-plot(jX[np.where(times==   0),0], jX[np.where(times==   0),1], 'o', color = '#5c7d6f', markersize = 2)
-annotate("-250", xy = (jX[np.where(times==-250),0], jX[np.where(times==-250),1]), xytext = (jX[np.where(times==-250),0]-0.06, jX[np.where(times==-250),1]), fontsize = 4)
-annotate( "250", xy = (jX[np.where(times== 250),0], jX[np.where(times== 250),1]), xytext = (jX[np.where(times== 250),0]+0.03, jX[np.where(times== 250),1]), fontsize = 4)
-annotate(   "0", xy = (jX[np.where(times==   0),0], jX[np.where(times==   0),1]), xytext = (jX[np.where(times==   0),0]-0.01, jX[np.where(times==   0),1]+0.01), fontsize = 4)
+# plot(jX[np.where(times==-250),0], jX[np.where(times==-250),1], 'o', color = '#5c7d6f', markersize = 2)
+# plot(jX[np.where(times== 250),0], jX[np.where(times== 250),1], 'o', color = '#5c7d6f', markersize = 2)
+# plot(jX[np.where(times==   0),0], jX[np.where(times==   0),1], 'o', color = '#5c7d6f', markersize = 2)
+annotate("-50 ms", xy = (jX[np.where(times==-50),0], jX[np.where(times==-50),1]), xytext = (jX[np.where(times==-50),0]-0.124, jX[np.where(times==-50),1]-0.015), fontsize = 6)
+annotate( "50 ms", 	xy = (jX[np.where(times== 50),0], jX[np.where(times== 50),1]), 		xytext = (jX[np.where(times== 50),0]+0.01, jX[np.where(times==  50),1]), fontsize = 6)
+annotate(   "0 ms", 	xy = (jX[np.where(times==   0),0], jX[np.where(times==   0),1]), 	xytext = (jX[np.where(times==  0),0]-0.04, jX[np.where(times==   0),1]+0.02), fontsize = 6)
 ax.spines['left'].set_bounds(np.min(jX[:,1]), np.min(jX[:,1]+0.1))
 ax.spines['bottom'].set_bounds(np.min(jX[:,0]), np.min(jX[:,0]+0.1))
 xticks([], [])
@@ -171,13 +171,25 @@ ax.xaxis.set_label_coords(0.15, -0.02)
 ax.yaxis.set_label_coords(-0.02, 0.15)
 ylabel('jPC2')
 xlabel('jPC1')
-text(-0.1, 1.14, "C", transform = gca().transAxes, fontsize = 9)
+text(-0.1, 1.14, "C", transform = gca().transAxes, fontsize = 10)
+
+jpca = pd.DataFrame(index = times, data = jX)
+
+offs = 0.1
+
+# arrow(jpca.loc[50,0], jpca.loc[50,1], jpca.loc[55,0]-jpca.loc[50,0], jpca.loc[55,1]-jpca.loc[50,1], head_width=.020, fc = '#5c7d6f', shape='full', lw=0, length_includes_head=True)
+# arrow(jpca.loc[-5,0], jpca.loc[-5,1], jpca.loc[0,0]-jpca.loc[-5,0], jpca.loc[0,1]-jpca.loc[-5,1], head_width=.020, fc = '#5c7d6f', shape='full', lw=0, length_includes_head=True)
+# arrow(jpca.loc[-45,0], jpca.loc[-45,1], jpca.loc[-40,0]-jpca.loc[-45,0], jpca.loc[-40,1]-jpca.loc[-45,1], head_width=.020, fc = '#5c7d6f', shape='full', lw=0, length_includes_head=True)
+# arrow(jpca.loc[-115,0], jpca.loc[-115,1], jpca.loc[-110,0]-jpca.loc[-115,0], jpca.loc[-110,1]-jpca.loc[-115,1], head_width=.020, fc = '#5c7d6f', shape='full', lw=0, length_includes_head=True)
+
+for t in np.arange(-200,250,50):	
+	arrow(jpca.loc[t-5,0], jpca.loc[t-5,1], jpca.loc[t,0]-jpca.loc[t-5,0], jpca.loc[t,1]-jpca.loc[t-5,1], head_width=.020, fc = '#5c7d6f', shape='full', lw=0, length_includes_head=True)	
 
 ########################################################################
 # D circle
 ########################################################################
 ax = subplot(gs[1:,0:2])
-text(-0.05, 1.05, "D", transform = gca().transAxes, fontsize = 9)
+text(-0.05, 1.00, "D", transform = gca().transAxes, fontsize = 10)
 axis('off')
 axhline(0, xmin = 0.25, xmax = 0.75, color = '#386150', linewidth = 0.7)
 axvline(0, ymin = 0.25, ymax = 0.75, color = '#58b09c', linewidth = 0.7)
@@ -216,7 +228,7 @@ r -= 1
 best_neurons = []
 for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):	
 	quarter = phi2[np.logical_and(phi2 > i, phi2 < i+(np.pi/2)).values]
-	tmp = jscore.loc[quarter.index.values]
+	tmp = jscore.loc[quarter.index.values]	
 	if j == 2:		
 		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).sort_values().index.values[9]
 	elif j == 0:
@@ -224,7 +236,7 @@ for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):
 	elif j == 3:
 		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).sort_values().index.values[1]
 	else:
-		best_n = np.argmin(np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)))	
+		best_n = np.abs(allthetamodth.loc[tmp.index.values,'phase'] - (i+np.pi/8)).astype('float').idxmin()
 	best_neurons.append(best_n)
 	ai = axes([position_axes[j][0],position_axes[j][1], aiw, ail], projection = 'polar')
 	ai.get_xaxis().tick_bottom()
@@ -234,7 +246,7 @@ for i,j in zip(np.arange(0, 2*np.pi, np.pi/2),np.arange(4)):
 	yticks([])	
 	grid(linestyle = '--')
 	if j == 1:
-		ai.set_title("Theta phase", fontsize = 8)
+		ai.set_title("Theta phase", fontsize = 8, color = 'darkred')
 	ai.yaxis.grid(False)
 	ai.tick_params(axis='x', pad = -5)
 	# ai.set_ylim(0,0.5)
@@ -295,17 +307,17 @@ scatter(allthetamodth.loc[best_neurons, 'phase'].values, phi2.loc[best_neurons].
 
 xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
 yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
-xlabel('Theta phase (rad)', labelpad = 1.2)
-ylabel('SWR jPCA phase (rad)')
+xlabel('Theta phase (rad.)', labelpad = 1.2)
+ylabel('SWR jPCA phase (rad.)')
 title(r'$r = 0.18, p = 2.3 \times 10^{-7}$',fontsize = 6)
-text(-0.1, 1.1, "E", transform = gca().transAxes, fontsize = 9)
+text(-0.1, 1.1, "E", transform = gca().transAxes, fontsize = 10)
 
 ########################################################################
 # F PHASE PHASE DENSITY
 ########################################################################
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[5])
 ax = subplot(gs[2,2])
-text(-0.1, 1.1, "F", transform = gca().transAxes, fontsize = 9)
+text(-0.1, 1.1, "F", transform = gca().transAxes, fontsize = 10)
 H, xedges, yedges = np.histogram2d(y, x, 50)
 H = gaussFilt(H, (3,3))
 H = H - H.min()
@@ -316,17 +328,17 @@ levels = np.linspace(H.min(), H.max(), 50)
 axp = ax.contourf(H, V = levels, cmap = 'binary')
 xticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
 yticks([0, np.pi, 2*np.pi, 3*np.pi, 4*np.pi], ('0', '$\pi$', '$2\pi$', '$3\pi$', '$4\pi$'))
-xlabel('Theta phase (rad)')
-ylabel('SWR jPCA phase (rad)')
+xlabel('Theta phase (rad.)')
+ylabel('SWR jPCA phase (rad.)')
 tik = np.array([0, np.pi, 2*np.pi, 3*np.pi])
 xtik = [np.argmin(np.abs(i-xedges)) for i in tik]
 ytik = [np.argmin(np.abs(i-yedges)) for i in tik]
 xticks(xtik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
 yticks(ytik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
 title("Density", fontsize = 8)
-cbaxes = fig.add_axes([0.63, 0.11, 0.01, 0.04])
-cb = colorbar(axp, cax = cbaxes, ticks = [0, 1])
-cbaxes.yaxis.set_ticks_position('left')
+cbaxes = fig.add_axes([0.62, 0.07, 0.04, 0.01])
+cb = colorbar(axp, cax = cbaxes, orientation = 'horizontal', ticks = [0, 1])
+# cbaxes.yaxis.set_ticks_position('left')
 
 
 

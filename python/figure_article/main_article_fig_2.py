@@ -90,23 +90,23 @@ pdf_with_latex = {                      # setup matplotlib to use latex for outp
 	"pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
 	# "text.usetex": True,                # use LaTeX to write all text
 	# "font.family": "serif",
-	# "font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
-	# "font.sans-serif": [],
+	"font.serif": [],                   # blank entries should cause plots to inherit fonts from the document
+	"font.sans-serif": [],
 	"font.monospace": [],
-	"axes.labelsize": 7,               # LaTeX default is 10pt font.
+	"axes.labelsize": 8,               # LaTeX default is 10pt font.
 	"font.size": 7,
-	"legend.fontsize": 6,               # Make the legend/label fonts a little smaller
-	"xtick.labelsize": 6,
-	"ytick.labelsize": 6,
+	"legend.fontsize": 7,               # Make the legend/label fonts a little smaller
+	"xtick.labelsize": 7,
+	"ytick.labelsize": 7,
 	"pgf.preamble": [
 		r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts becasue your computer can handle it :)
 		r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
 		],
 	"lines.markeredgewidth" : 0.2,
-	"axes.linewidth"        : 0.5,
-	"ytick.major.size"      : 1.0,
-	"xtick.major.size"      : 1.0
-	}     
+	"axes.linewidth"        : 0.8,
+	"ytick.major.size"      : 1.5,
+	"xtick.major.size"      : 1.5
+	}  
 mpl.rcParams.update(pdf_with_latex)
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import *
@@ -121,7 +121,7 @@ ax1 = subplot(211)
 # gs = gridspec.GridSpec(2,3, wspace = 0.35, hspace = 0.35)#, wspace = 0.4, hspace = 0.4)
 # gs = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outer[0])
 # gs = gridspec.GridSpecFromSubplotSpec(3, 4, subplot_spec = ax1)
-colors = ['red', 'blue', 'green']
+colors = ['firebrick', 'navy', 'darkgreen']
 
 ###################################################################################################
 # A. AUTOCORRELOGRAM EXEMPLE
@@ -136,7 +136,7 @@ def func(x, a, b, c):
 
 
 labels = ['AD (HD)', 'AM', 'IAD']
-colors = ['darkgreen', 'darkblue', 'darkred']
+# colors = ['green', 'blue', 'red']
 
 
 hd = 'Mouse12-120807_28'
@@ -171,7 +171,7 @@ for i, n in enumerate([hd, nhd, iad]):
 	x = tmp3.index.values*1e-3
 	y = func(x, *lambdaa.loc[n, 'wak'].values)
 	if i == 2:
-		plot(x, y, '--', color = 'grey', label = "Exp. fit \n " r"$y = a \ exp(-t/\tau) + b$")
+		plot(x, y, '--', color = 'grey', label = "Exp. fit \n " r"$y = a \ exp(-t/\tau)$")
 	else:
 		plot(x, y, '--', color = 'grey')
 
@@ -179,7 +179,7 @@ for i, n in enumerate([hd, nhd, iad]):
 
 
 legend(edgecolor = None, facecolor = None, frameon = False, bbox_to_anchor=(0.3, 1.1), bbox_transform=axA.transAxes)
-xlabel("Time (s)")
+xlabel("Time lag (s)")
 ylabel("Autocorrelation (a.u)")
 locator_params(nbins = 4)
 
@@ -203,7 +203,7 @@ for i, ep in enumerate(['wak', 'rem']):
 legend(edgecolor = None, facecolor = None, frameon = False)
 yticks(np.arange(len(order)), order)
 ylabel("Nuclei")	
-xlabel(r"Exp. fit $\tau$ (s)")
+xlabel(r"Decay time $\tau$ (s)")
 locator_params(axis = 'x', nbins = 4)
 
 axB.text(-0.1, 1.05, "B", transform = axB.transAxes, fontsize = 9)
@@ -216,29 +216,38 @@ simpleaxis(axC)
 
 # firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
 # fr_index = firing_rate.index.values[((firing_rate[['wake', 'rem']] > 1.0).sum(1) == 2).values]
-
+from scipy.stats import pearsonr
 
 burst = pd.HDFStore("/mnt/DataGuillaume/MergedData/BURSTINESS.h5")['w']
 idx = lambdaa['rem']['b'].index
 
+# correlation during wake
 df = pd.concat([burst['sws'].loc[idx], lambdaa['wak']['b'].loc[idx]], axis = 1).rename(columns={'sws':'burst','b':'lambda'})
-
 df = df[np.logical_and(df['burst']<25,df['lambda']<3)]
-
-
-from scipy.stats import pearsonr
-
-scatter(df['burst'].values, df['lambda'].values, 4, color = colors[0], alpha = 0.5, edgecolors = 'none')
-xlabel("Burstiness")
-ylabel(r"Exp. fit $\tau$ (s)")
-
 a, b = pearsonr(df['burst'].values, df['lambda'].values)
+print('wake', a, b)
+# correlation during rem
+df2 = pd.concat([burst['sws'].loc[idx], lambdaa['rem']['b'].loc[idx]], axis = 1).rename(columns={'sws':'burst','b':'lambda'})
+df2 = df2[np.logical_and(df2['burst']<25,df2['lambda']<3)]
+df2 = df2[df2['lambda'] > 0.0]
+c, d = pearsonr(df2['burst'].values, df2['lambda'].values)
+print('rem', c, d)
 
-print(a, b)
-axC.text(0.5, 1.0, "r="+str(np.round(a, 3))+" (p<0.001)", transform = axC.transAxes, fontsize = 6)
+
+scatter(df2['burst'].values, df2['lambda'].values, 4, color = 'black', alpha = 1.0, edgecolors = 'none')
+xlabel("NREM burst index")
+ylabel(r"REM decay time $\tau$ (s)")
+
+yticks([0,1,2,3],['0','1','2','3'])
+
+
+axC.text(0.5, 1.0, "r="+str(np.round(c, 3))+" (p<0.001)", transform = axC.transAxes, fontsize = 6)
 
 
 axC.text(-0.1, 1.05, "C", transform = axC.transAxes, fontsize = 9)
+
+
+
 
 
 ###################################################################################################
@@ -256,18 +265,35 @@ neurons = [n for n in lambdaa.index.values if mappings.loc[n,'nucleus'] in nucle
 
 
 # 1 tau vs nucleus
-group1 = mappings.loc[neurons].groupby('nucleus').groups
-F1 = stats.f_oneway(*[lambdaa.loc[group1[n]].xs(('b'),1,1)[['wak', 'rem']].values.flatten() for n in nucleus])
-# 2 tau vs brain-states
-group2 = {	'wak':lambdaa.loc[neurons,('wak','b')].values,
-			'rem':lambdaa.loc[neurons,('rem','b')].values}
-F2 = stats.f_oneway(*[group2[k] for k in group2.keys()])
-# 3 tau vs animal
-group3 = {m:np.hstack([lambdaa.loc[n,[('wak','b'), ('rem','b')]].values for n in neurons if m in n]) for m in ['Mouse12', 'Mouse17','Mouse20','Mouse32']}
-F3 = stats.f_oneway(*[group3[k] for k in group3.keys()])
+# group1 = mappings.loc[neurons].groupby('nucleus').groups
+# F1 = stats.f_oneway(*[lambdaa.loc[group1[n]].xs(('b'),1,1)[['wak', 'rem']].values.flatten() for n in nucleus])
+# # 2 tau vs brain-states
+# group2 = {	'wak':lambdaa.loc[neurons,('wak','b')].values,
+# 			'rem':lambdaa.loc[neurons,('rem','b')].values}
+# F2 = stats.f_oneway(*[group2[k] for k in group2.keys()])
+# # 3 tau vs animal
+# group3 = {m:np.hstack([lambdaa.loc[n,[('wak','b'), ('rem','b')]].values for n in neurons if m in n]) for m in ['Mouse12', 'Mouse17','Mouse20','Mouse32']}
+# F3 = stats.f_oneway(*[group3[k] for k in group3.keys()])
 
 
+anova = pd.DataFrame(columns = ['episode', 'nucleus', 'tau'])
 
+tmp1 = pd.DataFrame(columns = ['episode', 'nucleus', 'tau'])
+tmp1['nucleus'] = mappings.loc[idx,'nucleus']
+tmp1['episode'] = 'wake'
+tmp1['tau'] = lambdaa.loc[idx,('wak', 'b')]
+tmp2 = pd.DataFrame(columns = ['episode', 'nucleus', 'tau'])
+tmp2['nucleus'] = mappings.loc[idx,'nucleus']
+tmp2['episode'] = 'rem'
+tmp2['tau'] = lambdaa.loc[idx,('rem', 'b')]
+
+anova = pd.concat([tmp1,tmp2], axis = 0)
+
+
+# tmp = pd.concat([lambdaa_nucleus[('wak', 'mean')], lambdaa_nucleus[('rem', 'mean')]])
+# anova['nucleus'] = tmp.index.values
+# anova['tau'] = tmp.values
+# anova['episode'] = ['wak']*len(lambdaa_nucleus) + ['rem']*len(lambdaa_nucleus)
 
 fig.subplots_adjust(wspace= 0.4, hspace = 0.6)
 

@@ -48,27 +48,30 @@ autocorr_sws = 	store_autocorr['sws'].loc[0.5:]
 autocorr_wak = autocorr_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
 autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
 autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
-autocorr_wak = autocorr_wak[2:150]
-autocorr_rem = autocorr_rem[2:150]
-autocorr_sws = autocorr_sws[2:150]
+autocorr_wak = autocorr_wak[2:20]
+autocorr_rem = autocorr_rem[2:20]
+autocorr_sws = autocorr_sws[2:20]
+store_autocorr.close()
 
-# HISTOGRAM THETA
-theta_hist = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_HISTOGRAM_2.h5")
-theta_hist = theta_hist.rolling(window = 5, win_type='gaussian', center = True, min_periods=1).mean(std=1.0)
-theta_wak = theta_hist.xs(('wak'), 1, 1)
-theta_rem = theta_hist.xs(('rem'), 1, 1)
 
-# AUTOCORR LONG
-store_autocorr2 = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_LONG.h5")
-autocorr2_wak = store_autocorr2['wak'].loc[0.5:]
-autocorr2_rem = store_autocorr2['rem'].loc[0.5:]
-autocorr2_sws = store_autocorr2['sws'].loc[0.5:]
-autocorr2_wak = autocorr2_wak.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
-autocorr2_rem = autocorr2_rem.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
-autocorr2_sws = autocorr2_sws.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
-autocorr2_wak = autocorr2_wak[2:2000]
-autocorr2_rem = autocorr2_rem[2:2000]
-autocorr2_sws = autocorr2_sws[2:2000]
+# # HISTOGRAM THETA
+# theta_hist = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_HISTOGRAM_2.h5")
+# theta_hist = theta_hist.rolling(window = 5, win_type='gaussian', center = True, min_periods=1).mean(std=1.0)
+# theta_wak = theta_hist.xs(('wak'), 1, 1)
+# theta_rem = theta_hist.xs(('rem'), 1, 1)
+
+# # AUTOCORR LONG
+# store_autocorr2 = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_LONG.h5")
+# autocorr2_wak = store_autocorr2['wak'].loc[0.5:]
+# autocorr2_rem = store_autocorr2['rem'].loc[0.5:]
+# autocorr2_sws = store_autocorr2['sws'].loc[0.5:]
+# autocorr2_wak = autocorr2_wak.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
+# autocorr2_rem = autocorr2_rem.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
+# autocorr2_sws = autocorr2_sws.rolling(window = 100, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 10.0)
+# autocorr2_wak = autocorr2_wak[2:2000]
+# autocorr2_rem = autocorr2_rem[2:2000]
+# autocorr2_sws = autocorr2_sws[2:2000]
+# store_autocorr2.close()
 
 ############################################################################################################
 # WHICH NEURONS
@@ -77,23 +80,24 @@ firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
 fr_index = firing_rate.index.values[((firing_rate >= 1.0).sum(1) == 3).values]
 # neurons = reduce(np.intersect1d, (burstiness.index.values, theta.index.values, rippower.index.values))
 # neurons = reduce(np.intersect1d, (autocorr_sws.columns, autocorr2_rem.columns, theta_rem.columns, swr.columns, lambdaa.index.values))
-neurons = reduce(np.intersect1d, (autocorr_rem.columns, autocorr_wak.columns, autocorr_sws.columns, autocorr2_wak.columns, autocorr2_rem.columns, theta.index.values, rippower.index.values))
+# neurons = reduce(np.intersect1d, (autocorr_rem.columns, autocorr_wak.columns, autocorr_sws.columns, autocorr2_wak.columns, autocorr2_rem.columns, theta.index.values, rippower.index.values))
 # neurons = np.array([n for n in neurons if 'Mouse17' in n])
 
-count_nucl = pd.DataFrame(columns = ['12', '17','20', '32'])
+# count_nucl = pd.DataFrame(columns = ['12', '17','20', '32'])
 
-for m in ['12', '17','20', '32']:
-	subspace = pd.read_hdf("/mnt/DataGuillaume/MergedData/subspace_Mouse"+m+".hdf5")
-	nucleus = np.unique(subspace['nucleus'])
-	total = [np.sum(subspace['nucleus'] == n) for n in nucleus]
-	count_nucl[m] = pd.Series(index = nucleus, data = total)
-nucleus = list(count_nucl.dropna().index.values)
-allnucleus = list(np.unique(mappings.loc[neurons,'nucleus']))
-tokeep = np.array([n for n in neurons if mappings.loc[n,'nucleus'] in nucleus])
+# for m in ['12', '17','20', '32']:
+# 	subspace = pd.read_hdf("/mnt/DataGuillaume/MergedData/subspace_Mouse"+m+".hdf5")
+# 	nucleus = np.unique(subspace['nucleus'])
+# 	total = [np.sum(subspace['nucleus'] == n) for n in nucleus]
+# 	count_nucl[m] = pd.Series(index = nucleus, data = total)
+# nucleus = list(count_nucl.dropna().index.values)
+# allnucleus = list(np.unique(mappings.loc[neurons,'nucleus']))
+# tokeep = np.array([n for n in neurons if mappings.loc[n,'nucleus'] in nucleus])
 
 
 
 neurons = np.intersect1d(swr.dropna(1).columns.values, autocorr_sws.dropna(1).columns.values)
+neurons = np.intersect1d(neurons, fr_index)
 
 from sklearn.decomposition import PCA
 
@@ -104,43 +108,98 @@ shufflings = pd.DataFrame(index = np.arange(n_shuffling), columns = ['sws', 'rem
 det_all = pd.Series(index = ['sws', 'rem', 'wak', 'all'])
 
 
-for i, auto, ep in zip(range(3), [autocorr_sws, autocorr_rem, autocorr_wak], ['sws', 'rem', 'wak']):
-	shuffling = []
+# for i, auto, ep in zip(range(3), [autocorr_sws, autocorr_rem, autocorr_wak], ['sws', 'rem', 'wak']):
+# 	shuffling = []
 
-	for j in range(n_shuffling):
-		print(i, j)
-		X = np.copy(swr[neurons].values.T)
-		Y = np.copy(auto[neurons].values.T)
-		np.random.shuffle(X)
-		np.random.shuffle(Y)
-		pc_swr = PCA(n_components=10).fit_transform(X)
-		pc_aut = PCA(n_components=10).fit_transform(Y)
-		All = np.hstack((pc_swr, pc_aut))
-		corr = np.corrcoef(All.T)
-		d = np.linalg.det(corr)
-		shuffling.append(d)
+# 	for j in range(n_shuffling):
+# 		print(i, j)
+# 		X = np.copy(swr[neurons].values.T)
+# 		Y = np.copy(auto[neurons].values.T)
+# 		np.random.shuffle(X)
+# 		np.random.shuffle(Y)
+# 		pc_swr = PCA(n_components=10).fit_transform(X)
+# 		pc_aut = PCA(n_components=10).fit_transform(Y)
+# 		All = np.hstack((pc_swr, pc_aut))
+# 		corr = np.corrcoef(All.T)
+# 		d = np.linalg.det(corr)
+# 		shuffling.append(d)
 
-	X = np.copy(swr[neurons].values.T)
-	Y = np.copy(auto[neurons].values.T)
-	pc_swr = PCA(n_components=10).fit_transform(X)
-	pc_aut = PCA(n_components=10).fit_transform(Y)
-	All = np.hstack((pc_swr, pc_aut))
-	corr = np.corrcoef(All.T)
-	d_swr_auto = np.linalg.det(corr)
-	det_all.iloc[i] = d_swr_auto
-	shuffling = np.array(shuffling)
-	shufflings.iloc[:,i] = shuffling
-
-
+# 	X = np.copy(swr[neurons].values.T)
+# 	Y = np.copy(auto[neurons].values.T)
+# 	pc_swr = PCA(n_components=10).fit_transform(X)
+# 	pc_aut = PCA(n_components=10).fit_transform(Y)
+# 	All = np.hstack((pc_swr, pc_aut))
+# 	corr = np.corrcoef(All.T)
+# 	d_swr_auto = np.linalg.det(corr)
+# 	det_all.iloc[i] = d_swr_auto
+# 	shuffling = np.array(shuffling)
+# 	shufflings.iloc[:,i] = shuffling
 
 
 
+
+# time_to_cut = np.array([5,50,100])
+# rho = pd.Series(index = time_to_cut)
+# shuff = pd.DataFrame(index = time_to_cut, columns = np.arange(n_shuffling))
+# figure()
+# ct = 1
+# for c in time_to_cut:
+# 	store_autocorr = pd.HDFStore("/mnt/DataGuillaume/MergedData/AUTOCORR_ALL.h5")
+# 	autocorr_wak = store_autocorr['wake'].loc[0.5:]
+# 	autocorr_rem = 	store_autocorr['rem'].loc[0.5:]
+# 	autocorr_sws = 	store_autocorr['sws'].loc[0.5:]
+# 	autocorr_wak = autocorr_wak.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+# 	autocorr_rem = autocorr_rem.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+# 	autocorr_sws = autocorr_sws.rolling(window = 20, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 3.0)
+# 	autocorr_wak = autocorr_wak[2:c]
+# 	autocorr_rem = autocorr_rem[2:c]
+# 	autocorr_sws = autocorr_sws[2:c]
+# 	store_autocorr.close()
+
+# 	shuffling = []
+
+# 	for j in range(n_shuffling):
+# 		print(c, j)
+# 		X = np.copy(swr[neurons].values.T)
+# 		Y = np.copy(np.vstack((autocorr_wak[neurons].values,autocorr_rem[neurons].values, autocorr_sws[neurons].values))).T
+# 		Y = Y - Y.mean(1)[:,np.newaxis]
+# 		Y = Y / Y.std(1)[:,np.newaxis]
+# 		np.random.shuffle(X)
+# 		np.random.shuffle(Y)
+# 		pc_swr = PCA(n_components=10).fit_transform(X)
+# 		pc_aut = PCA(n_components=10).fit_transform(Y)
+# 		All = np.hstack((pc_swr, pc_aut))
+# 		corr = np.corrcoef(All.T)
+# 		d = 1-np.linalg.det(corr)
+# 		shuffling.append(d)
+# 	shuff.loc[c] = np.array(shuffling)
+
+# 	X = np.copy(swr[neurons].values.T)
+# 	Y = np.copy(np.vstack((autocorr_wak[neurons].values,autocorr_rem[neurons].values, autocorr_sws[neurons].values))).T
+# 	Y = Y - Y.mean(1)[:,np.newaxis]
+# 	Y = Y / Y.std(1)[:,np.newaxis]
+# 	pc_swr = PCA(n_components=10).fit_transform(X)
+# 	pc_aut = PCA(n_components=10).fit_transform(Y)
+# 	All = np.hstack((pc_swr, pc_aut))
+# 	corr = np.corrcoef(All.T)
+# 	rho[c] = 1-np.linalg.det(corr)
+# 	subplot(3,5,ct)
+# 	hist(shuff.loc[c].values.astype('float'))
+# 	axvline(rho[c],color= 'red')
+# 	title(str(c)+' ms')
+# 	ct +=1
+# show()
+	
+
+sys.exit()
 shuffling = []
 
 for j in range(n_shuffling):
-	print(i, j)
+	print(j)
 	X = np.copy(swr[neurons].values.T)
 	Y = np.copy(np.vstack((autocorr_wak[neurons].values,autocorr_rem[neurons].values, autocorr_sws[neurons].values))).T
+	Y = Y - Y.mean(1)[:,np.newaxis]
+	Y = Y / Y.std(1)[:,np.newaxis]	
 	np.random.shuffle(X)
 	np.random.shuffle(Y)
 	pc_swr = PCA(n_components=10).fit_transform(X)
@@ -152,6 +211,8 @@ for j in range(n_shuffling):
 
 X = np.copy(swr[neurons].values.T)
 Y = np.copy(np.vstack((autocorr_wak[neurons].values,autocorr_rem[neurons].values, autocorr_sws[neurons].values))).T
+Y = Y - Y.mean(1)[:,np.newaxis]
+Y = Y / Y.std(1)[:,np.newaxis]	
 pc_swr = PCA(n_components=10).fit_transform(X)
 pc_aut = PCA(n_components=10).fit_transform(Y)
 All = np.hstack((pc_swr, pc_aut))
@@ -162,6 +223,7 @@ det_all.iloc[-1] = d_swr_auto
 
 shufflings.iloc[:,-1] = np.array(shuffling)
 
+sys.exit()
 
 store = pd.HDFStore("../figures/figures_articles/figure6/determinant_corr.h5", 'w')
 store.put('det_all', det_all)
