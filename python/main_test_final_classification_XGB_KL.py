@@ -259,27 +259,27 @@ store.close()
 
 sys.exit()
 
-for i, m in enumerate(cols):
-	data = alldata[i].T
-	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))	
-	for j in range(n_repeat):
-		test = fit_cv(data, labels, 10, verbose = 0)
-		rand = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
-		print(i,j)
-		for k, n in enumerate(nucleus):
-			idx = labels == nucleus.index(n)
-			test_score.loc[j,('test',n)] = np.sum(test[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
-			test_score.loc[j,('shuffle',n)] = np.sum(rand[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
+# for i, m in enumerate(cols):
+# 	data = alldata[i].T
+# 	test_score = pd.DataFrame(index = np.arange(n_repeat), columns = pd.MultiIndex.from_product([['test','shuffle'], nucleus]))	
+# 	for j in range(n_repeat):
+# 		test = fit_cv(data, labels, 10, verbose = 0)
+# 		rand = fit_cv(data, labels, 10, verbose = 0, shuffle = True)
+# 		print(i,j)
+# 		for k, n in enumerate(nucleus):
+# 			idx = labels == nucleus.index(n)
+# 			test_score.loc[j,('test',n)] = np.sum(test[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
+# 			test_score.loc[j,('shuffle',n)] = np.sum(rand[idx] == nucleus.index(n))/np.sum(labels == nucleus.index(n))
 	
-	mean_score[('score',m,'mean')] = test_score['test'].mean(0)
-	mean_score[('score',m,'sem')] = test_score['test'].sem(0)
-	mean_score[('shuffle',m,'mean')] = test_score['shuffle'].mean(0)
-	mean_score[('shuffle',m,'sem')] =  test_score['shuffle'].sem(0)
+# 	mean_score[('score',m,'mean')] = test_score['test'].mean(0)
+# 	mean_score[('score',m,'sem')] = test_score['test'].sem(0)
+# 	mean_score[('shuffle',m,'mean')] = test_score['shuffle'].mean(0)
+# 	mean_score[('shuffle',m,'sem')] =  test_score['shuffle'].sem(0)
 
 
-mean_score = mean_score.sort_values(('score','auto', 'mean'))
+# mean_score = mean_score.sort_values(('score','auto', 'mean'))
 
-mean_score.to_hdf(data_directory+'SCORE_XGB.h5', 'mean_score')
+# mean_score.to_hdf(data_directory+'SCORE_XGB.h5', 'mean_score')
 
 ##########################################################################################################
 # KL DIVERGENCE
