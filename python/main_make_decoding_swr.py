@@ -87,7 +87,7 @@ for session in datasets:
 			angle = pd.Series(index = proba_angle.index.values, data = proba_angle.idxmax(1).values)
 			# setting up some conditions here
 			angle[spike_counts.sum(1)<2] = np.nan		
-			swr_angle[i] = angle
+			swr_angle[i] = angle 
 
 			
 

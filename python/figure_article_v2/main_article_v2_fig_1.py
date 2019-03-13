@@ -286,7 +286,13 @@ ylim(-300,80)
 
 # legend
 handles, labels = axD.get_legend_handles_labels()
-axD.legend(handles[::-1], labels[::-1], fancybox=False, framealpha =0, fontsize = 9, loc = 'lower left', bbox_to_anchor=(-0.01, 0.47))
+axD.legend(handles[::-1], labels[::-1], 
+			fancybox=False, 
+			framealpha =0, 
+			fontsize = 9, 
+			loc = 'lower left', 
+			bbox_to_anchor=(0.1, 0.47),
+			handletextpad=0.05)
 title("t-SNE of auto-correlograms", fontsize = 9)
 axD.text(0.75, 0.54, "Cluster 2", transform = axD.transAxes, fontsize = 10)
 
@@ -294,7 +300,7 @@ axD.text(0.75, 0.54, "Cluster 2", transform = axD.transAxes, fontsize = 10)
 import matplotlib.patches as mpatches
 el = mpatches.Ellipse((-40, -130), 0.3, 0.4, angle=-30, alpha=0.2)
 axD.add_artist(el)
-annotate("", xy=(-50, -130), xytext=(-60, -100), color = 'grey',
+annotate("", xy=(-15, -140), xytext=(-25, -110), color = 'grey',
             arrowprops=dict(arrowstyle="fancy", #linestyle="dashed",
                             color="0.5",
                             patchB=el,
@@ -344,10 +350,68 @@ axD.text(-0.0, 1.01, "D", transform = axD.transAxes, fontsize = 10)
 #############################################################
 # E MAPS
 #############################################################
+mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
+firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
+neurons_ = mappings.index[np.where(mappings['hd'] == 1)[0]]
+neurons_ = neurons_[np.where((firing_rate.loc[neurons_]>2.0).all(axis=1))[0]]
+# EXample autocorr
+cax0 = inset_axes(axD, "24%", "18%",bbox_to_anchor=(0.02, 0.14, 1, 1),
+					bbox_transform=axD.transAxes, loc = 'lower left')
+noaxis(cax0)
+# cax0.spines['bottom'].set_visible(True)
+autocorr = store_autocorr['rem'][neurons_]
+autocorr.loc[0.0] = 0.0
+fr = firing_rate.loc[neurons_, 'rem'].sort_values()
+idx = np.arange(0, len(fr), 6)[0:-1]
+cm = get_cmap('Reds')
+cNorm = matplotlib.colors.Normalize(vmin = 0.0, vmax = fr.iloc[idx].max())
+scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap = cm)
+for n in fr.index[idx]:
+	tmp = autocorr.loc[-100:100,n]
+	tmp /= np.mean(tmp.loc[-100:-50])
+	cax0.plot(tmp.loc[-50:50], color = scalarMap.to_rgba(fr.loc[n]))
 
+
+cax00 = inset_axes(axD, "24%", "18%",bbox_to_anchor=(0.02, -0.05, 1, 1),
+					bbox_transform=axD.transAxes, loc = 'lower left')
+noaxis(cax00)
+cax00.spines['bottom'].set_visible(True)
+xticks([-50, 0, 50], fontsize = 6)
+cax00.tick_params(axis='x', which='major', pad=1)
+xlabel("Time (ms)", labelpad=0.1, fontsize = 6)
+autocorr = store_autocorr['sws'][neurons_]
+autocorr.loc[0.0] = 0.0
+# fr = firing_rate.loc[neurons_, 'sws'].sort_values()
+# idx = np.arange(0, len(fr), 6)[0:-1]
+cm = get_cmap('Reds')
+cNorm = matplotlib.colors.Normalize(vmin = 0.0, vmax = fr.iloc[idx].max())
+scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap = cm)
+for n in fr.index[idx]:
+	tmp = autocorr.loc[-100:100,n]
+	tmp /= np.mean(tmp.loc[-100:-50])
+	cax00.plot(tmp.loc[-50:50], color = scalarMap.to_rgba(fr.loc[n]))
+
+# cax0.text('REM', 0.5, 0.5, fontsize = 7, transform = cax0.transAxes)
+# cax00.text('NREM', 0.5, 0.5, fontsize = 7, transform = cax00.transAxes)
+cax0.text(0.05, 0.1, "REM", transform = cax0.transAxes, fontsize = 6)
+cax00.text(0.05, 0.1, "NREM", transform = cax00.transAxes, fontsize = 6)
+
+# color bar firing rate
+cax = inset_axes(axD, "1.5%", "9%",
+                   bbox_to_anchor=(0.1, 0.35, 1, 1),
+                   bbox_transform=axD.transAxes, 
+                   loc = 'lower left')
+
+cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cm, norm = cNorm, orientation = 'vertical')
+# cax.set_title("Rate (Hz)", fontsize = 7, pad = 3)
+# cb.set_label("Rate (Hz)", orientation = 'horizontal')
+cax0.text(0.48,1.3, 'Rate (Hz)', transform = cax0.transAxes, fontsize = 7)
+cb.ax.xaxis.set_tick_params(pad = 1)
+cb.ax.yaxis.set_ticks_position('left')
+cb.ax.tick_params(labelsize=6) 
 # cluster 1 HD
 cax1 = inset_axes(axD, "50%", "47%",
-                   bbox_to_anchor=(0.0, -0.05, 1, 1),
+                   bbox_to_anchor=(0.2, -0.05, 1, 1),
                    bbox_transform=axD.transAxes, 
                    loc = 'lower left')
 tmp = rotated_images[1]
