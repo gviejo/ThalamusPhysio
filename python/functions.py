@@ -3,7 +3,7 @@ from multiprocessing import Pool, cpu_count
 from scipy import stats, linalg
 import pandas as pd
 import neuroseries as nts
-
+from scipy.fftpack import *
 
 def jPCA(data, times):
 	#PCA
@@ -753,13 +753,24 @@ def loadEpoch(path, epoch):
 			return nts.IntervalSet(start, stop, time_units = 's', expect_fix=True).drop_short_intervals(0.0)
 
 def loadRipples(path):	
+	"""
 	# 0 : debut
 	# 1 : milieu
 	# 2 : fin
 	# 3 : amplitude nombre de sd au dessus de bruit
-	# 4 : frequence instantan
+	# 4 : frequence instantane
+	
+	if a .evt.py.rip exist, it's loaded in priority
+	"""
 	import neuroseries as nts
-	ripples = np.genfromtxt(path+'/'+path.split("/")[-1]+'.sts.RIPPLES')
+	import os
+	name = path.split("/")[-1]
+	files = os.listdir(path)
+	if name + '.evt.py.rip' in files:
+		tmp = np.genfromtxt(path + '/' + name + '.evt.py.rip')[:,0]
+		ripples = tmp.reshape(len(tmp)//3,3)/1000
+	else:	
+		ripples = np.genfromtxt(path+'/'+path.split("/")[-1]+'.sts.RIPPLES')
 	return (nts.IntervalSet(ripples[:,0], ripples[:,2], time_units = 's'), 
 			nts.Ts(ripples[:,1], time_units = 's'))
 
@@ -1057,3 +1068,130 @@ def decodeHD(tuning_curves, spikes, ep, bin_size = 200, px = None):
 	proba_angle = proba_angle.astype('float')		
 	decoded = nts.Tsd(t = proba_angle.index.values, d = proba_angle.idxmax(1).values, time_units = 'ms')
 	return decoded, proba_angle
+
+def quickBin(dspike, ts, bins):		
+	rates = np.zeros((len(ts),len(bins)-1,len(dspike)))
+	for i, t in enumerate(ts):
+		tbins = t+bins
+		for j, n in enumerate(dspike):
+			tspk = dspike[n]
+			a, _ = np.histogram(tspk, tbins)
+			rates[i,:,j] = a / (np.diff(bins)*1e-3)
+	a, b, c = rates.shape
+	rates = rates.reshape(a*b, c)
+	rates = rates - rates.mean(0)
+	rates = rates / rates.std(0)
+	rates = rates.reshape(a, b, c)
+	return rates
+
+def _fill_array(data, mask=None, fill_value=None):
+    """
+    Mask numpy array and/or fill array value without demasking.
+    Additionally set fill_value to value.
+    If data is not a MaskedArray and mask is None returns silently data.
+    :param mask: apply mask to array
+    :param fill_value: fill value
+    """
+    if mask is not None and mask is not False:
+        data = np.ma.MaskedArray(data, mask=mask, copy=False)
+    if np.ma.is_masked(data) and fill_value is not None:
+        data._data[data.mask] = fill_value
+        np.ma.set_fill_value(data, fill_value)
+#    elif not np.ma.is_masked(data):
+#        data = np.ma.filled(data)
+    return data
+
+def spectral_whitening(data, sr=None, smooth=None, filter=None,
+                       waterlevel=1e-8):
+    """
+    Apply spectral whitening to data
+
+    Data is divided by its smoothed (Default: None) amplitude spectrum.
+
+    :param data: numpy array with data to manipulate
+    :param sr: sampling rate (only needed for smoothing)
+    :param smooth: length of smoothing window in Hz
+        (default None -> no smoothing)
+    :param filter: filter spectrum with bandpass after whitening
+        (tuple with min and max frequency)
+    :param waterlevel: waterlevel relative to mean of spectrum
+
+    :return: whitened data
+    """    
+    mask = np.ma.getmask(data)
+    N = len(data)
+    nfft = next_fast_len(N)
+    spec = fft(data, nfft)
+    spec_ampl = np.sqrt(np.abs(np.multiply(spec, np.conjugate(spec))))
+    if smooth:
+        smooth = int(smooth * N / sr)
+        spec_ampl = ifftshift(smooth_func(fftshift(spec_ampl), smooth))
+    # save guard against division by 0
+    wl = waterlevel * np.mean(spec_ampl)
+    spec_ampl[spec_ampl < wl] = wl
+    spec /= spec_ampl
+    if filter is not None:
+        spec *= _filter_resp(*filter, sr=sr, N=len(spec), whole=True)[1]
+    ret = np.real(ifft(spec, nfft)[:N])
+    return _fill_array(ret, mask=mask, fill_value=0.)
+
+
+
+
+from sklearn.manifold import Isomap
+def makeRingManifold(spikes, ep, angle, bin_size = 200):
+	"""
+	spikes : dict of hd spikes
+	ep : epoch to restrict
+	angle : tsd of angular direction
+	bin_size : in ms
+	"""
+	neurons = np.sort(list(spikes.keys()))
+	bins = np.arange(ep.as_units('ms').start.iloc[0], ep.as_units('ms').end.iloc[-1]+bin_size, bin_size)
+	spike_counts = pd.DataFrame(index = bins[0:-1]+np.diff(bins)/2, columns = neurons)
+	for i in neurons:
+		spks = spikes[i].as_units('ms').index.values
+		spike_counts[i], _ = np.histogram(spks, bins)
+
+	rates = np.sqrt(spike_counts/(bin_size))
+
+	angle = angle.restrict(ep)
+	newangle = pd.Series(index = np.arange(len(bins)-1))
+	tmp = angle.groupby(np.digitize(angle.as_units('ms').index.values, bins)-1).mean()
+	newangle.loc[tmp.index] = tmp
+	newangle.index = pd.Index(bins[0:-1] + np.diff(bins)/2.)
+
+	tmp = rates.rolling(window=200,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=2).values
+
+	imap = Isomap(n_neighbors = 20, n_components = 2, n_jobs = -1).fit_transform(tmp)
+
+	iwak = imap
+
+	H = newangle.values/(2*np.pi)
+
+	HSV = np.vstack((H, np.ones_like(H), np.ones_like(H))).T
+
+	from matplotlib.colors import hsv_to_rgb
+
+	RGB = hsv_to_rgb(HSV)
+
+	figure()
+	ax = subplot(111)
+	noaxis(ax)
+	ax.set_aspect(aspect=1)
+	ax.scatter(iwak[~np.isnan(H),0], iwak[~np.isnan(H),1], c = RGB[~np.isnan(H)], marker = '.', alpha = 0.5, zorder = 2, linewidth = 0, s= 40)	
+
+	# hsv
+	display_axes = fig.add_axes([0.2,0.45,0.1,0.1], projection='polar')
+	colormap = plt.get_cmap('hsv')
+	norm = mpl.colors.Normalize(0.0, 2*np.pi)
+	xval = np.arange(0, 2*pi, 0.01)
+	yval = np.ones_like(xval)
+	display_axes.scatter(xval, yval, c=xval, s=100, cmap=colormap, norm=norm, linewidths=0, alpha = 0.8)
+	display_axes.set_yticks([])
+	display_axes.set_xticks(np.arange(0, 2*np.pi, np.pi/2))
+	display_axes.grid(False)
+
+	show()
+
+	return 

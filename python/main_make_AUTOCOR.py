@@ -31,7 +31,7 @@ dview = Pool(8)
 
 # firing_rate = pd.DataFrame(columns = ['wake', 'rem', 'sws'])
 
-
+sys.exit()
 for session in datasets:	
 		start = time()
 		generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
