@@ -24,17 +24,18 @@ lfp_hpc 		= pd.read_hdf(data_directory+session+'/'+session.split("/")[1]+'_EEG_S
 
 data = cPickle.load(open('../../figures/figures_articles_v4/figure1/'+session.split("/")[1]+'.pickle', 'rb'))
 
-iwak		= data['iwak']
-iswr		= data['iswr']
-rip_tsd		= data['rip_tsd']
-rip_spikes	= data['rip_spikes']
-times 		= data['times']
-wakangle	= data['wakangle']
-neurons		= data['neurons']
-tcurves		= data['tcurves']
-irand 		= data['irand']
-iwak2 		= data['iwak2']
+iwak		= data['swr'][0]['iwak']
+iswr		= data['swr'][0]['iswr']
+rip_tsd		= data['swr'][0]['rip_tsd']
+rip_spikes	= data['swr'][0]['rip_spikes']
+times 		= data['swr'][0]['times']
+wakangle	= data['swr'][0]['wakangle']
+neurons		= data['swr'][0]['neurons']
+tcurves		= data['swr'][0]['tcurves']
+irand 		= data['rnd'][0]['irand']
+iwak2 		= data['rnd'][0]['iwak2']
 
+# sys.exit()
 
 tcurves = tcurves.rolling(window=100,win_type='gaussian',center=True,min_periods=1).mean(std=1.0)
 
@@ -66,9 +67,9 @@ good_ex = (np.array([4644.8144,4924.4720,5244.9392,7222.9480,7780.2968,11110.188
 
 exemple = [np.where(i == rip_tsd.index.values)[0][0] for i in [good_ex[0],good_ex[1],good_ex[2]]]
 
-normwak = np.sqrt(np.sum(np.power(iwak,2), 1))
-normswr = np.sqrt(np.sum(np.power(iswr, 2), -1))
-normrnd = np.sqrt(np.sum(np.power(irand,2), -1))
+# normwak = np.sqrt(np.sum(np.power(iwak,2), 1))
+# normswr = np.sqrt(np.sum(np.power(iswr, 2), -1))
+# normrnd = np.sqrt(np.sum(np.power(irand,2), -1))
 
 # angwak 		= np.arctan2(iwak[:,1], iwak[:,0])
 # angwak 		= (angwak + 2*np.pi)%(2*np.pi)
@@ -80,29 +81,29 @@ normrnd = np.sqrt(np.sum(np.power(irand,2), -1))
 
 
 
-angswr = np.arctan2(iswr[:,:,1], iswr[:,:,0])
-angswr = (angswr + 2*np.pi)%(2*np.pi)
+# angswr = np.arctan2(iswr[:,:,1], iswr[:,:,0])
+# angswr = (angswr + 2*np.pi)%(2*np.pi)
 
-angrnd = np.arctan2(irand[:,:,1], irand[:,:,0])
-angrnd = (angrnd + 2*np.pi)%(2*np.pi)
-
-
-swrvel 			= []
-for i in range(len(angswr)):
-	a = np.unwrap(angswr[i])
-	b = pd.Series(index = times, data = a)
-	c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1.0)
-	swrvel.append(np.abs(np.diff(c.values))/0.1)
-swrvel = np.array(swrvel)
+# angrnd = np.arctan2(irand[:,:,1], irand[:,:,0])
+# angrnd = (angrnd + 2*np.pi)%(2*np.pi)
 
 
-rndvel 			= []
-for i in range(len(angrnd)):
-	a = np.unwrap(angrnd[i])
-	b = pd.Series(index = times, data = a)
-	c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1.0)
-	rndvel.append(np.abs(np.diff(c.values))/0.1)
-rndvel = np.array(rndvel)
+# swrvel 			= []
+# for i in range(len(angswr)):
+# 	a = np.unwrap(angswr[i])
+# 	b = pd.Series(index = times, data = a)
+# 	c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1.0)
+# 	swrvel.append(np.abs(np.diff(c.values))/0.1)
+# swrvel = np.array(swrvel)
+
+
+# rndvel 			= []
+# for i in range(len(angrnd)):
+# 	a = np.unwrap(angrnd[i])
+# 	b = pd.Series(index = times, data = a)
+# 	c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1.0)
+# 	rndvel.append(np.abs(np.diff(c.values))/0.1)
+# rndvel = np.array(rndvel)
 
 
 # meannorm = (normswr[:,0:-1] + normswr[:,1:])/2 
@@ -116,7 +117,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.1          # height in inches
+	fig_height = fig_width*golden_mean*1.0          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -197,6 +198,8 @@ for i, n in enumerate(neurons[::-1]):
 		gca().axis('off')		
 		xticks([])
 		yticks([])
+	
+		
 
 ####################################################################
 # B Exemples 
@@ -208,10 +211,16 @@ for i, j in zip(range(3),exemple):
 	lfp = nts.Tsd(t = lfp.index.values - rip_tsd.index[j], d = lfp.values)
 	plot(lfp.as_units('ms'), color = 'black', linewidth = 0.8)
 	plot([0], [lfp.max()+200], '*', color = 'red', markersize = 5, clip_on=False)
-	if i == 0:
-		ylabel('CA1')#, labelpad = 25)
+	# if i == 0:
+	# 	ylabel('CA1')#, labelpad = 25)
 	xlim(times[0], times[-1])
 	ylim(lfp.min(),lfp.max()+100)
+
+	if i == 0:
+		gca().text(-0.4, 0.60, "a", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+		gca().text(-0.11, 0.60, "b", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+		gca().text(0.01, 0.6, "CA1", transform = gca().transAxes, fontsize = 8)
+		
 
 	axspk = subplot(gs_top[1,i+1])	
 	simpleaxis(axspk)
@@ -241,11 +250,13 @@ gs_bot = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[1,0], widt
 ####################################################################
 axC = subplot(gs_bot[0,0])
 gca().axis('off')		
+gca().text(-0.1, 0.94, "c", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 axC.set_aspect(aspect=1)
 for i in range(len(iswr)):
 	scatter(iswr[i,:,0], iswr[i,:,1], c = 'lightgrey', marker = '.', alpha = 0.7, zorder = 2, linewidth = 0, s= 40)
 
 scatter(iwak[~np.isnan(H),0], iwak[~np.isnan(H),1], c = RGB[~np.isnan(H)], marker = '.', alpha = 0.5, zorder = 2, linewidth = 0, s= 40)
+
 
 def intersect(xy):
 	x = xy[0]
@@ -293,10 +304,15 @@ for i, j in zip(range(3), exemple):
 	cl = np.abs(newtime)/np.max(newtime)
 	for k in range(len(newxy)-1):
 		tmp = newxy.iloc[k:k+2]
-		plot(tmp[0].values, tmp[1].values, color = cmap(cl[k]), alpha = 1)
+		plot(tmp[0].values, tmp[1].values, color = cmap(cl[k]), alpha = 1, linewidth = 2)
 
 	idx = np.where(times == 0)[0][0]
 	plot(iswr[j,idx,0], iswr[j,idx,1], '*', color = 'red', zorder = 6, markersize = 5)
+	# idx = np.where(times == times[0])[0][0]
+	# plot(iswr[j,idx,0], iswr[j,idx,1], 's', color = 'green', zorder = 6, markersize = 5)
+	# idx = np.where(times == times[-1])[0][0]
+	# plot(iswr[j,idx,0], iswr[j,idx,1], 'o', color = 'blue', zorder = 6, markersize = 5)
+
 
 ax = gca()
 # colorbar
@@ -306,7 +322,7 @@ cmap= matplotlib.colors.ListedColormap(colors)
 # cmap.set_under("hsluv")
 # cmap.set_over("w")''''
 cax = inset_axes(ax, "20%", "3%",
-                   bbox_to_anchor=(0.8, 0.13, 1, 1),
+                   bbox_to_anchor=(0.9, 0.15, 1, 1),
                    bbox_transform=ax.transAxes, 
                    loc = 'lower left')
 cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
@@ -314,7 +330,7 @@ cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
                                 orientation='horizontal')
 cb1.set_ticks([0,360])
 cb1.set_ticklabels(['0', r"$2\pi$"])
-cax.set_title("Wake")
+cax.set_title("Wake", pad = 3)
 
 cmap = matplotlib.cm.get_cmap('gray')
 colors = [cmap(i) for i in cl]
@@ -322,7 +338,7 @@ cmap= matplotlib.colors.ListedColormap(colors)
 # cmap.set_under("hsluv")
 # cmap.set_over("w")''''
 cax = inset_axes(ax, "20%", "2%",
-                   bbox_to_anchor=(0.8, -0.05, 1, 1),
+                   bbox_to_anchor=(0.9, -0.02, 1, 1),
                    bbox_transform=ax.transAxes, 
                    loc = 'lower left')
 noaxis(cax)
@@ -332,48 +348,41 @@ cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
 cb1.set_ticks([0,0.5,1])
 cb1.set_ticklabels([-500, 0, 500])
 cb1.outline.set_edgecolor(None)
-cax.set_title("SWR trajectory (ms)")
+cax.set_title("SWR trajectory (ms)", pad = 3)
 
 
 
 ####################################################################
 # D Various
 ####################################################################
-gs_bot_right = gridspec.GridSpecFromSubplotSpec(4,1, subplot_spec = gs_bot[0,1], hspace = 0.5, height_ratios = [0.005, 0.5, 0.5, 0.5])
+gs_bot_right = gridspec.GridSpecFromSubplotSpec(4,1, subplot_spec = gs_bot[0,1], hspace = 0.5, height_ratios = [0.005, 0.5, 0.5, 0.005])
 
-# stability HD
-data2 =pd.read_hdf("../../figures/figures_articles_v4/figure1/SWR_SCALAR_PRODUCT.h5", 'w')
-
-ax = subplot(gs_bot_right[1,0])
-simpleaxis(ax)
-m = data2['hd', 'mean'].loc[-500:500]
-v = data2['hd', 'sem'].loc[-500:500]
-plot(m, color = 'black')
-fill_between(m.index.values, m+v, m-v, alpha = 0.5, color = 'grey')
-# title("Only hd")
-
-xticks([-500,0,500])
-ylabel("Population\nstability")
-
+data2 = cPickle.load(open('../../figures/figures_articles_v4/figure1/RING_DECODING.pickle', 'rb'))
 
 # norm r
+ax = subplot(gs_bot_right[1,0])
+simpleaxis(ax)
+axhline(0, color = 'grey', linewidth = 0.5, alpha = 0.75)
+radius = data2['radius']
+plot(radius, color = 'grey', alpha = 0.5, linewidth = 0.4)
+plot(radius.mean(1), color = 'black', linewidth = 2)
+
+xticks([-500,0,500])
+ylabel("Radius (a.u.)")
+gca().text(-0.3, 1.05, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+
+# angular velocity
 ax = subplot(gs_bot_right[2,0])
 simpleaxis(ax)
 axhline(0, color = 'grey', linewidth = 1, alpha = 0.75)
-plot(times, normswr.mean(0)-normrnd.mean(0), color = 'black')
-xticks([-500,0,500])
-ylabel("Radius (a.u.)")
+velocity = data2['velocity']
+plot(velocity, color = 'grey', alpha = 0.5, linewidth = 0.4)
+plot(velocity.mean(1), '-', color = 'black', linewidth = 2)
 
-
-# angular velocity
-ax = subplot(gs_bot_right[3,0])
-simpleaxis(ax)
-axhline(0, color = 'grey', linewidth = 1, alpha = 0.75)
-plot(times[0:-1]+np.diff(times), swrvel.mean(0)-rndvel.mean(0), '-', color = 'black')
 ylabel("Angular\nvelocity")
 xticks([-500,0,500])
-
 xlabel("Time from SWRs (ms)")
+gca().text(-0.3, 1.05, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
 outergs.update(top= 0.98, bottom = 0.05, right = 0.97, left = 0.02)
 

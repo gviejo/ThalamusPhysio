@@ -4,6 +4,7 @@ from scipy import stats, linalg
 import pandas as pd
 import neuroseries as nts
 from scipy.fftpack import *
+from numba import jit
 
 def jPCA(data, times):
 	#PCA
@@ -774,6 +775,21 @@ def loadRipples(path):
 	return (nts.IntervalSet(ripples[:,0], ripples[:,2], time_units = 's'), 
 			nts.Ts(ripples[:,1], time_units = 's'))
 
+def loadUpDown(path):
+	import neuroseries as nts
+	import os
+	name = path.split("/")[-1]
+	files = os.listdir(path)
+	if name + '.evt.py.dow' in files:
+		tmp = np.genfromtxt(path+'/'+name+'.evt.py.dow')[:,0]
+		tmp = tmp.reshape(len(tmp)//2,2)/1000
+		down_ep = nts.IntervalSet(start = tmp[:,0], end = tmp[:,1], time_units = 's')
+	if name + '.evt.py.upp' in files:
+		tmp = np.genfromtxt(path+'/'+name+'.evt.py.upp')[:,0]
+		tmp = tmp.reshape(len(tmp)//2,2)/1000
+		up_ep = nts.IntervalSet(start = tmp[:,0], end = tmp[:,1], time_units = 's')
+	return (down_ep, up_ep)
+
 def loadTheta(path):	
 	import scipy.io
 	import neuroseries as nts
@@ -1069,20 +1085,44 @@ def decodeHD(tuning_curves, spikes, ep, bin_size = 200, px = None):
 	decoded = nts.Tsd(t = proba_angle.index.values, d = proba_angle.idxmax(1).values, time_units = 'ms')
 	return decoded, proba_angle
 
-def quickBin(dspike, ts, bins):		
+def quickBin(dspike, ts, bins, index):
 	rates = np.zeros((len(ts),len(bins)-1,len(dspike)))
 	for i, t in enumerate(ts):
 		tbins = t+bins
-		for j, n in enumerate(dspike):
+		for j, n in enumerate(index):
 			tspk = dspike[n]
 			a, _ = np.histogram(tspk, tbins)
-			rates[i,:,j] = a / (np.diff(bins)*1e-3)
-	a, b, c = rates.shape
-	rates = rates.reshape(a*b, c)
-	rates = rates - rates.mean(0)
-	rates = rates / rates.std(0)
-	rates = rates.reshape(a, b, c)
+			b = a / (np.diff(bins)*1e-3)
+			b = b - b.mean()
+			b = b / (b.std()+1)			
+			rates[i,:,j] = b
+	# a, b, c = rates.shape
+	# rates = rates.reshape(a*b, c)
+	# rates = rates - rates.mean(0)
+	# rates = rates / rates.std(0)
+	# rates = rates.reshape(a, b, c)
 	return rates
+
+def quickBin2(dspike, ts, bins, index, meanstd):
+	rates = np.zeros((len(ts),len(bins)-1,len(dspike)))
+	for i, t in enumerate(ts):
+		tbins = t+bins
+		for j, n in enumerate(index):
+			tspk = dspike[n]
+			a, _ = np.histogram(tspk, tbins)
+			# b = a / (np.diff(bins)*1e-3)
+			# b = b - b.mean()
+			# b = b / (b.std()+1)			
+			# b = a/(np.diff(bins)*1e-3)
+			# c = (b - meanstd[j,0])/(meanstd[j,1]+1)
+			rates[i,:,j] = a
+	# a, b, c = rates.shape
+	# rates = rates.reshape(a*b, c)
+	# rates = rates - rates.mean(0)
+	# rates = rates / rates.std(0)
+	# rates = rates.reshape(a, b, c)
+	return rates
+
 
 def _fill_array(data, mask=None, fill_value=None):
     """
@@ -1195,3 +1235,88 @@ def makeRingManifold(spikes, ep, angle, bin_size = 200):
 	show()
 
 	return 
+
+@jit(nopython=True)
+def histo(spk, obins):
+	n = len(obins)
+	count = np.zeros(n)
+	for i in range(n):
+		count[i] = np.sum((spk>obins[i,0]) * (spk < obins[i,1]))
+	return count
+
+
+def compute_isomap(spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex, times, rates_wak, i):
+	####################################################################################################################
+	# SWR
+	####################################################################################################################						
+	# BINNING
+	tmp = rip_tsd.index.values[idx == i]
+	subrip_tsd = pd.Series(index = tmp, data = np.nan)				
+	rates_swr = []
+	tmp2 = subrip_tsd.index.values/1000
+	for j, t in enumerate(tmp2):				
+		tbins = t + obins
+		spike_counts = pd.DataFrame(index = obins[:,0]+(np.diff(obins)/2).flatten(), columns = neurons)
+		for k in neurons:
+			spks = spikes[k].as_units('ms').index.values
+			spike_counts[k] = histo(spks, tbins)
+			
+		rates_swr.append(np.sqrt(spike_counts/(bin_size)))
+
+	####################################################################################################################
+	# RANDOM
+	####################################################################################################################			
+	# BINNING
+	rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[j,'start']+500000, sws_ep.loc[j,'end']+500000, np.maximum(1,n_ex//len(sws_ep))) for j in sws_ep.index])))
+	# rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[j,'start']+500000, sws_ep.loc[j,'end']+500000, 1) for j in sws_ep.index])))
+	if len(rnd_tsd) > n_ex:
+		rnd_tsd = rnd_tsd[0:n_ex]
+	rates_rnd = []
+	tmp3 = rnd_tsd.index.values/1000
+	for j, t in enumerate(tmp3):				
+		tbins = t + obins
+		spike_counts = pd.DataFrame(index = obins[:,0]+(np.diff(obins)/2).flatten(), columns = neurons)	
+		for k in neurons:
+			spks = spikes[k].as_units('ms').index.values	
+			spike_counts[k] = histo(spks, tbins)
+	
+		rates_rnd.append(np.sqrt(spike_counts/(bin_size)))
+
+	###########
+	# SMOOTHING
+	tmp1 = rates_wak.values
+	tmp1 = tmp1.astype(np.float32)
+	# SMOOTHING
+	tmp3 = []
+	for rates in rates_swr:
+		tmp3.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=1).loc[-500:500].values)
+		# tmp3.append(rates.loc[-500:500].values)
+	tmp3 = np.vstack(tmp3)
+	tmp3 = tmp3.astype(np.float32)
+	#SMOOTHING
+	tmp2 = []
+	for rates in rates_rnd:				
+		tmp2.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=1).loc[-500:500].values)
+		# tmp2.append(rates.loc[-500:500].values)
+	tmp2 = np.vstack(tmp2)
+	tmp2 = tmp2.astype(np.float32)
+
+	n = len(tmp3)
+	m = len(tmp1)
+	tmp = np.vstack((tmp1, tmp3, tmp2))
+
+	# ISOMAP WAKE SWR
+	# tmp = np.vstack((tmp1, tmp3))
+	imap = Isomap(n_neighbors = 200, n_components = 2).fit_transform(tmp)
+	iwak = imap[0:m]
+	iswr = imap[m:m+n].reshape(len(subrip_tsd),len(times),2)
+
+	# # ISOMAP WAKE RND
+	# tmp = np.vstack((tmp1, tmp2))
+	# imap = Isomap(n_neighbors = 5, n_components = 2).fit_transform(tmp)
+	irnd = imap[m+n:].reshape(len(rnd_tsd),len(times),2)
+			
+	print(i)
+	return (iswr, irnd, iwak)
+
+

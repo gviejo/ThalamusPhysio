@@ -20,7 +20,6 @@ from time import time
 from pylab import *
 from functions import quickBin
 from numba import jit
-import _pickle as cPickle
 
 @jit(nopython=True)
 def scalarProduct(r):
@@ -80,254 +79,131 @@ for session in datasets:
 	hdneurons		= np.sort(list(spikeshd.keys()))
 	nohdneurons		= np.sort(list(spikesnohd.keys()))
 	
-	bin_size = 40
-	n_ex = 2000
-
-	rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[i,'start']+500000, sws_ep.loc[i,'end']+500000, np.maximum(1,n_ex//len(sws_ep))) for i in sws_ep.index])))
-
+	bin_size = 20
+	n_ex = 1000
+	normed = True
 	####################################################################################################################
-	# MEAN AND STD SWS
+	# MIN MAX SWS
 	####################################################################################################################
-	# # mean and standard deviation during SWS
-	# mean_sws = pd.DataFrame(index = np.sort(list(spikes.keys())), columns = ['min', 'max'])
-	# for n in spikes.keys():
-	# 	r = []
-	# 	for e in sws_ep.index:
-	# 		bins = np.arange(sws_ep.loc[e,'start'], sws_ep.loc[e,'end'], bin_size*1e3)
-	# 		a, _ = np.histogram(spikes[n].restrict(sws_ep.loc[[e]]).index.values, bins)
-	# 		r.append(a)
-	# 	r = np.hstack(r)
-	# 	r = r / (bin_size*1e-3)
-	# 	mean_sws.loc[n,'min']= r.min()
-	# 	mean_sws.loc[n,'max']= r.max()
+	# mean and standard deviation during SWS
+	mean_sws = pd.DataFrame(index = np.sort(list(spikes.keys())), columns = ['mean', 'std'])
+	for n in spikes.keys():
+		r = []
+		for e in sws_ep.index:
+			bins = np.arange(sws_ep.loc[e,'start'], sws_ep.loc[e,'end'], bin_size*1e3)
+			a, _ = np.histogram(spikes[n].restrict(sws_ep.loc[[e]]).index.values, bins)
+			r.append(a)
+		r = np.hstack(r)
+		r = r / (bin_size*1e-3)
+		mean_sws.loc[n,'min']= r.min()
+		mean_sws.loc[n,'max']= r.max()
 		
 	bins = np.arange(0, 2000+2*bin_size, bin_size) - 1000 - bin_size/2
 	times = bins[0:-1] + np.diff(bins)/2
-	
+
+	ts = rip_tsd.as_units('ms').index.values
+
 	####################################################################################################################
 	# HD NEURONS
 	####################################################################################################################	
 	if len(spikeshd) >=5:
-		ts = rip_tsd.as_units('ms').index.values
 		rates = quickBin([spikeshd[j].as_units('ms').index.values for j in hdneurons], ts, bins, hdneurons)
-		# # rates = rates /float(bin_size*1e-3)
-		# angle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))
-		# for i, r in enumerate(rates):
-		# 	tmp = scalarProduct(r)
-		# 	angle[i] = tmp
+		rates = rates/float(bin_size*1e-3)
 
-		# random				
+		angle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))
+		for i, r in enumerate(rates):
+			tmp = scalarProduct(r)
+			angle[i] = np.nan_to_num(tmp, 0)
+
+		zangle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))				
+		a = mean_sws.loc[hdneurons,'min'].values.astype('float')
+		b = mean_sws.loc[hdneurons,'max'].values.astype('float')		
+		zrates = (rates - a) / (b-a)
+		for i, r in enumerate(zrates):			
+			zangle[i] = scalarProduct(r)
+
+
+		# random		
+		rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[i,'start']+500000, sws_ep.loc[i,'end']+500000, n_ex//len(sws_ep)) for i in sws_ep.index])))
 		ts = rnd_tsd.as_units('ms').index.values
 		rates2 = quickBin([spikeshd[j].as_units('ms').index.values for j in hdneurons], ts, bins, hdneurons)	
-		# # rates2 = rates2/float(bin_size*1e-3)
-		# shuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))	
-		# for i, r in enumerate(rates2):
-		# 	tmp = scalarProduct(r)
-		# 	shuffled[i] = tmp
+		rates2 = rates2/float(bin_size*1e-3)
 
-		# anglehd[session] = (angle.mean(1) - shuffled.mean(1))/shuffled.mean(1)
 
-		# normalized
-		zangle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))
-		min_ = rates.min(0).min(0)
-		max_ = rates.max(0).max(0)
-		zrates = (rates - min_) / (max_ - min_)
-		for i, r in enumerate(zrates):			
+		shuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))	
+		for i, r in enumerate(rates2):
 			tmp = scalarProduct(r)
-			zangle[i] = tmp
+			shuffled[i] = np.nan_to_num(tmp, 0)
 
-		# random
 		zshuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))
-		min_ = rates2.min(0).min(0)
-		max_ = rates2.max(0).max(0)
-		zrates2 = (rates2 - min_) / (max_ - min_)
+		a = mean_sws.loc[hdneurons,'min'].values.astype('float')
+		b = mean_sws.loc[hdneurons,'max'].values.astype('float')
+		zrates2 = (rates2 - a) / (b-a)
 		for i, r in enumerate(zrates2):
-			tmp = scalarProduct(r)
-			zshuffled[i] = tmp
+			zshuffled[i] = scalarProduct(r)			 
+
 		
-		
+		anglehd[session] = (angle.mean(1) - shuffled.mean(1))/shuffled.mean(1)
 		zanglehd[session] = (zangle.mean(1) - zshuffled.mean(1))/zshuffled.mean(1)
-		anglehd[session] = zangle #.fillna(0)
+		
 		
 	####################################################################################################################
 	# NO HD NEURONS
 	####################################################################################################################	
 	if len(spikesnohd) >=5:
-		ts = rip_tsd.as_units('ms').index.values
 		rates = quickBin([spikesnohd[j].as_units('ms').index.values for j in nohdneurons], ts, bins, nohdneurons)	
-		# # rates = rates/float(bin_size*1e-3)
-		# angle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))		
-		# for i, r in enumerate(rates):			
-		# 	angle[i] = scalarProduct(r)
+		rates = rates/float(bin_size*1e-3)
 
-		# random		
-		ts = rnd_tsd.as_units('ms').index.values
-		rates2 = quickBin([spikesnohd[j].as_units('ms').index.values for j in nohdneurons], ts, bins, nohdneurons)			
-		# # rates2 = rates2/float(bin_size*1e-3)
-		
-		# shuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))		
-		# for i, r in enumerate(rates2):
-		# 	shuffled[i] = scalarProduct(r)
-
-		# anglenohd[session] = (angle.mean(1) - shuffled.mean(1))/shuffled.mean(1)
-
-		# normalized				
+		angle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))		
+		for i, r in enumerate(rates):			
+			tmp = scalarProduct(r)
+			angle[i] = np.nan_to_num(tmp, 0)
+				
 		zangle = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rip_tsd)))		
-		min_ = rates.min(0).min(0)
-		max_ = rates.max(0).max(0)
-		zrates = (rates - min_) / (max_ - min_)
+		a = mean_sws.loc[nohdneurons,'min'].values.astype('float')
+		b = mean_sws.loc[nohdneurons,'max'].values.astype('float')		
+		zrates = (rates - a) / (b-a)
 		for i, r in enumerate(zrates):
 			zangle[i] = scalarProduct(r)
 
-		# random
+		# random		
+		rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[i,'start']+500000, sws_ep.loc[i,'end']+500000, n_ex//len(sws_ep)) for i in sws_ep.index])))
+		ts = rnd_tsd.as_units('ms').index.values
+		rates2 = quickBin([spikesnohd[j].as_units('ms').index.values for j in nohdneurons], ts, bins, nohdneurons)			
+		rates2 = rates2/float(bin_size*1e-3)		
+		
+		
+		shuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))		
+		for i, r in enumerate(rates2):
+			tmp = scalarProduct(r)
+			shuffled[i] = np.nan_to_num(tmp, 0)
+
 		zshuffled = pd.DataFrame(index = times[0:-1], columns = np.arange(len(rnd_tsd)))		
-		# zrates2 = (rates2 - m) / (s+1)
-		min_ = rates2.min(0).min(0)
-		max_ = rates2.max(0).max(0)
-		zrates2 = (rates2 - min_) / (max_ - min_)
+		a = mean_sws.loc[nohdneurons,'min'].values.astype('float')
+		b = mean_sws.loc[nohdneurons,'max'].values.astype('float')
+		zrates2 = (rates2 - a) / (b-a)
 		for i, r in enumerate(zrates2):
 			zshuffled[i] = scalarProduct(r)
-		
+
+		anglenohd[session] = (angle.mean(1) - shuffled.mean(1))/shuffled.mean(1)
 		zanglenohd[session] = (zangle.mean(1) - zshuffled.mean(1))/zshuffled.mean(1)
-		anglenohd[session] = zangle #.fillna(0)
 
 
-# anglehd = pd.DataFrame.from_dict(anglehd)
-# anglenohd = pd.DataFrame.from_dict(anglenohd)
 
-# anglehd = anglehd.rolling(window=10,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
-# anglenohd = anglenohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
+anglehd = pd.DataFrame.from_dict(anglehd)
+anglenohd = pd.DataFrame.from_dict(anglenohd)
 
 zanglehd = pd.DataFrame.from_dict(zanglehd)
 zanglenohd = pd.DataFrame.from_dict(zanglenohd)
 
-zanglehd = zanglehd.rolling(window=10,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
-zanglenohd = zanglenohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
-
-
-# subplot(211)
-# plot(anglehd.mean(1), label = 'hd')
-# plot(anglenohd.mean(1), label = 'no hd')
-# legend()
-# title("Scalar product")
-# subplot(212)
-figure()
+subplot(211)
+plot(anglehd.mean(1))
+plot(anglenohd.mean(1))
+title("Scalar product")
+subplot(212)
 plot(zanglehd.mean(1))
 plot(zanglenohd.mean(1))
-legend()
-title("Scalar product + norm [0 1]")
-
-# comparing with isomap radius
-path = '../figures/figures_articles_v4/figure1/'
-files = [f for f in os.listdir(path) if '.pickle' in f and 'Mouse' in f]
-files.remove("Mouse17-130129.pickle")
-radius = []
-velocity = []
-stability = []
-order = []
-
-for f in files:
-	data = cPickle.load(open(path+f, 'rb'))
-	swrvel 			= []
-	swrrad 			= []
-	for n in data['swr'].keys():
-		iswr		= data['swr'][n]['iswr']
-		rip_tsd		= data['swr'][n]['rip_tsd']
-		times 		= data['swr'][n]['times']	
-
-		normswr = np.sqrt(np.sum(np.power(iswr, 2), -1))
-		normswr = pd.DataFrame(index = times, columns = rip_tsd.index.values.astype('int'), data = normswr.T)
-		swrrad.append(normswr)
-
-		angswr = np.arctan2(iswr[:,:,1], iswr[:,:,0])
-		angswr = (angswr + 2*np.pi)%(2*np.pi)
-		tmp = []
-		for i in range(len(angswr)):
-			a = np.unwrap(angswr[i])
-			b = pd.Series(index = times, data = a)
-			c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1.0)
-			tmp.append(np.abs(np.diff(c.values))/0.1)		
-		tmp = pd.DataFrame(index = times[0:-1] + np.diff(times)/2, columns = rip_tsd.index.values.astype('int'), data = np.array(tmp).T)
-		swrvel.append(tmp)
-
-	swrvel = pd.concat(swrvel, 1)
-	swrrad = pd.concat(swrrad, 1)
-	swrvel = swrvel.sort_index(1)
-	swrrad = swrrad.sort_index(1)
-
-	s = f.split('-')[0]+'/'+ f.split('.')[0]
-	stab = anglehd[s]
-	# cutting between -500 to 500
-	stab = stab.loc[-500:500]
-	
-	# aligning swrrad.index to stab.index
-	newswrrad = []
-	for i in swrrad.columns:
-		y = swrrad[i].values
-		if len(y.shape) ==2 : 
-			print("Bug in ", f)
-			y = y[:,0]
-		fi = scipy.interpolate.interp1d(swrrad.index.values, y)
-		newswrrad.append(fi(stab.index.values))
-	newswrrad = pd.DataFrame(index = stab.index.values, columns = swrrad.columns, data = np.array(newswrrad).T)
-
-	newswrvel = []
-	for i in swrvel.columns:
-		y = swrvel[i].values
-		if len(y.shape) ==2 :
-			y = y[:,0]
-		fi = scipy.interpolate.interp1d(swrvel.index.values, y)
-		newswrvel.append(fi(stab.index.values))
-	newswrvel = pd.DataFrame(index = stab.index.values, columns = swrvel.columns, data = np.array(newswrvel).T)
-
-	radius.append(newswrrad.mean(1))
-	stability.append(stab.mean(1))
-	velocity.append(newswrvel.mean(1))
-	order.append(f)
-
-radius = pd.concat(radius, 1)
-stability = pd.concat(stability, 1)
-velocity = pd.concat(velocity, 1)
-velocity = 
-
-stability = stability.apply(scipy.stats.zscore)
-radius = radius.apply(scipy.stats.zscore)
-velocity = velocity.apply(scipy.stats.zscore)
-
-
-figure()
-subplot(231)
-for i in radius.columns:
-	plot(radius[i])
-title("Radius")
-subplot(232)
-for i in velocity.columns:
-	plot(velocity[i])
-title("Ang velocity")
-subplot(233)
-for i in stability.columns:
-	plot(stability[i])
-title("Stability")
-subplot(234)
-for i in radius.columns:
-	scatter(radius[i], stability[i])
-	xlabel("Radius")
-	ylabel("Stability")
-subplot(235)
-for i in radius.columns:
-	scatter(velocity[i], stability[i])
-	xlabel("velocity")
-	ylabel("Stability")
-
-
-
-tosave = {'velocity':velocity,
-			'radius':radius}
-
-
-
-
-show()
+title("Scalar product + zscored")
 
 sys.exit()
 

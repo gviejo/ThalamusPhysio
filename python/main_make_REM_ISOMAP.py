@@ -31,8 +31,9 @@ datatosave = {ep:pd.DataFrame() for ep in ['wak', 'rem', 'sws']}
 
 
 # session = 'Mouse17/Mouse17-130130'
-# session = 'Mouse12/Mouse12-120808'
-session = 'Mouse32/Mouse32-140822'
+session = 'Mouse12/Mouse12-120808'
+# session = 'Mouse32/Mouse32-140822'
+# session = 'Mouse12/Mouse12-120807'
 
 generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
 shankStructure 	= loadShankStructure(generalinfo)
@@ -56,6 +57,8 @@ speed 			= loadSpeed(data_directory+session+'/Analysis/linspeed.mat').restrict(w
 hd_info 		= scipy.io.loadmat(data_directory+session+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
 hd_info_neuron	= np.array([hd_info[n] for n in spikes.keys()])
 
+sys.exit()
+
 spikeshd 		= {k:spikes[k] for k in np.where(hd_info_neuron==1)[0] if k not in []}
 neurons 		= np.sort(list(spikeshd.keys()))
 
@@ -66,7 +69,6 @@ neurons 		= np.sort(list(spikeshd.keys()))
 # tmp.as_series().to_hdf(data_directory+session+'/'+session.split("/")[1]+'_EEG_SWR.h5', 'swr')
 
 
-
 lfp_hpc 		= pd.read_hdf(data_directory+session+'/'+session.split("/")[1]+'_EEG_SWR.h5')
 
 ####################################################################################################################
@@ -75,8 +77,7 @@ lfp_hpc 		= pd.read_hdf(data_directory+session+'/'+session.split("/")[1]+'_EEG_S
 spikeshd 		= {k:spikes[k] for k in np.where(hd_info_neuron==1)[0] if k not in []}
 neurons 		= np.sort(list(spikeshd.keys()))
 # sys.exit()
-# position 		= pd.read_csv(data_directory+session+"/Mouse12-120808_wake.txt", delimiter = '\t', header = None, index_col = [0])
-position 		= pd.read_csv(data_directory+session+"/Mouse32-140822.csv", delimiter = ',', header = None, index_col = [0])
+position 		= pd.read_csv(data_directory+session+"/"+session.split("/")[1] + ".csv", delimiter = ',', header = None, index_col = [0])
 angle 			= nts.Tsd(t = position.index.values, d = position[1].values, time_units = 's')
 tcurves 		= computeAngularTuningCurves(spikeshd, angle, wake_ep, nb_bins = 60, frequency = 1/0.0256)
 neurons 		= tcurves.idxmax().sort_values().index.values

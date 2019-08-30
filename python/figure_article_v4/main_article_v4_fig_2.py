@@ -33,7 +33,7 @@ store.close()
 ###################################################################################################################
 # LFP EXEMPLE
 ###################################################################################################################
-# session_ex = 'Mouse12/Mouse12-120807'
+# session_ex = 'Mouse17/Mouse17-130129'
 # generalinfo 	= scipy.io.loadmat(data_directory+session_ex+'/Analysis/GeneralInfo.mat')
 # shankStructure 	= loadShankStructure(generalinfo)	
 # if len(generalinfo['channelStructure'][0][0][1][0]) == 2:
@@ -46,14 +46,37 @@ store.close()
 # hd_phi 				= scipy.io.loadmat(data_directory+session_ex+'/Analysis/HDCells.mat')['hdCellStats'][:,0]
 # hd_info_neuron		= np.array([hd_info[n] for n in spikes.keys()])
 # hd_phi_neuron 		= np.array([hd_phi[n] for n in spikes.keys()])
-# lfp_hpc 		= loadLFP(data_directory+session_ex+"/"+session_ex.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
+# lfp_hpc 			= loadLFP(data_directory+session_ex+"/"+session_ex.split("/")[1]+'.eeg', n_channel, hpc_channel, float(fs), 'int16')
+# rip_ep,rip_tsd 		= loadRipples(data_directory+session_ex)
+# sws_ep 				= loadEpoch(data_directory+session, 'sws')
+# lfp_hpc 			= lfp_hpc.restrict(sws_ep)
+
+# data2 = cPickle.load(open("../../figures/figures_articles_v4/figure2/exemple_scalar_product.pickle", 'rb'))
+# stab = data2[session_ex]
+
+
+# figure()
+# ax=subplot(211)
+# plot(lfp_hpc)
+# plot(lfp_hpc.restrict(rip_ep), '-',alpha = 0.8)
+# subplot(212,sharex=ax)
+# plot(stab)
+
+# show()
+
+
+# sys.exit()
+
 # sws_ex = nts.IntervalSet(start = 3920, end = 3923, time_units = 's')
 # rem_ex = nts.IntervalSet(start = 3191, end = 3195, time_units = 's')
 # lfp_sws_ex 		= lfp_hpc.restrict(sws_ex)
 # lfp_rem_ex 		= lfp_hpc.restrict(rem_ex)
 # spikes_sws_ex 	= pd.concat({n:spikes[n].restrict(sws_ex).isnull()*n for n in spikes}, axis = 1)
 # spikes_rem_ex 	= pd.concat({n:spikes[n].restrict(rem_ex).isnull()*n for n in spikes}, axis = 1)
-# rip_ep,rip_tsd 	= loadRipples(data_directory+session_ex)
+
+
+
+# sys.exit()
 
 # store_ex = pd.HDFStore('../../figures/figures_articles_v2/figure3/lfp_exemple.h5', 'w')
 # store_ex.put('lfp_sws_ex', lfp_sws_ex.as_series())	
@@ -216,12 +239,12 @@ colors = ['red', '#231f20', '#707174']#, '#abacad']
 
 fig = figure(figsize = figsize(1.0))
 
-outergs = gridspec.GridSpec(3,2, figure = fig, height_ratios = [1.0,1.5,0.8], wspace = 0.3, hspace = 0.3, width_ratios = [0.6, 0.4])
+outergs = gridspec.GridSpec(2,2, figure = fig, height_ratios = [1.0,0.8], wspace = 0.08, hspace = 0.2, width_ratios = [0.3, 0.6])
 
 #############################################
 # A. HISTOLOGY
 #############################################
-gs = gridspec.GridSpecFromSubplotSpec(1,4,subplot_spec = outergs[0,:], width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
+gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outergs[0,0], height_ratios = [0.8, 1.0], wspace = 0.2)#, width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
 axA = fig.add_subplot(gs[0,0])
 # noaxis(axA)
 histo = imread("../../data/histology/Mouse17/Mouse17_2_Slice7_Thalamus_Dapi_2.png")
@@ -230,7 +253,7 @@ text(2500.0, 600.0, "Shanks", rotation = -10, color = 'white', fontsize = 9)
 text(1600.0, 1900.0, "AD", color = 'red', fontsize = 8)
 xticks([], [])
 yticks([], [])
-axA.text(-0.15, 1.04, "a", transform = axA.transAxes, fontsize = 10, fontweight='bold')
+axA.text(-0.5, 1.02, "a", transform = axA.transAxes, fontsize = 10, fontweight='bold')
 
 #############################################
 # B. MAP AD + HD
@@ -253,7 +276,7 @@ def show_labels(ax):
 	ax.text(0.68,	1.09,	"AM", 	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
 	ax.text(1.26,	1.26,	"VA",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
 	ax.text(0.92,	2.05,	"AVd",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'), rotation = 50)
-	ax.text(1.14,	1.72,	"AVv",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+	ax.text(1.11,	1.68,	"AVv",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
 	ax.text(1.28,	2.25,	"LD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
 	ax.text(0.42,	2.17,	"sm",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
 	ax.text(0.20,	1.89,	"MD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
@@ -262,11 +285,29 @@ def show_labels(ax):
 	return
 
 
-suB = fig.add_subplot(gs[0,1])
+ses_ex = ['Mouse17/Mouse17-130129', 'Mouse17/Mouse17-130205']
+ses_mouse17 = np.array([s for s in datasets if 'Mouse17' in s])
+
+
+
+suB = fig.add_subplot(gs[1,0])
 imshow(carte_adrien, extent = bound_adrien, interpolation = 'bessel', aspect = 'equal')
 i = 1
 m = 'Mouse17'
 
+# plotting exemples shanks
+xx = []
+yy = []
+for s in ses_ex:
+	idx = np.where(s == ses_mouse17)[0][0]
+	x = xy_pos[idx,:,0]
+	y = xy_pos[idx,:,1]
+	scatter(x, y, s = 2, color = 'black')
+	xx.append(x[-1])
+	yy.append(y[-1])
+
+annotate('c', xy = (xx[0]+0.05,yy[0]), xycoords='data', xytext = (xx[0]+0.5, yy[0]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
+annotate('d', xy = (xx[1]+0.05,yy[1]), xycoords='data', xytext = (xx[1]+0.5, yy[1]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
 
 tmp2 = headdir
 tmp2[tmp2<0.05] = 0.0
@@ -295,66 +336,120 @@ arrowprops=dict(facecolor='black',
 	width=0.3),
 fontsize = 7, ha = 'center', va = 'bottom')
 
-suB.text(-0.04, 1.03, "b", transform = suB.transAxes, fontsize = 10, fontweight = 'bold')
-
+suB.text(-0.1, 0.9, "b", transform = suB.transAxes, fontsize = 10, fontweight = 'bold')
 
 #############################################################################
-# C. LFP EXEMPLE
+# C. EXEMPLES
 #############################################################################
-gsEx = gridspec.GridSpecFromSubplotSpec(2,1, subplot_spec = gs[0,3], hspace = 0, wspace = 0, height_ratios = [0.4,1])
+gs = gridspec.GridSpecFromSubplotSpec(2,2,subplot_spec = outergs[0,1], wspace = 0.4, hspace = 0.2)#, height_ratios = [0.8, 1.0])#, width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
 
-lbs = ['c']
-titles = ['NREM']
-# 1 lfps
-for i, lfp in zip(range(1),[lfp_sws_ex]):
-	# ax = Subplot(fig, )
-	ax = fig.add_subplot(gsEx[0,i])
-	noaxis(ax)
+lbs = ['c', 'd']
+#############################################################################
+# EX
+for i,j,c,l in zip([0,1], [0,0], range(1,3), lbs):
+	ex = cPickle.load(open("../../figures/figures_articles_v4/figure2/Ex"+str(c)+".pickle", 'rb'))
+
+	ex_tsd	 = ex['ex_tsd']
+	ex_ep	 = ex['ex_ep']
+	lfp	 = ex['lfp']
+	if c==1:
+		spikeshd	 = ex['spikeshd']
+		hdangle	 = ex['hdangle']
+	spikesnohd	 = ex['spikesnohd']	
+	noangle	 = ex['noangle']
+	session	 = ex['session']
+	print(session)
+
+	gsex = gridspec.GridSpecFromSubplotSpec(3,1,subplot_spec = gs[i,j], hspace = 0.1, wspace = 0, height_ratios = [0.4,1,0.4])
+
+	# 1 lfp
+	ax=subplot(gsex[0,0])
+	noaxis(gca())
 	plot(lfp, color = 'black', linewidth = 0.4)
-	plot(rip_tsd.index.values, [1300]*2, '*', color = 'blue', markersize = 5)
-	title(titles[i], pad = -2)
-	text(-0.15, 1.1, lbs[i], transform=ax.transAxes, fontsize = 10, fontweight='bold')
-	ylabel("CA1")
+	plot(ex_tsd.index.values, [1800], '*', color = 'green', markersize = 5, clip_on=False)
+	if c == 1:
+		title('NREM', pad = 5)
+	text(-0.20, 1.05, l, transform=gca().transAxes, fontsize = 10, fontweight='bold')	
+	xlim(ex_ep.iloc[0,0], ex_ep.iloc[0,1])
+	ylabel("CA1", labelpad = 5)
 
-		
-# 2 spikes
-for i, spikes in zip(range(1), [spikes_sws_ex]):
-	# ax = Subplot(fig, )
-	ax = fig.add_subplot(gsEx[1,i])
-	noaxis(ax)
-	# no hd
-	id = 0
-	for n in np.where(hd_info_neuron == 0)[0]:
-		plot(spikes[n].dropna().replace(n, id), '|', markersize = 2, mew = 0.8, color = 'black')
-		id += 1
-	# hd 
-	hd_order = np.where(hd_info_neuron==1)[0][np.argsort(hd_phi_neuron.values[hd_info_neuron==1])]
-	for n in hd_order:
-		plot(spikes[n].dropna().replace(n, id), '|', markersize = 2, mew = 0.8, color = 'red')
-		id += 1
+	# 2 spikes
+	subplot(gsex[1,0])
+	noaxis(gca())
+	ct = 0
+	for n in spikesnohd:
+		plot(spikesnohd[n].fillna(ct), '|', color = 'black', markersize = 2, mew = 0.8)
+		ct+=1
+	if c== 1:
+		for n in spikeshd:
+			plot(spikeshd[n].fillna(ct), '|', color = 'red', markersize = 2, mew = 0.8)
+			ct+=1
+	ylim(-1,ct+1)
+	xlim(ex_ep.iloc[0,0], ex_ep.iloc[0,1])
+	ylabel("Thalamus", labelpad = 5)
 
-	if i == 0:
-		ylabel("Thalamus")
-	start = spikes.index.min()
-	plot([start, start+5e5], [-2, -2], color = 'black', linewidth = 2)
-	text(0.05, -0.1,'500 ms', transform=ax.transAxes, fontsize = 8)
+	# 3 stabilitys
+	subplot(gsex[2,0])	
+	simpleaxis(gca())
+	if c == 1:
+		tmp = hdangle.loc[-500:500]			
+		tmp = tmp.rolling(window=100,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
+		plot(tmp, '-', color = 'red', linewidth = 0.8,clip_on = False)
+	tmp = noangle.loc[-500:500]
+	tmp = tmp.rolling(window=100,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=1)
+	plot(tmp, '-', color = 'black', linewidth = 0.8)
+	if c == 2:
+		xlabel("Time from SWRs (ms)", labelpad = 0)
+	ylim(0,1)
+	xlim(-500,500)
+	xticks([-500,0,500])
+	ylabel("Pop.\nstab.", labelpad = 13, rotation=0, verticalalignment='center')
 
-	ylim(-2, id)
+#############################################################################
+# F. STABILITY
+#############################################################################
+subplot(gs[0,1])
+simpleaxis(gca())
+
+# stability HD
+data2 =pd.read_hdf("../../figures/figures_articles_v4/figure2/SWR_SCALAR_PRODUCT.h5", 'w')
+
+axhline(0, color = 'grey', linewidth = 1, linestyle = '--', label = 'baseline')
+
+m = data2['hd', 'mean'].loc[-500:500]
+v = data2['hd', 'sem'].loc[-500:500]
+plot(m.index.values, m.values, color = 'red', linewidth = 1, label = None)
+fill_between(m.index.values, m+v, m-v, alpha = 0.25, color = 'red', linewidth = 0)
+
+m = data2['nohd', 'mean'].loc[-500:500]
+v = data2['nohd', 'sem'].loc[-500:500]
+plot(m.index.values, m.values, color = 'black', linewidth = 1, label= None)
+fill_between(m.index.values, m+v, m-v, alpha = 0.25, color = 'black', linewidth = 0)
+
+xlim(-500,500)
+xticks([-500,0,500])
+ylabel("Population stability")
+xlabel("Time from SWRs (ms)", labelpad = 0)
+legend(loc = 'best', frameon = False)
+
+gca().text(-0.25, 1.0, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
 #############################################################################
 # D. RIPPLES MODULATION
 #############################################################################
-gsC = gridspec.GridSpecFromSubplotSpec(5,4,subplot_spec = outergs[1,0], wspace = 0.6, width_ratios = [0.07, 1, 1, 1])
+gs = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[1,:], width_ratios = [0.7, 0.3])
+
+gsC = gridspec.GridSpecFromSubplotSpec(5,4,subplot_spec = gs[0,0], wspace = 0.6, width_ratios = [0.07, 1, 1, 1])
 for i, n in enumerate(neurons):	
 	# spikes	
 	ax = Subplot(fig, gsC[0:2,i+1])
 	fig.add_subplot(ax)
 	simpleaxis(ax)
-	if neurons.index(n) == 1:
-		text(0.5, 1.23,'SWR modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
+	# if neurons.index(n) == 1:
+	# 	text(0.5, 1.15,'SWR modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
 	if neurons.index(n) == 0:
 		ylabel("SWR\nevents",  multialignment='center',  labelpad = 1)
-		ax.text(-0.75, 1.05, "d", transform = ax.transAxes, fontsize = 10, fontweight='bold')
+		ax.text(-0.5, 1.05, "g", transform = ax.transAxes, fontsize = 10, fontweight='bold')
 	if neurons.index(n) > 0:
 		ax.spines['left'].set_visible(False)	
 		yticks([], [])
@@ -417,24 +512,24 @@ neurons = np.intersect1d(swr_mod.columns.values, mappings.index.values)
 hd_neurons = mappings.loc[neurons][mappings.loc[neurons, 'hd'] == 1].index.values
 nohd_neurons = mappings.loc[neurons][mappings.loc[neurons, 'hd'] == 0].index.values
 
-gsm = gridspec.GridSpecFromSubplotSpec(3,1, subplot_spec = outergs[1,1], height_ratios = [0.7, 0.4, 0.6], hspace = 0.1)
+gsm = gridspec.GridSpecFromSubplotSpec(3,1, subplot_spec = gs[0,1], height_ratios = [0.7, 0.4, 0.6], hspace = 0.1)
 
 subplot(gsm[0,0])
 simpleaxis(gca())
 m = swr_mod[hd_neurons].mean(1)
 v = swr_mod[hd_neurons].sem(1)
-plot(swr_mod[hd_neurons].mean(1), label = 'HD', color = 'red')
-fill_between(m.index.values, m-v, m+v, color = 'red', alpha = 0.5, linewidth =0)
+plot(swr_mod[hd_neurons].mean(1), label = 'HD', color = 'red', linewidth = 1)
+fill_between(m.index.values, m-v, m+v, color = 'red', alpha = 0.25, linewidth =0)
 m = swr_mod[nohd_neurons].mean(1)
 v = swr_mod[nohd_neurons].sem(1)
-plot(swr_mod[nohd_neurons].mean(1), label = 'non-HD', color = 'black')
-fill_between(m.index.values, m-v, m+v, color = 'grey', alpha = 0.5, linewidth = 0)
+plot(swr_mod[nohd_neurons].mean(1), label = 'non-HD', color = 'black', linewidth = 1)
+fill_between(m.index.values, m-v, m+v, color = 'grey', alpha = 0.25, linewidth = 0)
 ylabel("SWRs mod.", labelpad = 2, y = 0.6)
 xlim(-500,500)
 legend(frameon=False,loc = 'lower left', bbox_to_anchor=(0.7,0.58),handlelength=1,ncol = 1)
 xticks([], [])
 axvline(0, linestyle = '--', linewidth = 1, alpha = 0.5, color = 'black')
-gca().text(-0.25, 1.05, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+gca().text(-0.25, 1.05, "h", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
 
 subplot(gsm[1,0])
@@ -461,7 +556,7 @@ tmp = swr_mod[nohd_neurons]
 # tmp = tmp[idx.index.values[np.argsort(idx.values)]]
 idx = tmp.loc[0].sort_values().index.values
 tmp = tmp[idx[::-1]]
-sc = imshow(tmp.T, aspect = 'auto', cmap = "bone", vmin = -0.4, vmax = 0.4)
+sc = imshow(tmp.T, aspect = 'auto', cmap = "bone", vmin = -0.6, vmax = 0.6)
 xticks([0,100,200],[-500,0,500])
 xlabel('Time from SWRs (ms)', fontsize = 7)
 yticks([len(nohd_neurons)])
@@ -476,109 +571,83 @@ cb.ax.yaxis.set_ticks_position('left')
 
 
 
-# #############################################################################
-# # F. MAPS
-# #############################################################################
-def softmax(x, b1 = 10.0, b2 = 0.5, lb = 0.2):
-	x -= x.min()
-	x /= x.max()
-	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + lb)/(1.0+lb)
+# # #############################################################################
+# # # F. MAPS
+# # #############################################################################
+# def softmax(x, b1 = 10.0, b2 = 0.5, lb = 0.2):
+# 	x -= x.min()
+# 	x /= x.max()
+# 	return (1.0/(1.0+np.exp(-(x-b2)*b1)) + lb)/(1.0+lb)
 
 
-angles = np.array([15.0, 10.0, 15.0, 20.0])
-pos = [1,0,2,3]
-i = 0
-m = 'Mouse17'
-times2 					= swr_mod.index.values
-data = cPickle.load(open("../../data/maps/"+m+".pickle", 'rb'))
-theta 	= data['movies']['theta']
-swr 	= data['movies']['swr']
-total 	= data['total']
-x 		= data['x']
-y 		= data['y']
-headdir = data['headdir']
-jpc 	= data['jpc']
-jpc 	= pd.DataFrame(index = times2, data = jpc)
+# angles = np.array([15.0, 10.0, 15.0, 20.0])
+# pos = [1,0,2,3]
+# i = 0
+# m = 'Mouse17'
+# times2 					= swr_mod.index.values
+# data = cPickle.load(open("../../data/maps/"+m+".pickle", 'rb'))
+# theta 	= data['movies']['theta']
+# swr 	= data['movies']['swr']
+# total 	= data['total']
+# x 		= data['x']
+# y 		= data['y']
+# headdir = data['headdir']
+# jpc 	= data['jpc']
+# jpc 	= pd.DataFrame(index = times2, data = jpc)
 
-toplot = pd.DataFrame(index = ['Mouse12','Mouse17','Mouse20','Mouse32'], columns = pd.MultiIndex.from_product([range(3),['start','end']]))
-for i,j,k in zip(range(3),[-80,120,250],[0,200,330]): 
-	toplot.loc['Mouse17',(i,'start')] = j
-	toplot.loc['Mouse17',(i,'end')] = k	
-
-
-gsm = gridspec.GridSpecFromSubplotSpec(1,3, subplot_spec = outergs[2,0])
-bound = cPickle.load(open("../../figures/figures_articles/figure1/rotated_images_"+m+".pickle", 'rb'))['bound']
-newswr = []
-for j in range(3):
-	tmp = swr[:,:,np.where(times2 == toplot.loc[m,(j,'start')])[0][0]:np.where(times2 == toplot.loc[m,(j,'end')])[0][0]].mean(-1)
-	xnew, ynew, frame = interpolate(tmp.copy(), x, y, 0.01)
-	frame = gaussian_filter(frame, (10, 10))
-	newswr.append(frame)
-newswr = np.array(newswr)
-newswr = newswr - newswr.min()
-newswr = newswr / newswr.max()	
-newswr = softmax(newswr, 10, 0.5, 0.0)
-for j in range(3):
-	subplot(gsm[0,j])
-	if j == 0:
-		text(-0.1, 1.05, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-	if j == 1: 
-		title("SWR modulation (Mouse 1)", pad = 2)
-	noaxis(gca())
-	image = newswr[j]
-	h, w = image.shape
-	rotated_image = np.zeros((h*3, w*3))*np.nan
-	rotated_image[h:h*2,w:w*2] = image.copy() + 1.0	
-	rotated_image = rotateImage(rotated_image, -angles[pos[i]])
-	rotated_image[rotated_image == 0.0] = np.nan
-	rotated_image -= 1.0
-	tocrop = np.where(~np.isnan(rotated_image))
-	rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
-	imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
-	im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'bwr')	
-	xlim(np.minimum(bound_adrien[0],bound[0]),np.maximum(bound_adrien[1],bound[1]))
-	ylim(np.minimum(bound_adrien[2],bound[2]),np.maximum(bound_adrien[3],bound[3]))
-	xlabel(str(toplot.loc[m,(j,'start')])+r"ms $\rightarrow$ "+str(toplot.loc[m,(j,'end')])+"ms")
-
-	#colorbar	
-	cax = inset_axes(gca(), "4%", "20%",
-	                   bbox_to_anchor=(0.75, 0.0, 1, 1),
-	                   bbox_transform=gca().transAxes, 
-	                   loc = 'lower left')
-	cb = colorbar(im, cax = cax, orientation = 'vertical', ticks = [0.25, 0.75])
-	# cb.set_label('Burstiness', labelpad = -4)
-	# cb.ax.xaxis.set_tick_params(pad = 1)
-	# cax.set_title("Cluster 2", fontsize = 6, pad = 2.5)
-
-# #############################################################################
-# # G. Population stability
-# #############################################################################
-subplot(outergs[2,1])
-simpleaxis(gca())
-
-# stability HD
-data2 =pd.read_hdf("../../figures/figures_articles_v4/figure2/SWR_SCALAR_PRODUCT.h5", 'w')
-
-ax = subplot(gs_bot_right[1,0])
-simpleaxis(ax)
-m = data2['hd', 'mean'].loc[-500:500]
-v = data2['hd', 'sem'].loc[-500:500]
-plot(m, color = 'black')
-fill_between(m.index.values, m+v, m-v, alpha = 0.5, color = 'grey')
-# title("Only hd")
-
-xticks([-500,0,500])
-ylabel("Population\nstability")
+# toplot = pd.DataFrame(index = ['Mouse12','Mouse17','Mouse20','Mouse32'], columns = pd.MultiIndex.from_product([range(3),['start','end']]))
+# for i,j,k in zip(range(3),[-80,120,250],[0,200,330]): 
+# 	toplot.loc['Mouse17',(i,'start')] = j
+# 	toplot.loc['Mouse17',(i,'end')] = k	
 
 
+# gsm2 = gridspec.GridSpecFromSubplotSpec(1,3, subplot_spec = outergs[2,0])
+# bound = cPickle.load(open("../../figures/figures_articles/figure1/rotated_images_"+m+".pickle", 'rb'))['bound']
+# newswr = []
+# for j in range(3):
+# 	tmp = swr[:,:,np.where(times2 == toplot.loc[m,(j,'start')])[0][0]:np.where(times2 == toplot.loc[m,(j,'end')])[0][0]].mean(-1)
+# 	xnew, ynew, frame = interpolate(tmp.copy(), x, y, 0.01)
+# 	frame = gaussian_filter(frame, (10, 10))
+# 	newswr.append(frame)
+# newswr = np.array(newswr)
+# newswr = newswr - newswr.min()
+# newswr = newswr / newswr.max()	
+# newswr = softmax(newswr, 10, 0.5, 0.0)
+# for j in range(3):
+# 	subplot(gsm2[0,j])
+# 	if j == 0:
+# 		text(-0.1, 1.12, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+# 	if j == 1: 
+# 		title("SWR modulation (Mouse 1)", pad = 2)
+# 	noaxis(gca())
+# 	image = newswr[j]
+# 	h, w = image.shape
+# 	rotated_image = np.zeros((h*3, w*3))*np.nan
+# 	rotated_image[h:h*2,w:w*2] = image.copy() + 1.0	
+# 	rotated_image = rotateImage(rotated_image, -angles[pos[i]])
+# 	rotated_image[rotated_image == 0.0] = np.nan
+# 	rotated_image -= 1.0
+# 	tocrop = np.where(~np.isnan(rotated_image))
+# 	rotated_image = rotated_image[tocrop[0].min()-1:tocrop[0].max()+1,tocrop[1].min()-1:tocrop[1].max()+1]			
+# 	imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bilinear', aspect = 'equal')
+# 	im = imshow(rotated_image, extent = bound, alpha = 0.8, aspect = 'equal', cmap = 'bwr')	
+# 	xlim(np.minimum(bound_adrien[0],bound[0]),np.maximum(bound_adrien[1],bound[1]))
+# 	ylim(np.minimum(bound_adrien[2],bound[2]),np.maximum(bound_adrien[3],bound[3]))
+# 	xlabel(str(toplot.loc[m,(j,'start')])+r"ms $\rightarrow$ "+str(toplot.loc[m,(j,'end')])+"ms")
 
-xlabel("Time from SWRs (ms)")
-
-
+# 	#colorbar	
+# 	cax = inset_axes(gca(), "4%", "20%",
+# 	                   bbox_to_anchor=(0.75, 0.0, 1, 1),
+# 	                   bbox_transform=gca().transAxes, 
+# 	                   loc = 'lower left')
+# 	cb = colorbar(im, cax = cax, orientation = 'vertical', ticks = [0.25, 0.75])
+# 	# cb.set_label('Burstiness', labelpad = -4)
+# 	# cb.ax.xaxis.set_tick_params(pad = 1)
+# 	# cax.set_title("Cluster 2", fontsize = 6, pad = 2.5)
 
 
 # fig.subplots_adjust(wspace = 0.3, hspace= 0.3, top = 0.99, bottom = 0.05, right = 0.98, left = 0.08)
-fig.subplots_adjust(top = 0.97, bottom = 0.02, right = 0.97, left = 0.03)
+fig.subplots_adjust(top = 0.97, bottom = 0.05, right = 0.97, left = 0.01)
 
 savefig("../../figures/figures_articles_v4/figart_2.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles_v4/figart_2.pdf &")

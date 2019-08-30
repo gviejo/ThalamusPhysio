@@ -18,7 +18,9 @@ datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', 
 datatosave = {}
 spikes_spindle_phase = {'hpc':{}, 'thl':{}}
 
-session = 'Mouse32/Mouse32-140822'
+# session = 'Mouse32/Mouse32-140822'
+session = 'Mouse17/Mouse17-130130'
+
 
 generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
 shankStructure 	= loadShankStructure(generalinfo)
@@ -46,45 +48,97 @@ hd_info_neuron	= np.array([hd_info[n] for n in spikes.keys()])
 #################################################################################################
 #DETECTION UP/DOWN States
 #################################################################################################
-print("up/down states")
+print(session)
+bin_size = 10000 # us
+rates = []
+for e in sws_ep.index:
+	ep = sws_ep.loc[[e]]
+	bins = np.arange(ep.iloc[0,0], ep.iloc[0,1], bin_size)
+	r = pd.DataFrame(index = (bins[0:-1] + np.diff(bins)/2).astype('int'), columns = np.sort(list(spikes.keys())))
+	for n in spikes.keys():
+		r[n] = np.histogram(spikes[n].restrict(ep).index.values, bins)[0]
+	rates.append(r)
+rates = pd.concat(rates, 0)
+a = 6214234000
+b = 6218234000
 
-store 			= pd.HDFStore(data_directory+'/phase_spindles/'+session.split("/")[1]+".lfp")
-phase_hpc 		= nts.Tsd(store['phase_hpc_spindles'])
-phase_thl 		= nts.Tsd(store['phase_thl_spindles'])
-lfp_hpc 		= nts.Tsd(store['lfp_hpc'])
-lfp_thl			= nts.TsdFrame(store['lfp_thl'])
-store.close()		
+a = 6232840000
+b = a+4000*1000
 
-# bins of 5000 us
-bins 			= np.floor(np.arange(lfp_hpc.start_time(), lfp_hpc.end_time()+5000, 5000))
-total_value 	= nts.Tsd(bins[0:-1]+(bins[1]-bins[0])/2, np.zeros(len(bins)-1)).restrict(sws_ep)
-# each shank
-for s in shankStructure['thalamus']:		
-	neuron_index = np.where(shank == s)[0]
-	if len(neuron_index):
-		tmp = {i:spikes[i] for i in neuron_index}
-		frate			= getFiringRate(tmp, bins)		
-		frate 			= frate.as_series()
-		# ISI of 50 ms		
-		down_ep 		= nts.IntervalSet(frate[frate==0.0].index.values[0:-1], frate[frate==0.0].index.values[1:])
-		down_ep 		= down_ep.drop_long_intervals(5001).merge_close_intervals(0.0).intersect(sws_ep).drop_short_intervals(50000)
-		down_ep 		= down_ep.merge_close_intervals(50000)
-		down_candidates = nts.Tsd((down_ep['start'] + (down_ep['end'] - down_ep['start'])/2.).values, np.zeros(len(down_ep)))
-		# Smooth frate 
-		tmp 			= gaussFilt(frate.values, (2,))
-		frate 			= nts.Tsd(frate.index.values, tmp).restrict(sws_ep)
-		threshold	 	= np.percentile(frate, 20)
-		# frate < threshold around down candidates		
-		boole			= nts.Tsd((frate.as_series() <= threshold)*1.0)
-		# realigner bool sur les candidates
-		boole 			= boole.realign(down_candidates)
-		down_ep 		= down_ep.iloc[np.where(boole)[0]]		
-		# add +1 in total value / pandas is weird # TODO
-		for i in total_value.restrict(down_ep).index.values:
-			total_value.loc[i] += 1
-# at least 3 shank 
-down_ep 		= nts.IntervalSet(total_value[total_value>=3.0].index.values[0:-1], total_value[total_value>=3.0].index.values[1:])
-down_ep 		= down_ep.drop_long_intervals(5001).merge_close_intervals(0.0)
-down_ep 		= down_ep.merge_close_intervals(50000).drop_long_intervals(400000)
-up_ep 			= nts.IntervalSet(down_ep['end'][0:-1], down_ep['start'][1:]).intersect(sws_ep)
-up_ep 			= up_ep.drop_short_intervals(500000)
+a = 3681837000
+b = a + 2000*1000
+
+a = 2362542000
+b = a + 2000*1000
+
+ab = nts.IntervalSet(start = a, end = b)
+
+total = rates.sum(1)
+
+total2 = total.rolling(window=100,win_type='gaussian',center=True,min_periods=1, axis = 0).mean(std=2)
+
+idx = total2[total2<np.percentile(total2,20)].index.values
+
+tmp = [[idx[0]]]
+for i in range(1,len(idx)):
+	if (idx[i] - idx[i-1]) > bin_size:
+		tmp.append([idx[i]])
+	elif (idx[i] - idx[i-1]) == bin_size:
+		tmp[-1].append(idx[i])
+
+down_ep = np.array([[e[0],e[-1]] for e in tmp if len(e) > 1])
+down_ep = nts.IntervalSet(start = down_ep[:,0], end = down_ep[:,1])
+
+
+
+down_ep = down_ep.drop_short_intervals(bin_size)
+down_ep = down_ep.merge_close_intervals(bin_size*2)
+down_ep = down_ep.drop_short_intervals(30000)
+down_ep = down_ep.drop_long_intervals(500000)
+
+down_ep = down_ep.reset_index(drop=True)
+
+
+up_ep 	= nts.IntervalSet(down_ep['end'][0:-1], down_ep['start'][1:])
+up_ep = sws_ep.intersect(up_ep)
+
+
+
+
+###########################################################################################################
+# Writing for neuroscope
+
+start = down_ep.as_units('ms')['start'].values
+ends = down_ep.as_units('ms')['end'].values
+
+datatowrite = np.vstack((start,ends)).T.flatten()
+
+n = len(down_ep)
+
+texttowrite = np.vstack(((np.repeat(np.array(['PyDown start 1']), n)), 
+						(np.repeat(np.array(['PyDown stop 1']), n))
+							)).T.flatten()
+
+evt_file = data_directory+session+'/'+session.split('/')[1]+'.evt.py.dow'
+f = open(evt_file, 'w')
+for t, n in zip(datatowrite, texttowrite):
+	f.writelines("{:1.6f}".format(t) + "\t" + n + "\n")
+f.close()		
+
+
+start = up_ep.as_units('ms')['start'].values
+ends = up_ep.as_units('ms')['end'].values
+
+datatowrite = np.vstack((start,ends)).T.flatten()
+
+n = len(up_ep)
+
+texttowrite = np.vstack(((np.repeat(np.array(['PyUp start 1']), n)), 
+						(np.repeat(np.array(['PyUp stop 1']), n))
+							)).T.flatten()
+
+evt_file = data_directory+session+'/'+session.split('/')[1]+'.evt.py.upp'
+f = open(evt_file, 'w')
+for t, n in zip(datatowrite, texttowrite):
+	f.writelines("{:1.6f}".format(t) + "\t" + n + "\n")
+f.close()		
