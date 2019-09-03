@@ -28,14 +28,13 @@ import _pickle as cPickle
 ####################################################################################################################
 
 
-dview = Pool(1)
+dview = Pool(4)
 
 data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
 
-
-for session in datasets:
+for session in datasets[4:]:
 	hd_info 		= scipy.io.loadmat(data_directory+session+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]	
 	if np.sum(hd_info == 1)>10:		
 		generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -65,20 +64,20 @@ for session in datasets:
 
 		print(session, len(neurons))
 	
-		bin_size = 10
+		bin_size = 30
 		# left_bound = np.arange(-1000-bin_size/2, 1000 - bin_size/4,bin_size/4) # 75% overlap
-		# left_bound = np.arange(-1000-bin_size/2, 1000 - bin_size/2, bin_size/2) # 50% overlap
-		left_bound = np.arange(-1000-bin_size+3*bin_size/4, 1000 - 3*bin_size/4,3*bin_size/4) # 25% overlap
+		left_bound = np.arange(-1000 - bin_size/3/2, 1000 - bin_size/2, bin_size/2) # 50% overlap
+		# left_bound = np.arange(-1000-bin_size+3*bin_size/4, 1000 - 3*bin_size/4,3*bin_size/4) # 25% overlap
 		obins = np.vstack((left_bound, left_bound+bin_size)).T
 		times = obins[:,0]+(np.diff(obins)/2).flatten()
-
+		# sys.exit()
 		# cutting times between -500 to 500
 		times = times[np.logical_and(times>=-500, times<=500)]
 
 		# datatosave = {'times':times, 'swr':{}, 'rnd':{}, 'bin_size':bin_size}
 		datatosave = {'times':times, 'imaps':{}, 'bin_size':bin_size}
 
-		n_ex = 5
+		n_ex = 150
 		n_rip = len(rip_tsd)
 		n_loop = n_rip//n_ex
 		idx = np.random.randint(0, n_loop, n_rip)		
@@ -96,8 +95,8 @@ for session in datasets:
 		rates_wak = np.sqrt(spike_counts/(bin_size_wake))		
 
 		args = []
-		# for i in range(n_loop):
-		for i in range(10):
+		for i in range(n_loop):
+		# for i in range(10):
 			args.append([spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex, times, rates_wak, i])
 		print(n_loop)
 		result = dview.starmap_async(compute_isomap, args).get()

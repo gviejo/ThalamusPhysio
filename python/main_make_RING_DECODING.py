@@ -25,7 +25,7 @@ from numba import jit
 import _pickle as cPickle
 
 
-path = '../figures/figures_articles_v4/figure1/'
+path = '../figures/figures_articles_v4/figure1/good_100ms_pickle/'
 files = [f for f in os.listdir(path) if '.pickle' in f and 'Mouse' in f]
 
 files.remove("Mouse17-130129.pickle")

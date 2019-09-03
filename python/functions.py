@@ -1289,14 +1289,14 @@ def compute_isomap(spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex,
 	# SMOOTHING
 	tmp3 = []
 	for rates in rates_swr:
-		tmp3.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=1).loc[-500:500].values)
+		tmp3.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=3).loc[-500:500].values)
 		# tmp3.append(rates.loc[-500:500].values)
 	tmp3 = np.vstack(tmp3)
 	tmp3 = tmp3.astype(np.float32)
 	#SMOOTHING
 	tmp2 = []
 	for rates in rates_rnd:				
-		tmp2.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=1).loc[-500:500].values)
+		tmp2.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=3).loc[-500:500].values)
 		# tmp2.append(rates.loc[-500:500].values)
 	tmp2 = np.vstack(tmp2)
 	tmp2 = tmp2.astype(np.float32)

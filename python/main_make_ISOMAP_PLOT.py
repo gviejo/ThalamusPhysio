@@ -46,7 +46,7 @@ def compute_similarity(imap, times):
 ######################################################################################################
 # HD
 ######################################################################################################
-path = '../figures/figures_articles_v4/figure1/hd_isomap_20ms_mixed_swr_rnd_wake/'
+path = '../figures/figures_articles_v4/figure1/hd_isomap_40ms_mixed_swr_rnd_wake/'
 files = np.sort(os.listdir(path))
 
 stabhd = {}
@@ -75,16 +75,21 @@ for f in files:
 	stabswr = pd.concat(stabswr, 1)
 	stabrnd = pd.concat(stabrnd, 1)
 	stability = (stabswr.mean(1) - stabrnd.mean(1)) / stabrnd.mean(1)
+	# stability = stabswr.mean(1)
 
 	simiswr = pd.concat(simiswr, 1)
 	simirnd = pd.concat(simirnd, 1)
 	similarity = (simiswr.mean(1) - simirnd.mean(1)) / simirnd.mean(1)
+	# similarity = simiswr.mean(1)
 	
 	stabhd[f.split(".")[0]] = stability
 	simihd[f.split(".")[0]] = similarity
 
 stabhd = pd.DataFrame.from_dict(stabhd)
 simihd = pd.DataFrame.from_dict(simihd)
+
+# stabhd = stabhd.apply(scipy.stats.zscore)
+# simihd = simihd.apply(scipy.stats.zscore)
 
 ######################################################################################################
 # NO HD
@@ -160,4 +165,113 @@ plot(simihd.mean(1), linewidth = 2, label = 'hd')
 plot(siminohd.mean(1), linewidth = 2, label = 'no-hd')
 legend()
 title("similarity")
+show()
+
+
+######################################################################################################
+# HD 100 ms 0.75
+######################################################################################################
+path = '../figures/figures_articles_v4/figure1/good_100ms_pickle/'
+# path = '../figures/figures_articles_v4/figure1/'
+files = np.sort([f for f in os.listdir(path) if 'Mouse' in f and 'pickle' in f])
+
+stabhd100 = {}
+simihd100 = {}
+
+for f in files[0:-1]:
+	data = cPickle.load(open(path+f, 'rb'))
+	stability = []
+	similarity = []
+	stabswr = []
+	stabrnd	= []
+	simiswr = []
+	simirnd = []
+
+	for n in data['swr'].keys():
+		iswr = data['swr'][n]['iswr']
+		times = data['swr'][n]['times']
+		stabswr.append(compute_stability(iswr, times))
+		simiswr.append(compute_similarity(iswr, times))
+
+	stabswr = pd.concat(stabswr, 1)
+	simiswr = pd.concat(simiswr, 1)
+
+	for n in data['rnd'].keys():
+		irnd = data['rnd'][n]['irand']			
+		stabrnd.append(compute_stability(irnd, times))		
+		simirnd.append(compute_similarity(irnd, times))
+	
+	stabrnd = pd.concat(stabrnd, 1)
+	simirnd = pd.concat(simirnd, 1)
+
+	stability = (stabswr.mean(1) - stabrnd.mean(1)) / stabrnd.mean(1)
+	similarity = (simiswr.mean(1) - simirnd.mean(1)) / simirnd.mean(1)
+		
+	stabhd100[f.split(".")[0]] = stability
+	simihd100[f.split(".")[0]] = similarity
+
+stabhd100 = pd.DataFrame.from_dict(stabhd100)
+simihd100 = pd.DataFrame.from_dict(simihd100)
+
+
+######################################################################################################
+# HD 50 ms 0.75
+######################################################################################################
+path = '../figures/figures_articles_v4/figure1/'
+files = np.sort([f for f in os.listdir(path) if 'Mouse' in f and 'pickle' in f])
+
+stabhd50 = {}
+simihd50 = {}
+
+for f in files[0:-1]:
+	data = cPickle.load(open(path+f, 'rb'))
+	stability = []
+	similarity = []
+	stabswr = []
+	stabrnd	= []
+	simiswr = []
+	simirnd = []
+
+	for n in data['swr'].keys():
+		iswr = data['swr'][n]['iswr']
+		times = data['swr'][n]['times']
+		stabswr.append(compute_stability(iswr, times))
+		simiswr.append(compute_similarity(iswr, times))
+
+	stabswr = pd.concat(stabswr, 1)
+	simiswr = pd.concat(simiswr, 1)
+
+	for n in data['rnd'].keys():
+		irnd = data['rnd'][n]['irand']			
+		stabrnd.append(compute_stability(irnd, times))		
+		simirnd.append(compute_similarity(irnd, times))
+	
+	stabrnd = pd.concat(stabrnd, 1)
+	simirnd = pd.concat(simirnd, 1)
+
+	stability = (stabswr.mean(1) - stabrnd.mean(1)) / stabrnd.mean(1)
+	similarity = (simiswr.mean(1) - simirnd.mean(1)) / simirnd.mean(1)
+		
+	stabhd50[f.split(".")[0]] = stability
+	simihd50[f.split(".")[0]] = similarity
+
+stabhd50 = pd.DataFrame.from_dict(stabhd50)
+simihd50 = pd.DataFrame.from_dict(simihd50)
+
+
+figure()
+subplot(221)
+plot(stabhd.mean(1), label = '20 ms | 25 overlap | 1sd smooth')
+legend()
+title("stability")
+subplot(222)
+plot(simihd.mean(1), label = '20 ms | 25 overlap | 1sd smooth')
+title("similarity")
+subplot(223)
+plot(stabhd50.mean(1), label = '50 ms | 75 overlap | 4sd smooth')
+plot(stabhd100.mean(1), label = '100 ms | 75 overlap | 4sd smooth')
+legend()
+subplot(224)
+plot(simihd50.mean(1), label = '50 ms | 75 overlap | 4sd smooth')
+plot(simihd100.mean(1), label = '100 ms | 75 overlap | 4sd smooth')
 show()
