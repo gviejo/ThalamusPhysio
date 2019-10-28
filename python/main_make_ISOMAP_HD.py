@@ -40,7 +40,8 @@ data_directory = '/mnt/DataGuillaume/MergedData/'
 datasets = np.loadtxt(data_directory+'datasets_ThalHpc.list', delimiter = '\n', dtype = str, comments = '#')
 
 
-for session in datasets:
+# for session in datasets:
+for session in ['Mouse32/Mouse32-140822']:
 	hd_info 		= scipy.io.loadmat(data_directory+session+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]	
 	if np.sum(hd_info == 1)>10:
 		generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -90,7 +91,7 @@ for session in datasets:
 		####################################################################################################################
 		# WAKE
 		####################################################################################################################						
-		bin_size_wake = 400
+		bin_size_wake = 200
 		bins = np.arange(wake_ep.as_units('ms').start.iloc[0], wake_ep.as_units('ms').end.iloc[-1]+bin_size_wake, bin_size_wake)
 		spike_counts = pd.DataFrame(index = bins[0:-1]+np.diff(bins)/2, columns = neurons)
 		for i in neurons:
@@ -98,6 +99,8 @@ for session in datasets:
 			spike_counts[i], _ = np.histogram(spks, bins)
 		rates_wak = np.sqrt(spike_counts/(bin_size_wake))
 		
+		sys.exit()
+
 		# for i in range(n_loop):
 		for i in range(10):
 			print(i, '/', n_loop)
@@ -158,6 +161,8 @@ for session in datasets:
 			n = len(tmp3)
 			m = len(tmp1)
 			tmp = np.vstack((tmp1, tmp3, tmp2))
+
+			sys.exit()
 
 			# ISOMAP			
 			imap = Isomap(n_neighbors = 20, n_components = 2).fit_transform(tmp)

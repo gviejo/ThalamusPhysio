@@ -5,6 +5,7 @@ import pandas as pd
 import neuroseries as nts
 from scipy.fftpack import *
 from numba import jit
+from umap import UMAP
 
 def jPCA(data, times):
 	#PCA
@@ -492,6 +493,7 @@ def getXYshapeofRotatedMatrix(x, y, angle):
 #########################################################
 # CORRELATION
 #########################################################
+@jit
 def crossCorr(t1, t2, binsize, nbins):
 	''' 
 		Fast crossCorr 
@@ -1289,14 +1291,14 @@ def compute_isomap(spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex,
 	# SMOOTHING
 	tmp3 = []
 	for rates in rates_swr:
-		tmp3.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=3).loc[-500:500].values)
+		tmp3.append(rates.rolling(window=20,win_type='gaussian',center=True,min_periods=1).mean(std=2).loc[-500:500].values)
 		# tmp3.append(rates.loc[-500:500].values)
 	tmp3 = np.vstack(tmp3)
 	tmp3 = tmp3.astype(np.float32)
 	#SMOOTHING
 	tmp2 = []
 	for rates in rates_rnd:				
-		tmp2.append(rates.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=3).loc[-500:500].values)
+		tmp2.append(rates.rolling(window=20,win_type='gaussian',center=True,min_periods=1).mean(std=2).loc[-500:500].values) # default 3
 		# tmp2.append(rates.loc[-500:500].values)
 	tmp2 = np.vstack(tmp2)
 	tmp2 = tmp2.astype(np.float32)
@@ -1310,13 +1312,83 @@ def compute_isomap(spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex,
 	imap = Isomap(n_neighbors = 200, n_components = 2).fit_transform(tmp)
 	iwak = imap[0:m]
 	iswr = imap[m:m+n].reshape(len(subrip_tsd),len(times),2)
-
-	# # ISOMAP WAKE RND
-	# tmp = np.vstack((tmp1, tmp2))
-	# imap = Isomap(n_neighbors = 5, n_components = 2).fit_transform(tmp)
 	irnd = imap[m+n:].reshape(len(rnd_tsd),len(times),2)
 			
 	print(i)
-	return (iswr, irnd, iwak)
+	return (iswr, irnd, iwak, subrip_tsd.index.values)
 
 
+def compute_umap(spikes, rip_tsd, idx, obins, neurons, bin_size, sws_ep, n_ex, times, rates_wak, i):
+	####################################################################################################################
+	# SWR
+	####################################################################################################################						
+	# BINNING
+	tmp = rip_tsd.index.values[idx == i]
+	subrip_tsd = pd.Series(index = tmp, data = np.nan)				
+	rates_swr = []
+	tmp2 = subrip_tsd.index.values/1000
+	for j, t in enumerate(tmp2):				
+		tbins = t + obins
+		spike_counts = pd.DataFrame(index = obins[:,0]+(np.diff(obins)/2).flatten(), columns = neurons)
+		for k in neurons:
+			spks = spikes[k].as_units('ms').index.values
+			spike_counts[k] = histo(spks, tbins)
+			
+		rates_swr.append(np.sqrt(spike_counts/(bin_size)))
+
+	####################################################################################################################
+	# RANDOM
+	####################################################################################################################			
+	# BINNING
+	rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[j,'start']+500000, sws_ep.loc[j,'end']+500000, np.maximum(1,n_ex//len(sws_ep))) for j in sws_ep.index])))
+	# rnd_tsd = nts.Ts(t = np.sort(np.hstack([np.random.randint(sws_ep.loc[j,'start']+500000, sws_ep.loc[j,'end']+500000, 1) for j in sws_ep.index])))
+	if len(rnd_tsd) > n_ex:
+		rnd_tsd = rnd_tsd[0:n_ex]
+	rates_rnd = []
+	tmp3 = rnd_tsd.index.values/1000
+	for j, t in enumerate(tmp3):				
+		tbins = t + obins
+		spike_counts = pd.DataFrame(index = obins[:,0]+(np.diff(obins)/2).flatten(), columns = neurons)	
+		for k in neurons:
+			spks = spikes[k].as_units('ms').index.values	
+			spike_counts[k] = histo(spks, tbins)
+	
+		rates_rnd.append(np.sqrt(spike_counts/(bin_size)))
+
+	###########
+	# SMOOTHING
+	tmp1 = rates_wak.values
+	tmp1 = tmp1.astype(np.float32)
+	# SMOOTHING
+	tmp3 = []
+	for rates in rates_swr:
+		tmp3.append(rates.rolling(window=20,win_type='gaussian',center=True,min_periods=1).mean(std=2).loc[-500:500].values)
+		# tmp3.append(rates.loc[-500:500].values)
+	tmp3 = np.vstack(tmp3)
+	tmp3 = tmp3.astype(np.float32)
+	#SMOOTHING
+	tmp2 = []
+	for rates in rates_rnd:				
+		tmp2.append(rates.rolling(window=20,win_type='gaussian',center=True,min_periods=1).mean(std=2).loc[-500:500].values) # default 3
+		# tmp2.append(rates.loc[-500:500].values)
+	tmp2 = np.vstack(tmp2)
+	tmp2 = tmp2.astype(np.float32)
+
+	n = len(tmp3)
+	m = len(tmp1)
+	tmp = np.vstack((tmp1, tmp3, tmp2))
+
+	# ISOMAP WAKE SWR
+	# tmp = np.vstack((tmp1, tmp3))
+	# imap = Isomap(n_neighbors = 200, n_components = 2).fit_transform(tmp)
+
+	ump = UMAP(n_components=2, n_neighbors=1000, min_dist = 1, spread = 1, target_weight=0.9).fit_transform(tmp)
+
+	iwak = ump[0:m]
+	iswr = ump[m:m+n].reshape(len(subrip_tsd),len(times),2)
+	irnd = ump[m+n:].reshape(len(rnd_tsd),len(times),2)
+	scatter(iwak[:,0], iwak[:,1])
+	show()
+
+	print(i)
+	return (iswr, irnd, iwak, subrip_tsd.index.values)

@@ -340,8 +340,8 @@ m = 'Mouse17'
 tmp2 = headdir
 tmp2[tmp2<0.05] = 0.0
 scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = 2, color = 'black', marker = '.', 
-	alpha = 1.0, linewidths = 0.5, label = 'shank positions')
-scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = tmp2*7., label = 'HD positions',
+	alpha = 1.0, linewidths = 0.5, label = 'shank position')
+scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = tmp2*7., label = 'HD cell position',
 	color = 'red', marker = 'o', alpha = 0.6)
 
 
@@ -356,7 +356,7 @@ noaxis(suB)
 leg.get_title().set_fontsize(7)
 leg.get_frame().set_facecolor('white')
 
-annotate('Antero-dorsal (AD)', xy=(0.9,2.4), xytext=(0.9,2.7), xycoords='data', textcoords='data',
+annotate('Anterodorsal (AD)', xy=(0.9,2.4), xytext=(0.9,2.7), xycoords='data', textcoords='data',
 arrowprops=dict(facecolor='black',
 	shrink=0.05,
 	headwidth=3,
@@ -380,7 +380,7 @@ x = xy_pos[pos['session'],pos['shank'],0]
 y = xy_pos[pos['session'],pos['shank'],1]
 
 plot(x, y, linewidth = 1, color = 'black', zorder = 1)
-scatter(x, y, c = tricolor, zorder = 2)
+scatter(x, y, edgecolors = 'white', c = tricolor, zorder = 2)
 
 
 
@@ -415,7 +415,7 @@ for j, ep in enumerate(['wake', 'rem', 'sws']):
 	plot(tmp.loc[-50:50,pair[1]], color = tricolor[1], linewidth = lw)
 	plot(tmp.loc[-50:50,pair[2]], color = tricolor[2], linewidth = lw)
 	if j == 1:
-		xlabel("Time (ms)", labelpad = -0.0)
+		xlabel("Time lag (ms)", labelpad = -0.0)
 	if j == 0:
 		ylabel("Autocorr.")
 
@@ -487,7 +487,7 @@ ax1.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
 kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
 ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
 
-ax1.text(0.2, 1.15, "SWR", transform = ax1.transAxes, fontsize = 8)
+ax1.text(0.2, 1.15, "SWRs", transform = ax1.transAxes, fontsize = 8)
 
 
 # title("PCA")
@@ -506,6 +506,7 @@ xlabel("Autocorr.")
 gca().text(0.25, 1.25, "Cell-by-cell correlation", transform = gca().transAxes, fontsize = 7)
 gca().text(-0.35, 1.23, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 gca().text(0.1, -0.45, r"$\rho^{2} = $"+str(np.round(1-np.linalg.det(corr),2)), transform = gca().transAxes, fontsize = 7)
+title("Actual", fontsize = 8, pad = 2)
 
 # MATRIX SHUFFLED
 subplot(gsC[0,1])
@@ -537,81 +538,81 @@ legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', 
 #########################################################################
 # H. CONTROL 1 
 #########################################################################
-subplot(gs[2,2])
+# subplot(gs[2,2])
+# simpleaxis(gca())
+
+gsG = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec=gs[2,2], hspace = 0.4)#, hspace = 0.1, wspace = 0.5)#, height_ratios = [1,1,0.2,1])
+
+store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr_noSWS.h5", 'r')
+det_all = store['det_all']
+shufflings = store['shufflings']
+store.close()
+
+subplot(gsG[0,0])
 simpleaxis(gca())
+gca().text(-0.22, 1.2, "h", transform = gca().transAxes, fontsize = 9, fontweight='bold')
 
-# gsG = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec=gs[2,2], hspace = 0.4)#, hspace = 0.1, wspace = 0.5)#, height_ratios = [1,1,0.2,1])
-
-# store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr_noSWS.h5", 'r')
-# det_all = store['det_all']
-# shufflings = store['shufflings']
-# store.close()
-
-# subplot(gsG[0,0])
-# simpleaxis(gca())
-# gca().text(-0.22, 1.2, "h", transform = gca().transAxes, fontsize = 9, fontweight='bold')
-
-# # colors = ['blue', 'red', 'green']
-# colors = ["#CA3242","#849FAD",  "#27647B", "#57575F"]
-# labels = ['WAKE', 'REM', 'NREM']
-# offset = [0.0265, 0.0265, 0.011]
-# for i, k in enumerate(['wak', 'rem', 'sws']):
-# 	shuf, x = np.histogram(1-shufflings[k], bins = 100, weights = np.ones(len(shufflings[k]))/len(shufflings[k]))
-# 	axvline(1-det_all[k], color = colors[i])
-# 	# plot([1-det_all[k], 1-det_all[k]], [0, 0.032], color = colors[i], label = labels[i])
-# 	plot(x[0:-1]+np.diff(x), shuf, color = colors[i], alpha = 0.7)
-# 	# hist(, label = k, histtype='stepfilled', facecolor = 'None', edgecolor = colors[i])
-# 	# gca().text(1-det_all[k], gca().get_ylim()[1], "p<0.001",fontsize = 7, ha = 'center', color = 'red')
-# 	gca().text(1-det_all[k], offset[i], labels[i], ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor=colors[i],boxstyle='square,pad=0.2'))
-# axvline(0.33, color = 'black', linestyle = '--')
-# gca().text(0.33, 0.025, 'ALL', ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor='black',boxstyle='square,pad=0.2'))
-# ylim(0, 0.035)
-# # xlabel(r"Total correlation $\rho^{2}$")
-# ylabel("P (%)")
-# yticks([0,0.01,0.02,0.03], ['0','1','2','3'])
-# # gca().text(-0.15, 1.0, "A", transform = gca().transAxes, fontsize = 9)
-# legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.35, 0.6))	
-
-# # #########################################################################
-# # # I CONTROL 2
-# # #########################################################################
-# store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr_noSWS_shank_shuffled.h5", 'r')
-# det_all = store['det_all']
-# shufflings = store['shufflings']
-# store.close()
-
-# subplot(gsG[1,0])
-# simpleaxis(gca())
-# gca().text(-0.22, 1.2, "i", transform = gca().transAxes, fontsize = 9, fontweight='bold')
-
-# # colors = ['blue', 'red', 'green']
-# labels = ['WAKE', 'REM', 'NREM']
-# offset = [0.125, 0.125, 0.06]
-# for i, k in enumerate(['wak', 'rem', 'sws']):
-# 	shuf, x = np.histogram(1-shufflings[k], bins = 20, weights = np.ones(len(shufflings[k]))/len(shufflings[k]))
-# 	axvline(1-det_all[k], color = colors[i])
-# 	# plot([1-det_all[k], 1-det_all[k]], [0, 0.032], color = colors[i], label = labels[i])
-# 	plot(x[0:-1]+np.diff(x), shuf, color = colors[i], alpha = 1)
-# 	# hist(, label = k, histtype='stepfilled', facecolor = 'None', edgecolor = colors[i])
-# 	# gca().text(1-det_all[k], gca().get_ylim()[1], "p<0.001",fontsize = 7, ha = 'center', color = 'red')
-# 	gca().text(1-det_all[k], offset[i], labels[i], ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor=colors[i],boxstyle='square,pad=0.2'))
-# axvline(0.33, color = 'black', linestyle = '--')
-# gca().text(0.33, 0.12, 'ALL', ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor='black',boxstyle='square,pad=0.2'))
-# ylim(0, 0.16)
+# colors = ['blue', 'red', 'green']
+colors = ["#CA3242","#849FAD",  "#27647B", "#57575F"]
+labels = ['WAKE', 'REM', 'NREM']
+offset = [0.0265, 0.0265, 0.011]
+for i, k in enumerate(['wak', 'rem', 'sws']):
+	shuf, x = np.histogram(1-shufflings[k], bins = 100, weights = np.ones(len(shufflings[k]))/len(shufflings[k]))
+	axvline(1-det_all[k], color = colors[i])
+	# plot([1-det_all[k], 1-det_all[k]], [0, 0.032], color = colors[i], label = labels[i])
+	plot(x[0:-1]+np.diff(x), shuf, color = colors[i], alpha = 0.7)
+	# hist(, label = k, histtype='stepfilled', facecolor = 'None', edgecolor = colors[i])
+	# gca().text(1-det_all[k], gca().get_ylim()[1], "p<0.001",fontsize = 7, ha = 'center', color = 'red')
+	gca().text(1-det_all[k], offset[i], labels[i], ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor=colors[i],boxstyle='square,pad=0.2'))
+axvline(0.33, color = 'black', linestyle = '--')
+gca().text(0.33, 0.025, 'ALL', ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor='black',boxstyle='square,pad=0.2'))
+ylim(0, 0.035)
 # xlabel(r"Total correlation $\rho^{2}$")
-# ylabel("P (%)")
-# yticks([0,0.05,0.10,0.15], ['0','5','10','15'])
-# # gca().text(-0.15, 1.0, "A", transform = gca().transAxes, fontsize = 9)
-# legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.35, 0.6))	
+ylabel("P (%)")
+yticks([0,0.01,0.02,0.03], ['0','1','2','3'])
+# gca().text(-0.15, 1.0, "A", transform = gca().transAxes, fontsize = 9)
+legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.35, 0.6))	
 
-# store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr.h5", 'r')
-# det_all = store['det_all']
-# shufflings = store['shufflings']
-# shuffl_shank = store['shuffling_shank']
-# store.close()
+# #########################################################################
+# # I CONTROL 2
+# #########################################################################
+store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr_noSWS_shank_shuffled.h5", 'r')
+det_all = store['det_all']
+shufflings = store['shufflings']
+store.close()
 
-# shuf, x = np.histogram(1-shuffl_shank, bins = 20, weights = np.ones(len(shuffl_shank))/len(shuffl_shank))
-# plot(x[0:-1]+np.diff(x), shuf, '--', color = colors[-1], alpha = 0.7)
+subplot(gsG[1,0])
+simpleaxis(gca())
+gca().text(-0.22, 1.2, "i", transform = gca().transAxes, fontsize = 9, fontweight='bold')
+
+# colors = ['blue', 'red', 'green']
+labels = ['WAKE', 'REM', 'NREM']
+offset = [0.125, 0.125, 0.06]
+for i, k in enumerate(['wak', 'rem', 'sws']):
+	shuf, x = np.histogram(1-shufflings[k], bins = 20, weights = np.ones(len(shufflings[k]))/len(shufflings[k]))
+	axvline(1-det_all[k], color = colors[i])
+	# plot([1-det_all[k], 1-det_all[k]], [0, 0.032], color = colors[i], label = labels[i])
+	plot(x[0:-1]+np.diff(x), shuf, color = colors[i], alpha = 1)
+	# hist(, label = k, histtype='stepfilled', facecolor = 'None', edgecolor = colors[i])
+	# gca().text(1-det_all[k], gca().get_ylim()[1], "p<0.001",fontsize = 7, ha = 'center', color = 'red')
+	gca().text(1-det_all[k], offset[i], labels[i], ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor=colors[i],boxstyle='square,pad=0.2'))
+axvline(0.33, color = 'black', linestyle = '--')
+gca().text(0.33, 0.12, 'ALL', ha = 'center', fontsize = 7, bbox = dict(facecolor='white', edgecolor='black',boxstyle='square,pad=0.2'))
+ylim(0, 0.16)
+xlabel(r"Total correlation $\rho^{2}$")
+ylabel("P (%)")
+yticks([0,0.05,0.10,0.15], ['0','5','10','15'])
+# gca().text(-0.15, 1.0, "A", transform = gca().transAxes, fontsize = 9)
+legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.35, 0.6))	
+
+store = pd.HDFStore("../../figures/figures_articles_v2/figure6/determinant_corr.h5", 'r')
+det_all = store['det_all']
+shufflings = store['shufflings']
+shuffl_shank = store['shuffling_shank']
+store.close()
+
+shuf, x = np.histogram(1-shuffl_shank, bins = 20, weights = np.ones(len(shuffl_shank))/len(shuffl_shank))
+plot(x[0:-1]+np.diff(x), shuf, '--', color = colors[-1], alpha = 0.7)
 
 
 

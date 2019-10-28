@@ -85,7 +85,7 @@ for session in datasets:
 		####################################################################################################################
 		# WAKE
 		####################################################################################################################						
-		bin_size_wake = 400
+		bin_size_wake = 300
 		wake_ep = wake_ep.intersect(nts.IntervalSet(start=wake_ep.loc[0,'start'], end = wake_ep.loc[0,'start']+15*60*1e6))
 		bins = np.arange(wake_ep.as_units('ms').start.iloc[0], wake_ep.as_units('ms').end.iloc[-1]+bin_size_wake, bin_size_wake)
 		spike_counts = pd.DataFrame(index = bins[0:-1]+np.diff(bins)/2, columns = neurons)
@@ -93,6 +93,8 @@ for session in datasets:
 			spks = spikes[i].as_units('ms').index.values
 			spike_counts[i], _ = np.histogram(spks, bins)
 		rates_wak = np.sqrt(spike_counts/(bin_size_wake))		
+
+		sys.exit()
 
 		args = []
 		for i in range(n_loop):
@@ -110,6 +112,6 @@ for session in datasets:
 		# SAVING
 		####################################################################################################################
 
-		cPickle.dump(datatosave, open('../figures/figures_articles_v4/figure1/hd_isomap_'+str(bin_size)+'ms_mixed_swr_rnd_wake/'+session.split("/")[1]+'.pickle', 'wb'))
+		cPickle.dump(datatosave, open('../figures/figures_articles_v4/figure1/hd_umap_'+str(bin_size)+'ms_mixed_swr_rnd_wake/'+session.split("/")[1]+'.pickle', 'wb'))
 
 			

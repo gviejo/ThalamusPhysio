@@ -117,7 +117,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.3          # height in inches
+	fig_height = fig_width*golden_mean*0.6          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -177,9 +177,9 @@ markers = ['d', 'o', 'v']
 
 fig = figure(figsize = figsize(1.0))
 
-outergs = GridSpec(2,1, figure = fig, height_ratios = [0.25, 0.7], hspace = 0.15)
+outergs = GridSpec(1,2, figure = fig)
 
-gs_top = gridspec.GridSpecFromSubplotSpec(2,4, subplot_spec = outergs[0,0], width_ratios = [0.1, 0.5, 0.5, 0.5], height_ratios = [0.2, 0.8], hspace = 0)
+gs_top = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outergs[0,0], width_ratios = [0.1, 0.5], height_ratios = [0.2, 0.8], hspace = 0)
 
 ####################################################################
 # A TUNING CURVES
@@ -205,7 +205,8 @@ for i, n in enumerate(neurons[::-1]):
 ####################################################################
 # B Exemples 
 ####################################################################
-for i, j in zip(range(3),exemple):
+# for i, j in zip(range(3),exemple):
+for i, j in zip([0], [exemple[0]]):
 	axlfp = subplot(gs_top[0,i+1])
 	noaxis(axlfp)
 	lfp = lfp_hpc.loc[rip_tsd.index[j]-5e5:rip_tsd.index[j]+5e5]
@@ -219,7 +220,7 @@ for i, j in zip(range(3),exemple):
 	ylim(lfp.min(),lfp.max()+100)
 
 	if i == 0:
-		gca().text(-0.4, 0.60, "a", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+		gca().text(-0.3, 0.60, "a", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 		gca().text(-0.11, 0.60, "b", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 		gca().text(0.01, 0.6, "CA1 LFP", transform = gca().transAxes, fontsize = 8)
 		
@@ -230,7 +231,7 @@ for i, j in zip(range(3),exemple):
 		spk = rip_spikes[j][n]
 		if len(spk):
 			clr = hsluv.hsluv_to_rgb([tcurves[n].idxmax()*180/np.pi,85,45])
-			plot(spk, np.ones_like(spk)*k, '|', color = clr, linewidth = 5, markeredgewidth = 1)
+			plot(spk, np.ones_like(spk)*k, '|', color = clr, linewidth = 5, markeredgewidth = 2)
 
 	xlim(times[0], times[-1])
 	ylim(-1, len(neurons)+1)
@@ -246,7 +247,7 @@ for i, j in zip(range(3),exemple):
 
 
 
-gs_bot = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[1,0], width_ratios = [0.8, 0.5], wspace = 0.1)
+gs_bot = gridspec.GridSpecFromSubplotSpec(1,1, subplot_spec = outergs[0,1])
 ####################################################################
 # C RING
 ####################################################################
@@ -287,7 +288,8 @@ cmap = matplotlib.cm.get_cmap('gray')
 
 offsets = [[0, 0.05],[-0.05,-0.07],[-0.0,-0.07]]
 
-for i, j in zip(range(3), exemple):
+# for i, j in zip(range(3), exemple):
+for i, j in zip([0], [exemple[0]]):
 	# arrows
 	x = iswr[j,:,0]
 	y = iswr[j,:,1]
@@ -326,7 +328,7 @@ cmap= matplotlib.colors.ListedColormap(colors)
 # cmap.set_under("hsluv")
 # cmap.set_over("w")''''
 cax = inset_axes(ax, "20%", "3%",
-                   bbox_to_anchor=(0.68, 0.08, 1, 1),
+                   bbox_to_anchor=(0.68, -0.2, 1, 1),
                    bbox_transform=ax.transAxes, 
                    loc = 'lower left')
 cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
@@ -342,7 +344,7 @@ cmap= matplotlib.colors.ListedColormap(colors)
 # cmap.set_under("hsluv")
 # cmap.set_over("w")''''
 cax = inset_axes(ax, "20%", "2%",
-                   bbox_to_anchor=(0.68, -0.05, 1, 1),
+                   bbox_to_anchor=(0.08, -0.2, 1, 1),
                    bbox_transform=ax.transAxes, 
                    loc = 'lower left')
 noaxis(cax)
@@ -356,99 +358,7 @@ cax.set_title("SWR trajectory (ms)", pad = 3)
 
 
 
-####################################################################
-# D Various
-####################################################################
-# gs_bot_right = gridspec.GridSpecFromSubplotSpec(5,1, subplot_spec = gs_bot[0,1], hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
-gs_bot_right = gridspec.GridSpecFromSubplotSpec(3,2, subplot_spec = gs_bot[0,1], height_ratios = [0.0, 0.7, 0.5], hspace = 0.5, wspace = 0.5)#, hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
+outergs.update(top= 0.9, bottom = 0.2, right = 0.97, left = 0.02)
 
-data2 = cPickle.load(open('../../figures/figures_articles_v4/figure1/RING_DECODING_30ms.pickle', 'rb'))
-
-# norm r
-# ax = subplot(gs_bot_right[1,0])
-ax = subplot(gs_bot_right[1,0])
-simpleaxis(ax)
-axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-axvline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-radius = data2['radius']
-plot(radius, color = 'grey', alpha = 0.5, linewidth = 0.4)
-plot(radius.mean(1), color = 'black', linewidth = 2)
-xticks([-500,0,500], fontsize = 6)
-yticks(np.arange(-0.1, 0.4, 0.1), fontsize = 6)
-title("Radius")
-ylabel("Modulation")
-
-gca().text(-0.45, 1.05, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-
-
-
-# angular velocity
-# ax = subplot(gs_bot_right[2,0])
-ax = subplot(gs_bot_right[1,1])
-simpleaxis(ax)
-axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-axvline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-velocity = data2['velocity']
-plot(velocity, color = 'grey', alpha = 0.5, linewidth = 0.4)
-plot(velocity.mean(1), '-', color = 'black', linewidth = 2)
-
-title("Angular velocity")
-xticks([-500,0,500], fontsize = 6)
-yticks(np.arange(-0.2, 0.3, 0.1), fontsize = 6)
-xlabel("Time from SWRs (ms)", horizontalalignment='right', y = 1)
-
-gca().text(-0.3, 1.05, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-
-# sys.exit()
-
-# UP/DOWN
-ax = subplot(gs_bot_right[2,:])
-simpleaxis(ax)
-
-data3 = cPickle.load(open('../../figures/figures_articles_v4/figure1/UP_DOWN_RATES.pickle', 'rb'))
-allmua_hd = data3['mua_hd']
-allmua_nohd = data3['mua_nohd']
-allswr_rates = data3['swr_rates']
-colors = ['black', 'grey', 'red']
-styles = ['-', '--', '-']
-labels = ['HD', 'non-HD', 'SWRs']
-for i, d in enumerate([allmua_hd, allmua_nohd, allswr_rates]):
-	m = d.mean(1)
-	s = d.sem(1)
-	x = d.index.values
-	plot(x, m, styles[i], label = labels[i], color= colors[i], linewidth = 0.8)
-	fill_between(x, m-s, m+s, alpha = 0.3, color = colors[i], linewidth=0)
-
-yticks([0, 0.01], [0, 1], fontsize = 6.5)
-xticks([-0.5, 0, 0.5, 1], ['DOWN', '', 'UP', ''], fontsize = 6.5)
-ylabel("Density (%)")
-legend(frameon=False,loc = 'lower left', bbox_to_anchor=(0.55,-0.06) )#,handlelength=1,ncol = 1)
-
-# xlabel("Time from SWRs (ms)")
-gca().text(-0.12, 1.02, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-
-# INSET 
-axins = inset_axes(gca(), width="25%", height=0.4, loc=2)
-data4 = pd.read_hdf('../../figures/figures_articles_v4/figure1/UP_DOWN_CC.h5')
-
-data4 = data4.rolling(window = 40, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 4.0)
-
-m = data4.mean(1)
-s = data4.sem(1)
-x = data4.index.values
-plot(x, m, color = 'black', linewidth = 1)
-fill_between(x, m-s, m+s, alpha = 0.2)
-xticks([-2000,0,2000], [-2, 0, 2])
-gca().xaxis.set_tick_params(labelsize=6)
-yticks([0.41, 0.49])
-gca().yaxis.tick_right()
-gca().yaxis.set_tick_params(labelsize=6)
-title("UP/SWRs", fontsize = 7, pad = 2)
-ylim(0.41,0.49)
-xlabel("Time from\nUP (s)", fontsize = 6, labelpad = 0)
-
-
-outergs.update(top= 0.98, bottom = 0.04, right = 0.97, left = 0.02)
-
-savefig("../../figures/figures_articles_v4/figart_1.pdf", dpi = 900, facecolor = 'white')
-os.system("evince ../../figures/figures_articles_v4/figart_1.pdf &")
+savefig("figcosyne_1.pdf", dpi = 900, facecolor = 'white')
+os.system("evince figcosyne_1.pdf &")

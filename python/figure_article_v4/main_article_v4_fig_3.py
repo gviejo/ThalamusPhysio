@@ -161,7 +161,7 @@ noaxis(ax)
 plot(lfp, color = 'black', linewidth = 0.4)
 title(titles[i], pad = -2)
 text(-0.1, 1.1, 'a', transform=ax.transAxes, fontsize = 10, fontweight='bold')
-ylabel("CA1")
+ylabel("CA1 LFP")
 
 # 2 spikes
 i = 0
@@ -181,7 +181,7 @@ for n in hd_order:
 	id += 1
 
 if i == 0:
-	ylabel("Thalamus")
+	ylabel("Thalamic neurons")
 start = spikes.index.min()
 plot([start, start+5e5], [-2, -2], color = 'black', linewidth = 2)
 text(0.05, -0.1,'500 ms', transform=ax.transAxes, fontsize = 8)
@@ -207,14 +207,14 @@ for i, n in enumerate(neurons):
 		ax.text(-0.82, 1.1, "b", transform = ax.transAxes, fontsize = 10, fontweight='bold')
 	ax.spines['bottom'].set_visible(False)
 	sp = phase_spike[n]
-	plot(sp.iloc[0:500], '|', markersize = 2, color = colors[neurons.index(n)], mew = 0.5)	
+	plot(sp.iloc[0:500], '|', markersize = 2, color = colors[1], mew = 0.5)	
 	xticks([], [])
 	axp = fig.add_subplot(gsC[1,i])	
 	simpleaxis(axp)
 	tmp = phase_spike_theta[n].values
 	tmp += 2*np.pi
 	tmp %= 2*np.pi
-	axp.hist(tmp,20, color = colors[neurons.index(n)], density = True, histtype='stepfilled')
+	axp.hist(tmp,20, color = colors[1], density = True, histtype='stepfilled')
 	xticks([0, 2*np.pi], ['0', '$2\pi$'])
 	if i ==1 : xlabel("phase (rad)", labelpad = -0.05)
 
@@ -226,7 +226,7 @@ outer = gridspec.GridSpecFromSubplotSpec(1,5, subplot_spec = outergs[1,:], wspac
 rippower 				= pd.read_hdf("../../figures/figures_articles_v2/figure2/power_ripples_2.h5")
 theta2 = pd.read_hdf("/mnt/DataGuillaume/MergedData/THETA_THAL_mod_2.h5")
 theta = theta2['rem']
-theta = theta[theta['kappa']<2.0]
+# theta = theta[theta['kappa']<2.0]
 neurons = np.intersect1d(theta.index.values, rippower.index.values)
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 hd_neurons = mappings.loc[neurons][mappings.loc[neurons, 'hd'] == 1].index.values
@@ -234,29 +234,59 @@ nohd_neurons = mappings.loc[neurons][mappings.loc[neurons, 'hd'] == 0].index.val
 
 gs = gridspec.GridSpecFromSubplotSpec(2,2, subplot_spec = outer[0,0], width_ratios = [0.8, 0.2], height_ratios = [0.2, 0.8], wspace= 0.05, hspace = 0.05)
 
+# HIST RIP POWER
 ax1 = fig.add_subplot(gs[1,1])
 y = rippower.loc[nohd_neurons].values.astype('float')
 weights = np.ones_like(y)/float(len(y))
-hist(y, 20, weights = weights, color = 'grey', orientation = 'horizontal', histtype='stepfilled')
+hist(y, 20, weights = weights, color = 'grey', orientation = 'horizontal', histtype='step')
 x = rippower.loc[hd_neurons].values.astype('float')
 weights = np.ones_like(x)/float(len(x))
-hist(x, 20, weights = weights, color = 'red', orientation = 'horizontal', histtype='stepfilled')
+hist(x, 20, weights = weights, color = 'red', orientation = 'horizontal', histtype='step')
+z = rippower.loc[allzthsorted.index.values].values.astype('float')
+weights = np.ones_like(z)/float(len(z))
+hist(z, 20, weights = weights, color = '#4D85BD', orientation = 'horizontal', histtype='step')
+
 yticks([], [])
 simpleaxis(ax1)
 
+# SCATTER RIP POWER vs THETA
 ax2 = fig.add_subplot(gs[1,0])
-scatter(theta.loc[nohd_neurons, 'kappa'], rippower.loc[nohd_neurons], c = 'grey', s = 6)
-scatter(theta.loc[hd_neurons, 'kappa'], rippower.loc[hd_neurons], c = 'red', s= 6)
-ax2.set_xlabel("Theta modulation ($\\kappa$)")
+scatter(np.log(theta.loc[nohd_neurons, 'kappa'].values.astype('float')), rippower.loc[nohd_neurons], c = 'grey', s = 3)
+scatter(np.log(theta.loc[hd_neurons, 'kappa'].values.astype('float')), rippower.loc[hd_neurons], c = 'red', s= 3)
+ax2.set_xlabel("Theta modulation (log($\\kappa$))")
 ax2.set_ylabel("SWR energy (|z|)")
+locator_params(nbins=3)
 
+r, p = scipy.stats.pearsonr(np.log(theta.loc[hd_neurons, 'kappa'].values.astype('float')), rippower.loc[hd_neurons].values.astype('float'))
+print("HD pearson :", r, p)
+tmp = theta.loc[nohd_neurons, 'kappa']
+tmp = tmp[tmp>0]
+r, p = scipy.stats.pearsonr(np.log(tmp.values.astype('float')), rippower.loc[tmp.index].values.astype('float'))
+print("non-HD pearson :", r, p)
+idx = allzthsorted.index.values
+idx = theta.loc[idx, 'kappa'].dropna().index.values
+r, p = scipy.stats.pearsonr(theta.loc[idx, 'kappa'].values.astype('float'), rippower.loc[idx].values.astype('float'))
+print("theta pearson :", r, p)
+
+
+# HIST THETA MOD
 ax3 = fig.add_subplot(gs[0,0])
-y = theta.loc[nohd_neurons, 'kappa'].values.astype('float')
+idxpositive = theta.loc[nohd_neurons].index.values[theta.loc[nohd_neurons, 'kappa'] > 0]
+y = np.log(theta.loc[idxpositive, 'kappa'].values.astype('float'))
 weights = np.ones_like(y)/float(len(y))
-hist(y, 20, weights = weights, color = 'grey', histtype='stepfilled')
-x = theta.loc[hd_neurons, 'kappa'].values.astype('float')
+hist(y, 20, weights = weights, color = 'grey', histtype='step', label = 'non-HD')
+idxpositive = theta.loc[hd_neurons].index.values[theta.loc[hd_neurons, 'kappa'] > 0]
+x = np.log(theta.loc[idxpositive, 'kappa'].values.astype('float'))
 weights = np.ones_like(x)/float(len(x))
-hist(x, 20, weights = weights, color = 'red', histtype='stepfilled')
+hist(x, 20, weights = weights, color = 'red', histtype='step', label = 'HD')
+idxpositive = theta.loc[allzthsorted.index.values].index.values[theta.loc[allzthsorted.index.values, 'kappa'] > 0]
+z = np.log(theta.loc[idxpositive, 'kappa'].values.astype('float'))
+weights = np.ones_like(z)/float(len(z))
+hist(z, 20, weights = weights, color = '#4D85BD', histtype='step', label = 'Theta mod')
+
+legend(loc = 'lower left', fontsize = 6, framealpha=0.0, bbox_to_anchor=(0.0, 1), markerscale=0.7, ncol = 3, columnspacing=1)
+
+
 xticks([], [])
 ax3.text(-0.15, 1.3, "c", transform = ax3.transAxes, fontsize = 10, fontweight='bold')
 simpleaxis(ax3)
@@ -351,8 +381,8 @@ text(-r, 0,'$\pi$', horizontalalignment='center', verticalalignment='center', 	 
 text(r, 0,'0', horizontalalignment='center', verticalalignment='center', 		 	fontsize = 7)
 text(0, r,'$\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 7)
 text(0, -r,'$3\pi/2$', horizontalalignment='center', verticalalignment='center',  	fontsize = 7)
-text(r-7, -2.5, 'jPC1', fontsize = 8)
-text(0.7, r-6, 'jPC2', fontsize = 8)
+text(r-7, -2.5, 'jPC1', fontsize = 7)
+text(0.7, r-6, 'jPC2', fontsize = 7)
 
 
 
@@ -458,7 +488,7 @@ ylabel('SWR jPCA \nphase (rad.)', labelpad = 4)
 tik = np.array([0, np.pi, 2*np.pi, 3*np.pi])
 xticks(tik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
 yticks(tik, ('0', '$\pi$', '$2\pi$', '$3\pi$'))
-title("Density", fontsize = 9)
+# title("Density", fontsize = 9)
 
 clr = cmv(0.6)
 scatter(allthetamodth.loc[best_neurons, 'phase'].values, phi2.loc[best_neurons].values.flatten(), color = clr, s = 12, zorder = 5)
@@ -473,7 +503,7 @@ cax = inset_axes(gca(), "4%", "20%",
                    bbox_transform=gca().transAxes, 
                    loc = 'lower left')
 cb = colorbar(axp, cax = cax, orientation = 'vertical', ticks = [0.25, 0.75])
-
+ylabel("Density", labelpad = -40)
 
 
 

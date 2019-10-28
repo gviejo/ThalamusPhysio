@@ -27,9 +27,9 @@ from scipy.misc import imread
 
 data = cPickle.load(open("../../figures/figures_articles_v4/figure1/decodage_bayesian.pickle", 'rb'))
 
+
 swrvel = data['swrvel']
 count = data['count']
-
 
 
 ###############################################################################################################
@@ -97,9 +97,9 @@ from matplotlib.pyplot import *
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
-fig = figure(figsize = figsize(1.0))
+fig = figure(figsize = figsize(1.0))#, tight_layout=True)
 
-outergs = gridspec.GridSpec(1,3, figure = fig, hspace = 0.4, wspace = 0.4)
+outergs = gridspec.GridSpec(1,2, figure = fig, hspace = 0.4, wspace = 0.4)
 
 
 ###################################################################################################
@@ -108,41 +108,55 @@ outergs = gridspec.GridSpec(1,3, figure = fig, hspace = 0.4, wspace = 0.4)
 axI = Subplot(fig, outergs[0,0])
 fig.add_subplot(axI)
 simpleaxis(axI)
+axhline(0, color = 'grey', linewidth = 0.5, alpha = 0.6)
+plot(swrvel[count[count>10].index], linewidth = 1, color = 'grey')
+plot(swrvel[count[count>10].index].mean(1), linewidth = 3, color = 'black')
+xlabel("Time from SWRs (ms)")
+ylabel("Angular velocity")
+ylim(-0.3, 0.3)
+title("# HD neurons > 10")
 
-
-
-
-axI.text(-0.3, 1.0, "a", transform = axI.transAxes, fontsize = 10, fontweight='bold')
+axI.text(-0.2, 1.0, "a", transform = axI.transAxes, fontsize = 10, fontweight='bold')
 
 ###################################################################################################
 # B. WAKE TAU VS REM TAU
 ###################################################################################################
-axJ = Subplot(fig, outergs[0,1])
-fig.add_subplot(axJ)
-simpleaxis(axJ)
+# axJ = Subplot(fig, outergs[0,1])
+# fig.add_subplot(axJ)
+# simpleaxis(axJ)
+# axhline(0, color = 'grey', linewidth = 0.5, alpha = 0.6)
+# plot(swrvel[count[count<10].index], linewidth = 1, color = 'grey')
+# plot(swrvel[count[count<10].index].mean(1), linewidth = 3, color = 'black')
+# ylim(-0.3, 0.3)
+# title("10 > HD neurons > 5")
+# xlabel("Time from SWRs (ms)")
 
-
-
-
-axJ.text(-0.3, 1.0, "b", transform = axJ.transAxes, fontsize = 10, fontweight='bold')
+# axJ.text(-0.3, 1.0, "b", transform = axJ.transAxes, fontsize = 10, fontweight='bold')
 
 ###################################################################################################
 # C. BURSTINESS VS LAMBDA
 ###################################################################################################
-axK = Subplot(fig, outergs[0,2])
+axK = Subplot(fig, outergs[0,1])
 fig.add_subplot(axK)
 simpleaxis(axK)
+axhline(0, color = 'grey', linewidth = 0.5, alpha = 0.6)
+plot(swrvel[count[count>10].index], linewidth = 1, color = 'grey')
+plot(swrvel[count[count<10].index], linewidth = 1, color = 'green')
+plot(swrvel[count[count>10].index[0]], linewidth = 1, color = 'grey', label = ">10")
+plot(swrvel[count[count<10].index[0]], linewidth = 1, color = 'green', label = "<10")
+plot(swrvel.mean(1), linewidth = 3, color = 'black')
+ylim(-0.3, 0.3)
+title("# HD neurons > 5")
+xlabel("Time from SWRs (ms)")
+legend()
+
+axK.text(-0.2, 1.0, "b", transform = axK.transAxes, fontsize = 10 ,fontweight='bold')
 
 
 
 
-axK.text(-0.3, 1.0, "c", transform = axK.transAxes, fontsize = 9 ,fontweight='bold')
 
-
-
-
-
-subplots_adjust(bottom = 0.2, top = 0.93, right = 0.98, left = 0.08)
+subplots_adjust(bottom = 0.2, top = 0.9, right = 0.98, left = 0.08)
 
 savefig("../../figures/figures_articles_v4/figart_supp_2.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles_v4/figart_supp_2.pdf &")

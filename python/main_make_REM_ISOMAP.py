@@ -31,8 +31,8 @@ datatosave = {ep:pd.DataFrame() for ep in ['wak', 'rem', 'sws']}
 
 
 # session = 'Mouse17/Mouse17-130130'
-session = 'Mouse12/Mouse12-120808'
-# session = 'Mouse32/Mouse32-140822'
+# session = 'Mouse12/Mouse12-120808'
+session = 'Mouse32/Mouse32-140822'
 # session = 'Mouse12/Mouse12-120807'
 
 generalinfo 	= scipy.io.loadmat(data_directory+session+'/Analysis/GeneralInfo.mat')
@@ -57,7 +57,7 @@ speed 			= loadSpeed(data_directory+session+'/Analysis/linspeed.mat').restrict(w
 hd_info 		= scipy.io.loadmat(data_directory+session+'/Analysis/HDCells.mat')['hdCellStats'][:,-1]
 hd_info_neuron	= np.array([hd_info[n] for n in spikes.keys()])
 
-sys.exit()
+# sys.exit()
 
 spikeshd 		= {k:spikes[k] for k in np.where(hd_info_neuron==1)[0] if k not in []}
 neurons 		= np.sort(list(spikeshd.keys()))
@@ -116,6 +116,13 @@ wakangle = pd.Series(index = np.arange(len(bins)-1))
 tmp = angle.groupby(np.digitize(angle.as_units('ms').index.values, bins)-1).mean()
 wakangle.loc[tmp.index] = tmp
 wakangle.index = pd.Index(bins[0:-1] + np.diff(bins)/2.)
+
+# save for LMN poster
+
+datatosave = {"ump":ump,
+				'wakangle':wakangle}
+
+sys.exit()
 
 ####################################################################################################################
 # BIN SWR
@@ -198,6 +205,7 @@ n = len(tmp1)
 
 tmp = np.vstack((tmp1, tmp3))
 
+sys.exit()
 
 imap = Isomap(n_neighbors = 100, n_components = 2, n_jobs = -1).fit_transform(tmp)
 
@@ -370,3 +378,15 @@ os.system("pdftk ../figures/figures_articles_v4/figure1/ex_swr_*.pdf cat output 
 os.system("evince ../figures/figures_articles_v4/figure1/swr_all_exemples.pdf &")
 os.system("rm ../figures/figures_articles_v4/figure1/ex_swr_*")
 # os.system(r"cp ../figures/figures_articles_v4/figure1/swr_all_exemples.pdf /home/guillaume/Dropbox (Peyrache Lab)/swr_all_exemples.pdf")
+
+
+figure()
+subplot(121)
+scatter(ump[:,0], ump[:,1], marker = 'o', alpha = 0.8, linewidth = 0)
+title("UMAP")
+subplot(122)
+scatter(imap[:,0], imap[:,1], marker = 'o', alpha = 0.8, linewidth = 0)
+title("Isomap")
+
+show()
+

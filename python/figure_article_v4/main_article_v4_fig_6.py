@@ -232,7 +232,7 @@ for i, n in enumerate([hd, nhd, iad]):
 
 legend(edgecolor = None, facecolor = None, frameon = False, bbox_to_anchor=(0.3, 1.1), bbox_transform=axI.transAxes)
 xlabel("Time lag (s)")
-ylabel("Autocorrelation (a.u)")
+ylabel("Auto-correlation (a.u)")
 locator_params(nbins = 4)
 
 axI.text(-0.3, 1.0, "a", transform = axI.transAxes, fontsize = 10, fontweight='bold')
@@ -263,6 +263,27 @@ ylim(0, tlim)
 
 xlabel(r"Wake decay time $\tau$ (s)")
 ylabel(r"REM decay time $\tau$ (s)")
+
+
+nohdn = list(set(lambdaa.index.values[idx]) - set(hdn))
+# INSET AXE
+cax = inset_axes(gca(), "30%", "15%",
+                   bbox_to_anchor=(0.68, 0.78, 1, 1),
+                   bbox_transform=gca().transAxes, 
+                   loc = 'lower left')
+simpleaxis(gca())
+bar(0, lambdaa.loc[hdn, ('wak', 'b')].mean(), width = 0.6, yerr = lambdaa.loc[hdn, ('wak', 'b')].std(), color = 'red')
+bar(1, lambdaa.loc[nohdn, ('wak', 'b')].mean(), width = 0.6, yerr = lambdaa.loc[hdn, ('wak', 'b')].std(), color = 'grey')
+bar(3, lambdaa.loc[hdn, ('rem', 'b')].mean(), width = 0.6, yerr = lambdaa.loc[hdn, ('rem', 'b')].std(), color = 'red')
+bar(4, lambdaa.loc[nohdn, ('rem', 'b')].mean(), width = 0.6, yerr = lambdaa.loc[hdn, ('rem', 'b')].std(), color = 'grey')
+xticks([0.5, 3.5], ['Wake', 'REM'])
+ylabel("(s)")
+
+
+
+print("HD vs no-HD / WAKE", scipy.stats.ttest_ind(lambdaa.loc[hdn, ('wak', 'b')].values, lambdaa.loc[nohdn, ('wak', 'b')].values))
+print("HD vs no-HD / REM ", scipy.stats.ttest_ind(lambdaa.loc[hdn, ('rem', 'b')].values, lambdaa.loc[nohdn, ('rem', 'b')].values))
+
 
 axJ.text(0.25, 1.0, "r="+str(np.round(rvalue, 3))+" (p<0.001)", transform = axJ.transAxes, fontsize = 8)
 axJ.text(-0.3, 1.0, "b", transform = axJ.transAxes, fontsize = 10, fontweight='bold')

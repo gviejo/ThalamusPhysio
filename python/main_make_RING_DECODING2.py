@@ -31,7 +31,7 @@ import _pickle as cPickle
 path = '../figures/figures_articles_v4/figure1/hd_isomap_30ms_mixed_swr_rnd_wake/'
 files = [f for f in os.listdir(path) if '.pickle' in f and 'Mouse' in f]
 
-# files.remove("Mouse17-130129.pickle")
+files.remove("Mouse17-130129.pickle")
 
 radius = []
 velocity = []
@@ -69,14 +69,16 @@ for f in files:
 		for i in range(len(angswr)):
 			a = np.unwrap(angswr[i])
 			b = pd.Series(index = times, data = a)
-			c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1)
+			c = b
+			c = b.rolling(window = 20, win_type='gaussian', center=True, min_periods=1).mean(std=0.5)
 			tmp1.append(np.abs(np.diff(c.values))/0.02)
 
 		tmp2 = []
 		for i in range(len(angrnd)):
 			a = np.unwrap(angrnd[i])
 			b = pd.Series(index = times, data = a)
-			c = b.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std=1)
+			c = b
+			c = b.rolling(window = 20, win_type='gaussian', center=True, min_periods=1).mean(std=0.5)
 			tmp2.append(np.abs(np.diff(c.values))/0.02)
 	
 		tmp1 = np.array(tmp1)
@@ -94,12 +96,12 @@ for f in files:
 	order.append(f.split(".")[0])
 	tmp = pd.DataFrame(index = times, data = swrrad.T)
 	# tmp = pd.Series(index = times, data = (swrrad.mean(0) - rndrad.mean(0))/(rndrad.mean(0)))
-	tmp = tmp.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std = 1)
+	tmp = tmp.rolling(window = 20, win_type='gaussian', center=True, min_periods=1).mean(std = 0.5)
 	radius.append(tmp.mean(1))
 	# radius.append(tmp)
 	tmp = pd.DataFrame(index = times[0:-1]+np.diff(times)/2, data = swrvel.T)
 	# tmp = pd.Series(index = times[0:-1]+np.diff(times)/2, data = (swrvel.mean(0) - rndvel.mean(0))/rndvel.mean(0))
-	tmp = tmp.rolling(window = 10, win_type='gaussian', center=True, min_periods=1).mean(std = 1)
+	tmp = tmp.rolling(window = 20, win_type='gaussian', center=True, min_periods=1).mean(std = 0.5)
 	velocity.append(tmp.mean(1))
 	# velocity.append(tmp)
 
@@ -121,7 +123,16 @@ plot(radius, linewidth = 1, alpha = 0.5, color = 'grey')
 plot(radius.mean(1), linewidth = 4, alpha = 1)
 show()
 
-# cPickle.dump(tosave, open('../figures/figures_articles_v4/figure1/RING_DECODING.pickle', 'wb'))
+# cPickle.dump(tosave, open('../figures/figures_articles_v4/figure1/RING_DECODING_30ms.pickle', 'wb'))
+
+
+
+
+
+
+
+
+
 
 sys.exit()
 

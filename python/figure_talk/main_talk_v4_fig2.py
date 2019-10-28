@@ -179,7 +179,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*1.1          # height in inches
+	fig_height = fig_width*golden_mean*0.7          # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -239,165 +239,165 @@ colors = ['red', '#231f20', '#707174']#, '#abacad']
 
 fig = figure(figsize = figsize(1.0))
 
-outergs = gridspec.GridSpec(2,1, figure = fig, height_ratios = [0.9,1.0], wspace = 0.3, hspace = 0.3)
+outergs = gridspec.GridSpec(1,1, figure = fig, height_ratios = [1.0], wspace = 0.3, hspace = 0.3)
 
 gstop = gridspec.GridSpecFromSubplotSpec(1,3,subplot_spec = outergs[0,0], width_ratios = [0.15, 0.2, 0.4])#, height_ratios = [0.8, 1.0])#, width_ratios = [0.15, 0.2, 0.4]) #height_ratios = [0.8, 1.0], wspace = 0.2)#, width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
 
-#############################################
-# A. HISTOLOGY
-#############################################
-# gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outergs[0,0], height_ratios = [0.8, 1.0], wspace = 0.2)#, width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
-axA = fig.add_subplot(gstop[0,0])
-# noaxis(axA)
-histo = imread("../../data/histology/Mouse17/Mouse17_2_Slice7_Thalamus_Dapi_2.png")
-imshow(histo, interpolation = 'bilinear',aspect= 'equal')
-text(2500.0, 600.0, "Shanks", rotation = -10, color = 'white', fontsize = 9)
-text(1600.0, 1900.0, "AD", color = 'red', fontsize = 8)
-xticks([], [])
-yticks([], [])
-title("Mouse17")
-axA.text(-0.0, 1.12, "a", transform = axA.transAxes, fontsize = 10, fontweight='bold')
+# #############################################
+# # A. HISTOLOGY
+# #############################################
+# # gs = gridspec.GridSpecFromSubplotSpec(2,1,subplot_spec = outergs[0,0], height_ratios = [0.8, 1.0], wspace = 0.2)#, width_ratios=[0.6,0.7,0.1,1.2],wspace = 0.1)
+# axA = fig.add_subplot(gstop[0,0])
+# # noaxis(axA)
+# histo = imread("../../data/histology/Mouse17/Mouse17_2_Slice7_Thalamus_Dapi_2.png")
+# imshow(histo, interpolation = 'bilinear',aspect= 'equal')
+# text(2500.0, 600.0, "Shanks", rotation = -10, color = 'white', fontsize = 9)
+# text(1600.0, 1900.0, "AD", color = 'red', fontsize = 8)
+# xticks([], [])
+# yticks([], [])
+# title("Mouse17")
+# # axA.text(-0.0, 1.12, "a", transform = axA.transAxes, fontsize = 10, fontweight='bold')
 
-#############################################
-# B. MAP AD + HD
-#############################################
-carte_adrien = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_ALL-01.png')
-bound_adrien = (-398/1254, 3319/1254, -(239/1254 - 20/1044), 3278/1254)
-# specific to mouse 17
-subspace = pd.read_hdf("../../figures/figures_articles_v2/figure1/subspace_Mouse17.hdf5")
-data = cPickle.load(open("../../figures/figures_articles_v2/figure1/rotated_images_Mouse17.pickle", 'rb'))
-rotated_images = data['rotated_images']
-new_xy_shank = data['new_xy_shank']
-bound = data['bound']
-data 		= cPickle.load(open("../../data/maps/Mouse17.pickle", 'rb'))
-x 			= data['x']
-y 			= data['y']*-1.0+np.max(data['y'])
-headdir 	= data['headdir']
-xy_pos = new_xy_shank.reshape(len(y), len(x), 2)
+# #############################################
+# # B. MAP AD + HD
+# #############################################
+# carte_adrien = imread('/home/guillaume/Dropbox (Peyrache Lab)/Peyrache Lab Team Folder/Projects/HPC-Thal/Figures/ATAnatomy_ALL-01.png')
+# bound_adrien = (-398/1254, 3319/1254, -(239/1254 - 20/1044), 3278/1254)
+# # specific to mouse 17
+# subspace = pd.read_hdf("../../figures/figures_articles_v2/figure1/subspace_Mouse17.hdf5")
+# data = cPickle.load(open("../../figures/figures_articles_v2/figure1/rotated_images_Mouse17.pickle", 'rb'))
+# rotated_images = data['rotated_images']
+# new_xy_shank = data['new_xy_shank']
+# bound = data['bound']
+# data 		= cPickle.load(open("../../data/maps/Mouse17.pickle", 'rb'))
+# x 			= data['x']
+# y 			= data['y']*-1.0+np.max(data['y'])
+# headdir 	= data['headdir']
+# xy_pos = new_xy_shank.reshape(len(y), len(x), 2)
 
-def show_labels(ax):
-	ax.text(0.68,	1.09,	"AM", 	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(1.26,	1.26,	"VA",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(0.92,	2.05,	"AVd",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'), rotation = 50)
-	ax.text(1.11,	1.68,	"AVv",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(1.28,	2.25,	"LD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(0.42,	2.17,	"sm",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(0.20,	1.89,	"MD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(-0.06,	1.58,	"PV",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
-	ax.text(0.4,	1.5,	"IAD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'), rotation = 52)
-	return
-
-
-ses_ex = ['Mouse17/Mouse17-130129', 'Mouse17/Mouse17-130205']
-ses_mouse17 = np.array([s for s in datasets if 'Mouse17' in s])
+# def show_labels(ax):
+# 	ax.text(0.68,	1.09,	"AM", 	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(1.26,	1.26,	"VA",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(0.92,	2.05,	"AVd",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'), rotation = 50)
+# 	ax.text(1.11,	1.68,	"AVv",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(1.28,	2.25,	"LD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(0.42,	2.17,	"sm",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(0.20,	1.89,	"MD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(-0.06,	1.58,	"PV",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'))
+# 	ax.text(0.4,	1.5,	"IAD",	fontsize = 6.5,  bbox=dict(facecolor='#C9C9C9', edgecolor = 'none', boxstyle='square,pad=-0.1'), rotation = 52)
+# 	return
 
 
-
-suB = fig.add_subplot(gstop[0,1])
-imshow(carte_adrien, extent = bound_adrien, interpolation = 'bessel', aspect = 'equal')
-i = 1
-m = 'Mouse17'
-
-# plotting exemples shanks
-xx = []
-yy = []
-for s in ['Mouse17/Mouse17-130201']:
-	idx = np.where(s == ses_mouse17)[0][0]
-	x = xy_pos[idx,:,0]
-	y = xy_pos[idx,:,1]
-	scatter(x, y, s = 2, color = 'black')
-	xx.append(x[-1])
-	yy.append(y[-1])
-
-annotate('e', xy = (xx[0]+0.05,yy[0]), xycoords='data', xytext = (xx[0]+0.5, yy[0]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
-# annotate('d', xy = (xx[1]+0.05,yy[1]), xycoords='data', xytext = (xx[1]+0.5, yy[1]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
-
-tmp2 = headdir
-tmp2[tmp2<0.05] = 0.0
-scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = 1.5, color = 'black', marker = '.', 
-	alpha = 1.0, linewidths = 0.5, label = 'shank position')
-scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = tmp2*7., label = 'HD cell position',
-	color = 'red', marker = 'o', alpha = 0.6)
+# ses_ex = ['Mouse17/Mouse17-130129', 'Mouse17/Mouse17-130205']
+# ses_mouse17 = np.array([s for s in datasets if 'Mouse17' in s])
 
 
-plot([2.2,2.2],[0,1], '-', linewidth = 1.3, color = 'black')
-suB.text(2.25, 0.5, "1 mm", rotation = -90)
 
-show_labels(suB)
+# suB = fig.add_subplot(gstop[0,1])
+# imshow(carte_adrien, extent = bound_adrien, interpolation = 'bessel', aspect = 'equal')
+# i = 1
+# m = 'Mouse17'
 
-leg = legend(loc = 'lower left', fontsize = 7, framealpha=1.0, bbox_to_anchor=(0.0, -0.09)) #, title = 'HD recording sites', )
+# # plotting exemples shanks
+# # xx = []
+# # yy = []
+# # for s in ['Mouse17/Mouse17-130201']:
+# # 	idx = np.where(s == ses_mouse17)[0][0]
+# # 	x = xy_pos[idx,:,0]
+# # 	y = xy_pos[idx,:,1]
+# # 	scatter(x, y, s = 2, color = 'black')
+# # 	xx.append(x[-1])
+# # 	yy.append(y[-1])
 
-noaxis(suB)
-leg.get_title().set_fontsize(7)
-leg.get_frame().set_facecolor('white')
+# # annotate('e', xy = (xx[0]+0.05,yy[0]), xycoords='data', xytext = (xx[0]+0.5, yy[0]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
+# # annotate('d', xy = (xx[1]+0.05,yy[1]), xycoords='data', xytext = (xx[1]+0.5, yy[1]-0.06), textcoords='data', arrowprops=dict(arrowstyle="->"))#, horizontalalignment='right', verticalalignment='bottom')
 
-annotate('Anterodorsal (AD)', xy=(0.9,2.4), xytext=(0.9,2.7), xycoords='data', textcoords='data',
-arrowprops=dict(facecolor='black',
-	shrink=0.05,
-	headwidth=3,
-	headlength=2,
-	width=0.3),
-fontsize = 7, ha = 'center', va = 'bottom')
-
-suB.text(-0.1, 1.10, "b", transform = suB.transAxes, fontsize = 10, fontweight = 'bold')
+# tmp2 = headdir
+# tmp2[tmp2<0.05] = 0.0
+# scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = 1.5, color = 'black', marker = '.', 
+# 	alpha = 1.0, linewidths = 0.5, label = 'shank positions')
+# scatter(new_xy_shank[:,0], new_xy_shank[:,1], s = tmp2*7., label = 'HD positions',
+# 	color = 'red', marker = 'o', alpha = 0.6)
 
 
-#############################################################################
-# C. RIPPLES MODULATION
-#############################################################################
-# gs = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[0,1], width_ratios = [0.7, 0.3])
+# plot([2.2,2.2],[0,1], '-', linewidth = 1.3, color = 'black')
+# suB.text(2.25, 0.5, "1 mm", rotation = -90)
 
-gsC = gridspec.GridSpecFromSubplotSpec(5,4,subplot_spec = gstop[0,2], wspace = 0.6, width_ratios = [0.07, 1, 1, 1])
-for i, n in enumerate(neurons):	
-	# spikes	
-	ax = Subplot(fig, gsC[0:2,i+1])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	# if neurons.index(n) == 1:
-	# 	text(0.5, 1.15,'SWR modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
-	if neurons.index(n) == 0:
-		ylabel("SWR\nevents",  multialignment='center',  labelpad = 1)
-		ax.text(-0.9, 1.05, "c", transform = ax.transAxes, fontsize = 10, fontweight='bold')
-	if neurons.index(n) > 0:
-		ax.spines['left'].set_visible(False)	
-		yticks([], [])
-	ax.spines['bottom'].set_visible(False)	
-	xticks([], [])
-	sp = spike_in_swr[n][np.arange(0, 500)]
-	plot(sp.iloc[:,0:100], '|', markersize = 1, color = colors[neurons.index(n)], mew = 0.5)	
+# show_labels(suB)
 
-	# firing rate	
-	ax = Subplot(fig, gsC[2,i+1])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	ax.spines['bottom'].set_visible(False)	
-	H0[n] = gaussFilt(H0[n].values, (2,))
-	plot(H0[n].loc[-500:500], color = colors[neurons.index(n)], label = '', linewidth = 0.7)
-	plot(Hm[n].loc[-500:500], ':', color = colors[neurons.index(n)], label = 'Jitter', linewidth = 0.7)
+# leg = legend(loc = 'lower left', fontsize = 7, framealpha=1.0, bbox_to_anchor=(0.0, -0.09)) #, title = 'HD recording sites', )
 
-	axvline(0, color = 'grey', linewidth = 0.5)
-	xticks([], [])
-	if neurons.index(n) == 0:
-		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 20)
-		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.1, -0.45))	
+# noaxis(suB)
+# leg.get_title().set_fontsize(7)
+# leg.get_frame().set_facecolor('white')
 
-	# Z score	
-	ax = Subplot(fig, gsC[3:,i+1])
-	fig.add_subplot(ax)
-	simpleaxis(ax)
-	z = pd.DataFrame((H0[n] - Hm[n])/Hstd.loc[n][0])
-	z['filt'] = gaussFilt(z.values.flatten(), (5,))
+# annotate('Antero-dorsal (AD)', xy=(0.9,2.4), xytext=(0.9,2.7), xycoords='data', textcoords='data',
+# arrowprops=dict(facecolor='black',
+# 	shrink=0.05,
+# 	headwidth=3,
+# 	headlength=2,
+# 	width=0.3),
+# fontsize = 7, ha = 'center', va = 'bottom')
 
-	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
-	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
-	if neurons.index(n) == 1:
-		xlabel('Time from SWRs (ms)', fontsize = 7)
-	if neurons.index(n) == 0:
-		ylabel('Modulation\n(z)', verticalalignment = 'bottom')
-	axvline(0, color = 'grey', linewidth = 0.5)	
-	if i in [0, 1]:
-		ylim(-2,2)
-	# yticks([-1,0,1,2,3])
+# # suB.text(-0.1, 1.10, "b", transform = suB.transAxes, fontsize = 10, fontweight = 'bold')
+
+
+# #############################################################################
+# # C. RIPPLES MODULATION
+# #############################################################################
+# # gs = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[0,1], width_ratios = [0.7, 0.3])
+
+# gsC = gridspec.GridSpecFromSubplotSpec(5,4,subplot_spec = gstop[0,2], wspace = 0.6, width_ratios = [0.07, 1, 1, 1])
+# for i, n in enumerate(neurons):	
+# 	# spikes	
+# 	ax = Subplot(fig, gsC[0:2,i+1])
+# 	fig.add_subplot(ax)
+# 	simpleaxis(ax)
+# 	# if neurons.index(n) == 1:
+# 	# 	text(0.5, 1.15,'SWR modulation', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes, fontsize = 8)
+# 	if neurons.index(n) == 0:
+# 		ylabel("SWR\nevents",  multialignment='center',  labelpad = 1)
+# 		# ax.text(-0.9, 1.05, "c", transform = ax.transAxes, fontsize = 10, fontweight='bold')
+# 	if neurons.index(n) > 0:
+# 		ax.spines['left'].set_visible(False)	
+# 		yticks([], [])
+# 	ax.spines['bottom'].set_visible(False)	
+# 	xticks([], [])
+# 	sp = spike_in_swr[n][np.arange(0, 500)]
+# 	plot(sp.iloc[:,0:100], '|', markersize = 1, color = colors[neurons.index(n)], mew = 0.5)	
+
+# 	# firing rate	
+# 	ax = Subplot(fig, gsC[2,i+1])
+# 	fig.add_subplot(ax)
+# 	simpleaxis(ax)
+# 	ax.spines['bottom'].set_visible(False)	
+# 	H0[n] = gaussFilt(H0[n].values, (2,))
+# 	plot(H0[n].loc[-500:500], color = colors[neurons.index(n)], label = '', linewidth = 0.7)
+# 	plot(Hm[n].loc[-500:500], ':', color = colors[neurons.index(n)], label = 'Jitter', linewidth = 0.7)
+
+# 	axvline(0, color = 'grey', linewidth = 0.5)
+# 	xticks([], [])
+# 	if neurons.index(n) == 0:
+# 		ylabel('Rate \n (Hz)', verticalalignment = 'top', labelpad = 20)
+# 		legend(edgecolor = None, facecolor = None, frameon = False, loc = 'lower left', bbox_to_anchor = (0.1, -0.45))	
+
+# 	# Z score	
+# 	ax = Subplot(fig, gsC[3:,i+1])
+# 	fig.add_subplot(ax)
+# 	simpleaxis(ax)
+# 	z = pd.DataFrame((H0[n] - Hm[n])/Hstd.loc[n][0])
+# 	z['filt'] = gaussFilt(z.values.flatten(), (5,))
+
+# 	plot(z['filt'].loc[-500:500],  color = colors[neurons.index(n)], linewidth = 2)
+# 	# xlabel('Time from \n $\mathbf{Sharp\ Waves\ ripples}$ (ms)', fontsize = 8)
+# 	if neurons.index(n) == 1:
+# 		xlabel('Time from SWRs (ms)', fontsize = 7)
+# 	if neurons.index(n) == 0:
+# 		ylabel('Modulation\n(z)', verticalalignment = 'bottom')
+# 	axvline(0, color = 'grey', linewidth = 0.5)	
+# 	if i in [0, 1]:
+# 		ylim(-2,2)
+# 	# yticks([-1,0,1,2,3])
 
 # #############################################################################
 # # D. MEAN SWR HD VS NO-HD
@@ -422,7 +422,7 @@ nohd_neurons = mappings.loc[neurons][mappings.loc[neurons, 'hd'] == 0].index.val
 
 
 ################################################################################
-gsbottom = gridspec.GridSpecFromSubplotSpec(1,5, subplot_spec = outergs[1,0], wspace = 0.6, width_ratios = [-0.05, 0.4,0.001, 0.4,0.3])#, width_ratios = [0.011, 0.5, 0.5])
+gsbottom = gridspec.GridSpecFromSubplotSpec(1,4, subplot_spec = outergs[0,0], wspace = 0.6, width_ratios = [-0.05, 0.4,0.4,0.3])#, width_ratios = [0.011, 0.5, 0.5])
 
 gsm = gridspec.GridSpecFromSubplotSpec(3,1, subplot_spec = gsbottom[0,1], height_ratios = [0.7, 0.4, 0.6], hspace = 0.1)
 
@@ -436,12 +436,12 @@ m = swr_mod[nohd_neurons].mean(1)
 v = swr_mod[nohd_neurons].sem(1)
 plot(swr_mod[nohd_neurons].mean(1), label = 'non-HD', color = 'black', linewidth = 1)
 fill_between(m.index.values, m-v, m+v, color = 'grey', alpha = 0.25, linewidth = 0)
-ylabel("SWR mod.", labelpad = 2, y = 0.6)
+ylabel("SWRs mod.", labelpad = 2, y = 0.6)
 xlim(-500,500)
 legend(frameon=False,loc = 'lower left', bbox_to_anchor=(0.7,0.58),handlelength=1,ncol = 1)
 xticks([], [])
 axvline(0, linestyle = '--', linewidth = 1, alpha = 0.5, color = 'black')
-gca().text(-0.15, 1.1, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+gca().text(-0.3, 1.1, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
 
 subplot(gsm[1,0])
@@ -453,16 +453,14 @@ tmp = tmp[idx[::-1]]
 sc = imshow(tmp.T, aspect = 'auto', cmap = "coolwarm", vmin = -0.25, vmax = 0.25)
 xticks([], [])
 yticks([len(hd_neurons)])
-ylabel("HD", labelpad = -5)
 cax = inset_axes(gca(), "2%", "30%",
-                   bbox_to_anchor=(1.2, 0.3, 1, 1),
+                   bbox_to_anchor=(-0.08, 0.3, 1, 1),
                    bbox_transform=gca().transAxes, 
                    loc = 'lower left')
 cb = colorbar(sc, cax = cax, orientation = 'vertical', ticks = [-0.25, 0.25])
 # cb.ax.set_title('z')#, labelpad = -24, fontsize = 8)
 cb.ax.xaxis.set_tick_params(pad = 1)
 cb.ax.yaxis.set_ticks_position('left')
-
 
 subplot(gsm[2,0])
 tmp = swr_mod[nohd_neurons]
@@ -471,12 +469,11 @@ tmp = swr_mod[nohd_neurons]
 idx = tmp.loc[0].sort_values().index.values
 tmp = tmp[idx[::-1]]
 sc = imshow(tmp.T, aspect = 'auto', cmap = "bone", vmin = -0.6, vmax = 0.6)
-ylabel("non-HD", labelpad = -10)
 xticks([0,100,200],[-500,0,500])
 xlabel('Time from SWRs (ms)', fontsize = 8)
 yticks([len(nohd_neurons)])
 cax = inset_axes(gca(), "2%", "30%",
-                   bbox_to_anchor=(1.2, 0.3, 1, 1),
+                   bbox_to_anchor=(-0.08, 0.3, 1, 1),
                    bbox_transform=gca().transAxes, 
                    loc = 'lower left')
 cb = colorbar(sc, cax = cax, orientation = 'vertical', ticks = [-0.4, 0.4])
@@ -484,11 +481,10 @@ cb = colorbar(sc, cax = cax, orientation = 'vertical', ticks = [-0.4, 0.4])
 cb.ax.xaxis.set_tick_params(pad = 1)
 cb.ax.yaxis.set_ticks_position('left')
 
-
 #############################################################################
 # E. CORRELATION SHANKS EXEMPLES
 #############################################################################
-gsc = gridspec.GridSpecFromSubplotSpec(4,1, subplot_spec = gsbottom[0,3], hspace = 0.2, height_ratios = [0.2, 0.2, 0.07, 0.2])
+gsc = gridspec.GridSpecFromSubplotSpec(4,1, subplot_spec = gsbottom[0,2], hspace = 0.2, height_ratios = [0.2, 0.2, 0.07, 0.2])
 
 hd_ex = 'Mouse17-130201'
 nohd_ex = hd_ex
@@ -520,7 +516,7 @@ for i,n in enumerate([list(nohd_shank_idx.keys())[4]]):
 	xticks([-500,0,500])
 	xlabel("Time from SWRs (ms)", fontsize = 7, labelpad = -0.05)
 	title("shank 5", loc = 'right', pad = -2.45, fontsize = 7)
-	ylabel("SWR mod.")
+	ylabel("SWRs mod.")
 	gca().yaxis.set_label_coords(-0.15, 1.0) 
 
 # Correlation
@@ -547,15 +543,15 @@ for n in hd_corr.keys():
 for n in nohd_corr.keys():
 	x = np.ones_like(nohd_corr[n])*n+np.random.randn(len(nohd_corr[n]))*dispersion + side
 	plot(x, nohd_corr[n], 'o', color = 'black', markersize = markersize)
-ylabel("Pairwise\ncorrelation (r)")
-xlabel("Probe shanks")
+ylabel("Pair\ncorrelation")
+xlabel("Shanks")
 xticks(np.unique(np.hstack(list(hd_corr.keys())+list(nohd_corr.keys()))), np.unique(np.hstack(list(hd_corr.keys())+list(nohd_corr.keys())))+1)
 
 
 #############################################################################
 # F. CORRELATION SWR MOD SHANKS
 #############################################################################
-gsf = gridspec.GridSpecFromSubplotSpec(3,1, subplot_spec = gsbottom[0,4], hspace = 0.5, height_ratios = [0.1, 0.5, 0.05])
+gsf = gridspec.GridSpecFromSubplotSpec(3,1, subplot_spec = gsbottom[0,3], hspace = 0.5, height_ratios = [0.1, 0.5, 0.05])
 
 data3 = cPickle.load(open('../../figures/figures_articles_v4/figure2/SWR_MOD_CORRELATION_SHANKS.pickle', 'rb'))
 
@@ -567,17 +563,16 @@ subplot(gsf[1,0])
 simpleaxis(gca())
 hist(nohd_corr_shanks, bins=bins, weights=np.ones_like(nohd_corr_shanks)/float(len(nohd_corr_shanks)), alpha = 0.5, color = 'black', histtype='stepfilled', label = 'non-HD')
 hist(hd_corr_shanks, bins=bins, weights=np.ones_like(hd_corr_shanks)/float(len(hd_corr_shanks)), alpha = 0.5, color = 'red', histtype='stepfilled', label = 'HD')
-xlabel("Same shank\npairwise correlation (r)")
-ylabel("Proportion (%)")
+xlabel("Same shank\npair correlation")
+ylabel("%")
 yticks([0, 0.05, 0.1], [0, 5, 10])
 legend(loc = 'lower left', fontsize = 7, framealpha=0.0, bbox_to_anchor=(0.35, 1.0)) #, title = 'HD recording sites', )
 # title("Pairs/Shanks")
 gca().text(-0.2, 1.1, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
-# sys.exit()
 
 # fig.subplots_adjust(wspace = 0.3, hspace= 0.3, top = 0.99, bottom = 0.05, right = 0.98, left = 0.08)
-fig.subplots_adjust(top = 0.97, bottom = 0.08, right = 0.97, left = 0.01)
+fig.subplots_adjust(right = 0.97, left = 0.01)
 
 savefig("../../figures/figures_articles_v4/figart_2.pdf", dpi = 900, facecolor = 'white')
 os.system("evince ../../figures/figures_articles_v4/figart_2.pdf &")

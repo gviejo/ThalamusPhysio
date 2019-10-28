@@ -194,7 +194,6 @@ for i, n in enumerate(neurons[::-1]):
 		xticks([0, 2*np.pi], ["0", r"$2\pi$"], fontsize = 6)
 		yticks([],[])
 		gca().spines['left'].set_visible(False)	
-		xlabel("HD")
 	else:
 		gca().axis('off')		
 		xticks([])
@@ -212,16 +211,15 @@ for i, j in zip(range(3),exemple):
 	lfp = nts.Tsd(t = lfp.index.values - rip_tsd.index[j], d = lfp.values)
 	plot(lfp.as_units('ms'), color = 'black', linewidth = 0.8)
 	plot([0], [lfp.max()+200], '*', color = 'red', markersize = 5, clip_on=False)
-	text(30,lfp.max()+200, str(i+1))
 	# if i == 0:
 	# 	ylabel('CA1')#, labelpad = 25)
 	xlim(times[0], times[-1])
 	ylim(lfp.min(),lfp.max()+100)
 
 	if i == 0:
-		gca().text(-0.4, 0.60, "a", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-		gca().text(-0.11, 0.60, "b", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-		gca().text(0.01, 0.6, "CA1 LFP", transform = gca().transAxes, fontsize = 8)
+		# gca().text(-0.4, 0.60, "a", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+		# gca().text(-0.11, 0.60, "b", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+		gca().text(0.01, 0.6, "CA1", transform = gca().transAxes, fontsize = 8)
 		
 
 	axspk = subplot(gs_top[1,i+1])	
@@ -252,10 +250,10 @@ gs_bot = gridspec.GridSpecFromSubplotSpec(1,2, subplot_spec = outergs[1,0], widt
 ####################################################################
 axC = subplot(gs_bot[0,0])
 gca().axis('off')		
-gca().text(-0.0, 0.98, "c", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+# gca().text(-0.0, 0.98, "c", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 axC.set_aspect(aspect=1)
-for i in range(len(iswr)):
-	scatter(iswr[i,:,0], iswr[i,:,1], c = 'lightgrey', marker = '.', alpha = 0.7, zorder = 2, linewidth = 0, s= 40)
+# for i in range(len(iswr)):
+# 	scatter(iswr[i,:,0], iswr[i,:,1], c = 'lightgrey', marker = '.', alpha = 0.7, zorder = 2, linewidth = 0, s= 40)
 
 scatter(iwak[~np.isnan(H),0], iwak[~np.isnan(H),1], c = RGB[~np.isnan(H)], marker = '.', alpha = 0.5, zorder = 2, linewidth = 0, s= 40)
 
@@ -285,37 +283,35 @@ def intersect(xy):
 cmap = matplotlib.cm.get_cmap('gray')
 
 
-offsets = [[0, 0.05],[-0.05,-0.07],[-0.0,-0.07]]
 
-for i, j in zip(range(3), exemple):
-	# arrows
-	x = iswr[j,:,0]
-	y = iswr[j,:,1]
-	dx = np.diff(x)
-	dy = np.diff(y)
-	cmap = plt.cm.get_cmap('gray')
-	cl = np.abs(times)/np.max(times)
-	for k in range(0,len(x)-1,4):
-		arrow(x[k], y[k], dx[k]*0.01, dy[k]*0.01, head_width=0.02, head_length=0.02, linewidth = 0, fc=cmap(cl[k]), ec=cmap(cl[k]), zorder = 5, alpha = 1)
+# for i, j in zip(range(3), exemple):
+# 	# arrows
+# 	x = iswr[j,:,0]
+# 	y = iswr[j,:,1]
+# 	dx = np.diff(x)
+# 	dy = np.diff(y)
+# 	cmap = plt.cm.get_cmap('gray')
+# 	cl = np.abs(times)/np.max(times)
+# 	for k in range(0,len(x)-1,4):
+# 		arrow(x[k], y[k], dx[k]*0.01, dy[k]*0.01, head_width=0.02, head_length=0.02, linewidth = 0, fc=cmap(cl[k]), ec=cmap(cl[k]), zorder = 5, alpha = 1)
 
-	# colors
-	xy = pd.DataFrame(index = times, data = np.vstack((x, y)).T)
-	newxy = intersect(xy)
-	newxy = newxy.rolling(window=100,win_type='gaussian',center=True,min_periods=1).mean(std=1)
-	newtime = newxy.index.values
-	# cl = np.linspace(0, 0.7, len(newxy.index.values))	
-	cl = np.abs(newtime)/np.max(newtime)
-	for k in range(len(newxy)-1):
-		tmp = newxy.iloc[k:k+2]
-		plot(tmp[0].values, tmp[1].values, color = cmap(cl[k]), alpha = 1, linewidth = 2)
+# 	# colors
+# 	xy = pd.DataFrame(index = times, data = np.vstack((x, y)).T)
+# 	newxy = intersect(xy)
+# 	newxy = newxy.rolling(window=100,win_type='gaussian',center=True,min_periods=1).mean(std=1)
+# 	newtime = newxy.index.values
+# 	# cl = np.linspace(0, 0.7, len(newxy.index.values))	
+# 	cl = np.abs(newtime)/np.max(newtime)
+# 	for k in range(len(newxy)-1):
+# 		tmp = newxy.iloc[k:k+2]
+# 		plot(tmp[0].values, tmp[1].values, color = cmap(cl[k]), alpha = 1, linewidth = 2)
 
-	idx = np.where(times == 0)[0][0]
-	plot(iswr[j,idx,0], iswr[j,idx,1], '*', color = 'red', zorder = 6, markersize = 9)
-	text(iswr[j,idx,0]+offsets[i][0], iswr[j,idx,1]+offsets[i][1], str(i+1), fontweight='bold')
-	# idx = np.where(times == times[0])[0][0]
-	# plot(iswr[j,idx,0], iswr[j,idx,1], 's', color = 'green', zorder = 6, markersize = 5)
-	# idx = np.where(times == times[-1])[0][0]
-	# plot(iswr[j,idx,0], iswr[j,idx,1], 'o', color = 'blue', zorder = 6, markersize = 5)
+# 	idx = np.where(times == 0)[0][0]
+# 	plot(iswr[j,idx,0], iswr[j,idx,1], '*', color = 'red', zorder = 6, markersize = 9)
+# 	# idx = np.where(times == times[0])[0][0]
+# 	# plot(iswr[j,idx,0], iswr[j,idx,1], 's', color = 'green', zorder = 6, markersize = 5)
+# 	# idx = np.where(times == times[-1])[0][0]
+# 	# plot(iswr[j,idx,0], iswr[j,idx,1], 'o', color = 'blue', zorder = 6, markersize = 5)
 
 
 ax = gca()
@@ -334,121 +330,118 @@ cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
                                 orientation='horizontal')
 cb1.set_ticks([0,360])
 cb1.set_ticklabels(['0', r"$2\pi$"])
-cax.set_title("Wake HD", pad = 3)
+cax.set_title("Wake", pad = 3)
 
-cmap = matplotlib.cm.get_cmap('gray')
-colors = [cmap(i) for i in cl]
-cmap= matplotlib.colors.ListedColormap(colors)
-# cmap.set_under("hsluv")
-# cmap.set_over("w")''''
-cax = inset_axes(ax, "20%", "2%",
-                   bbox_to_anchor=(0.68, -0.05, 1, 1),
-                   bbox_transform=ax.transAxes, 
-                   loc = 'lower left')
-noaxis(cax)
-cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
-                                norm=matplotlib.colors.Normalize(vmin=0,vmax=1),
-                                orientation='horizontal')
-cb1.set_ticks([0,0.5,1])
-cb1.set_ticklabels([-500, 0, 500])
-cb1.outline.set_edgecolor(None)
-cax.set_title("SWR trajectory (ms)", pad = 3)
+# cmap = matplotlib.cm.get_cmap('gray')
+# colors = [cmap(i) for i in cl]
+# cmap= matplotlib.colors.ListedColormap(colors)
+# # cmap.set_under("hsluv")
+# # cmap.set_over("w")''''
+# cax = inset_axes(ax, "20%", "2%",
+#                    bbox_to_anchor=(0.68, -0.05, 1, 1),
+#                    bbox_transform=ax.transAxes, 
+#                    loc = 'lower left')
+# noaxis(cax)
+# cb1 = mpl.colorbar.ColorbarBase(cax, cmap=cmap,
+#                                 norm=matplotlib.colors.Normalize(vmin=0,vmax=1),
+#                                 orientation='horizontal')
+# cb1.set_ticks([0,0.5,1])
+# cb1.set_ticklabels([-500, 0, 500])
+# cb1.outline.set_edgecolor(None)
+# cax.set_title("SWR trajectory (ms)", pad = 3)
 
+# # ####################################################################
+# # D Various
+# ####################################################################
+# # gs_bot_right = gridspec.GridSpecFromSubplotSpec(5,1, subplot_spec = gs_bot[0,1], hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
+# gs_bot_right = gridspec.GridSpecFromSubplotSpec(3,2, subplot_spec = gs_bot[0,1], height_ratios = [0.0, 0.7, 0.5], hspace = 0.5, wspace = 0.5)#, hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
 
+# data2 = cPickle.load(open('../../figures/figures_articles_v4/figure1/RING_DECODING_30ms.pickle', 'rb'))
 
-####################################################################
-# D Various
-####################################################################
-# gs_bot_right = gridspec.GridSpecFromSubplotSpec(5,1, subplot_spec = gs_bot[0,1], hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
-gs_bot_right = gridspec.GridSpecFromSubplotSpec(3,2, subplot_spec = gs_bot[0,1], height_ratios = [0.0, 0.7, 0.5], hspace = 0.5, wspace = 0.5)#, hspace = 0.75, height_ratios = [0.0001, 0.5, 0.5, -0.1, 0.6])
-
-data2 = cPickle.load(open('../../figures/figures_articles_v4/figure1/RING_DECODING_30ms.pickle', 'rb'))
-
-# norm r
+# # norm r
+# # ax = subplot(gs_bot_right[1,0])
 # ax = subplot(gs_bot_right[1,0])
-ax = subplot(gs_bot_right[1,0])
-simpleaxis(ax)
-axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-axvline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-radius = data2['radius']
-plot(radius, color = 'grey', alpha = 0.5, linewidth = 0.4)
-plot(radius.mean(1), color = 'black', linewidth = 2)
-xticks([-500,0,500], fontsize = 6)
-yticks(np.arange(-0.1, 0.4, 0.1), fontsize = 6)
-title("Radius")
-ylabel("Modulation")
+# simpleaxis(ax)
+# axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
+# radius = data2['radius']
+# plot(radius, color = 'grey', alpha = 0.5, linewidth = 0.4)
+# plot(radius.mean(1), color = 'black', linewidth = 2)
+# xticks([-500,0,500], fontsize = 6)
+# yticks(np.arange(-0.1, 0.4, 0.1), fontsize = 6)
+# title("Radius")
+# ylabel("Modulation")
 
-gca().text(-0.45, 1.05, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+# # gca().text(-0.45, 1.05, "d", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
 
 
-# angular velocity
-# ax = subplot(gs_bot_right[2,0])
-ax = subplot(gs_bot_right[1,1])
-simpleaxis(ax)
-axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-axvline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
-velocity = data2['velocity']
-plot(velocity, color = 'grey', alpha = 0.5, linewidth = 0.4)
-plot(velocity.mean(1), '-', color = 'black', linewidth = 2)
+# # angular velocity
+# # ax = subplot(gs_bot_right[2,0])
+# ax = subplot(gs_bot_right[1,1])
+# simpleaxis(ax)
+# axhline(0, color = 'grey', linewidth = 0.75, alpha = 0.75)
+# velocity = data2['velocity']
+# plot(velocity, color = 'grey', alpha = 0.5, linewidth = 0.4)
+# plot(velocity.mean(1), '-', color = 'black', linewidth = 2)
 
-title("Angular velocity")
-xticks([-500,0,500], fontsize = 6)
-yticks(np.arange(-0.2, 0.3, 0.1), fontsize = 6)
-xlabel("Time from SWRs (ms)", horizontalalignment='right', y = 1)
+# title("Angular velocity")
+# xticks([-500,0,500], fontsize = 6)
+# yticks(np.arange(-0.2, 0.3, 0.1), fontsize = 6)
+# xlabel("Time from SWRs (ms)", horizontalalignment='right', y = 1)
 
-gca().text(-0.3, 1.05, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+# gca().text(-0.3, 1.05, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
-# sys.exit()
+# # UP/DOWN
+# ax = subplot(gs_bot_right[2,:])
+# simpleaxis(ax)
 
-# UP/DOWN
-ax = subplot(gs_bot_right[2,:])
-simpleaxis(ax)
+# data3 = cPickle.load(open('../../figures/figures_articles_v4/figure1/UP_DOWN_RATES.pickle', 'rb'))
+# allmua_hd = data3['mua_hd']
+# allmua_nohd = data3['mua_nohd']
+# allswr_rates = data3['swr_rates']
+# colors = ['black', 'grey', 'red']
+# styles = ['-', '--', '-']
+# labels = ['HD', 'non-HD', 'SWRs']
+# for i, d in enumerate([allmua_hd, allmua_nohd, allswr_rates]):
+# 	m = d.mean(1)
+# 	s = d.sem(1)
+# 	x = d.index.values
+# 	plot(x, m, styles[i], label = labels[i], color= colors[i], linewidth = 0.8)
+# 	fill_between(x, m-s, m+s, alpha = 0.3, color = colors[i], linewidth=0)
 
-data3 = cPickle.load(open('../../figures/figures_articles_v4/figure1/UP_DOWN_RATES.pickle', 'rb'))
-allmua_hd = data3['mua_hd']
-allmua_nohd = data3['mua_nohd']
-allswr_rates = data3['swr_rates']
-colors = ['black', 'grey', 'red']
-styles = ['-', '--', '-']
-labels = ['HD', 'non-HD', 'SWRs']
-for i, d in enumerate([allmua_hd, allmua_nohd, allswr_rates]):
-	m = d.mean(1)
-	s = d.sem(1)
-	x = d.index.values
-	plot(x, m, styles[i], label = labels[i], color= colors[i], linewidth = 0.8)
-	fill_between(x, m-s, m+s, alpha = 0.3, color = colors[i], linewidth=0)
+# yticks([0, 0.01], [0, 1], fontsize = 6.5)
+# xticks([-0.5, 0, 0.5, 1], ['DOWN', '', 'UP', ''], fontsize = 6.5)
+# ylabel("Density (%)")
+# legend(frameon=False,loc = 'lower left', bbox_to_anchor=(0.55,-0.06) )#,handlelength=1,ncol = 1)
 
-yticks([0, 0.01], [0, 1], fontsize = 6.5)
-xticks([-0.5, 0, 0.5, 1], ['DOWN', '', 'UP', ''], fontsize = 6.5)
-ylabel("Density (%)")
-legend(frameon=False,loc = 'lower left', bbox_to_anchor=(0.55,-0.06) )#,handlelength=1,ncol = 1)
+# # xlabel("Time from SWRs (ms)")
+# gca().text(-0.12, 1.02, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
 
-# xlabel("Time from SWRs (ms)")
-gca().text(-0.12, 1.02, "f", transform = gca().transAxes, fontsize = 10, fontweight='bold')
+# # INSET 
+# axins = inset_axes(gca(), width="25%", height=0.4, loc=2)
+# data4 = pd.read_hdf('../../figures/figures_articles_v4/figure1/UP_DOWN_CC.h5')
 
-# INSET 
-axins = inset_axes(gca(), width="25%", height=0.4, loc=2)
-data4 = pd.read_hdf('../../figures/figures_articles_v4/figure1/UP_DOWN_CC.h5')
+# data4 = data4.rolling(window = 40, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 4.0)
 
-data4 = data4.rolling(window = 40, win_type = 'gaussian', center = True, min_periods = 1).mean(std = 4.0)
+# m = data4.mean(1)
+# s = data4.sem(1)
+# x = data4.index.values
+# plot(x, m, color = 'black', linewidth = 1)
+# fill_between(x, m-s, m+s, alpha = 0.2)
+# xticks([-2000,0,2000], [-2, 0, 2])
+# gca().xaxis.set_tick_params(labelsize=6)
+# yticks([0.41, 0.49])
+# gca().yaxis.tick_right()
+# gca().yaxis.set_tick_params(labelsize=6)
+# title("UP/SWRs", fontsize = 7, pad = 2)
+# ylim(0.41,0.49)
+# xlabel("Time lag (s)", fontsize = 6, labelpad = 0)
 
-m = data4.mean(1)
-s = data4.sem(1)
-x = data4.index.values
-plot(x, m, color = 'black', linewidth = 1)
-fill_between(x, m-s, m+s, alpha = 0.2)
-xticks([-2000,0,2000], [-2, 0, 2])
-gca().xaxis.set_tick_params(labelsize=6)
-yticks([0.41, 0.49])
-gca().yaxis.tick_right()
-gca().yaxis.set_tick_params(labelsize=6)
-title("UP/SWRs", fontsize = 7, pad = 2)
-ylim(0.41,0.49)
-xlabel("Time from\nUP (s)", fontsize = 6, labelpad = 0)
 
 
 outergs.update(top= 0.98, bottom = 0.04, right = 0.97, left = 0.02)
 
-savefig("../../figures/figures_articles_v4/figart_1.pdf", dpi = 900, facecolor = 'white')
-os.system("evince ../../figures/figures_articles_v4/figart_1.pdf &")
+# savefig("../../figures/figures_articles_v4/figart_1.pdf", dpi = 900, facecolor = 'white')
+savefig(r"/home/guillaume/Dropbox (Peyrache Lab)/Talks/figtalk_ring1.pdf", dpi = 200, facecolor = 'white')
+savefig(r"/home/guillaume/Dropbox (Peyrache Lab)/Talks/figtalk_ring6.png", dpi = 200, facecolor = 'white')
+# os.system('"evince /home/guillaume/Dropbox (Peyrache Lab)/Talks/figtalk_ring1.pdf &"')

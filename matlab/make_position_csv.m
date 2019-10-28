@@ -1,4 +1,4 @@
-dset = 'Mouse17/Mouse17-130202';
+dset = 'Mouse12/Mouse12-120815';
 
 path_to_data = '/mnt/DataGuillaume/MergedData/';
 
@@ -28,7 +28,7 @@ load('Analysis/SpikeData.mat', 'S', 'shank');
 [ang,angGoodEp] = HeadDirection_Wrapper(fbasename,wstruct);
 
 %and speed
-linSpd = LoadSpeed_Wrapper(fbasename,wstruct);
+%linSpd = LoadSpeed_Wrapper(fbasename,wstruct);
 
 %Restrict exploration to times were the head-direction was correctly
 %detected (you need to detect the blue and red leds, sometimes one of  the
@@ -36,9 +36,9 @@ linSpd = LoadSpeed_Wrapper(fbasename,wstruct);
 wakeEp  = intersect(wakeEp,angGoodEp);
 
 %Restrict all data to wake (i.e. exploration)
-ang     = Restrict(ang,wakeEp);
-% X       = Restrict(X,wakeEp);
-% Y       = Restrict(Y,wakeEp);
+%ang     = Restrict(ang,wakeEp);
+X       = Restrict(X,wakeEp);
+Y       = Restrict(Y,wakeEp);
 % linSpd  = Restrict(linSpd,wakeEp);
 % 
 % %Note to regress spike Data to position, you need to get the same timestamps for the two measures. Easy:
@@ -53,10 +53,13 @@ ang     = Restrict(ang,wakeEp);
 % 
 % position = [Range(Q) Data(Xq) Data(Yq) Data(Aq) Data(Sp)];
 
-position = [Range(ang) Data(ang)];
+%position = [Range(ang) Data(ang)];
+
+position = [Range(X) Data(X) Data(Y)];
 
 
-dlmwrite([fbasename '.csv'], position, 'delimiter', ',', 'precision', 8);
+
+dlmwrite([fbasename '_XY.csv'], position, 'delimiter', ',', 'precision', 8);
 
 
     

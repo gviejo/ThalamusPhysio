@@ -87,7 +87,7 @@ def figsize(scale):
 	inches_per_pt = 1.0/72.27                       # Convert pt to inch
 	golden_mean = (np.sqrt(5.0)-1.0)/2.0            # Aesthetic ratio (you could change this)
 	fig_width = fig_width_pt*inches_per_pt*scale    # width in inches
-	fig_height = fig_width*golden_mean*0.9         # height in inches
+	fig_height = fig_width*golden_mean*1.1         # height in inches
 	fig_size = [fig_width,fig_height]
 	return fig_size
 
@@ -162,7 +162,7 @@ import matplotlib.cm as cmx
 gsC = gridspec.GridSpecFromSubplotSpec(3,3,subplot_spec=outergs[0,0], hspace = 0.2, wspace = 0.5)
 axC = {}
 
-labels = ['1\nHD', '2\nNon-bursty', '3\nBursty']
+labels = ['a\nHD', 'b\nNon-bursty', 'c\nBursty']
 titles = ['Wake', 'REM', 'NREM']
 
 viridis = get_cmap('viridis')
@@ -193,8 +193,8 @@ for i in range(3):
 			axC[(i,l)].text(-0.51, 0.5, labels[i], transform = axC[(i,l)].transAxes, ha = 'center', va = 'center', fontsize = 7, rotation = 'vertical')
 		if i == 2:
 			axC[(i,l)].set_xlabel("Time (ms)", labelpad = 0.1)
-		if i == 0 and l == 0:
-			axC[(i,l)].text(-0.5, 1.2, "a", transform = axC[(i,l)].transAxes, fontsize = 10, fontweight='bold')
+		# if i == 0 and l == 0:
+		# 	axC[(i,l)].text(-0.5, 1.2, "a", transform = axC[(i,l)].transAxes, fontsize = 10, fontweight='bold')
 
 		
 
@@ -206,10 +206,16 @@ for i in range(3):
 axD = Subplot(fig, outergs[0,1])
 fig.add_subplot(axD)
 noaxis(axD)
-sc = scatter(space[space['cluster'] == 0][1]*-1.0, space[space['cluster'] == 0][0]*-1, s = 28, c = burst['sws'][space['cluster'] == 0].values, edgecolor = 'none', alpha = 0.8, label = '_nolegend_')
+# sc = scatter(space[space['cluster'] == 0][1]*-1.0, space[space['cluster'] == 0][0]*-1, s = 28, facecolor = 'white', edgecolor = 'grey', alpha = 0.8, label = '_nolegend_')
 # hd
+# scatter(space[space['cluster'] == 1][1]*-1.0, space[space['cluster'] == 1][0]*-1, s = 28, facecolor = 'white', edgecolor = 'grey', alpha = 0.8, label = 'Cluster 1')
+# scatter(space[space['hd'] == 1][1]*-1.0, space[space['hd'] == 1][0]*-1, s = 5, marker = 'o', facecolor = 'white', edgecolor = 'black', linewidth = 0.5, label = 'HD neuron', alpha = 0.8)
+
+sc = scatter(space[space['cluster'] == 0][1]*-1.0, space[space['cluster'] == 0][0]*-1, s = 28, c = burst['sws'][space['cluster'] == 0].values, edgecolor = 'none', alpha = 0.8, label = '_nolegend_')
+# # hd
 scatter(space[space['cluster'] == 1][1]*-1.0, space[space['cluster'] == 1][0]*-1, s = 28, facecolor = 'red', edgecolor = 'none', alpha = 0.8, label = 'Cluster 1')
 scatter(space[space['hd'] == 1][1]*-1.0, space[space['hd'] == 1][0]*-1, s = 5, marker = 'o', facecolor = 'white', edgecolor = 'black', linewidth = 0.5, label = 'HD neuron', alpha = 0.8)
+
 
 # xlim(-90, 100)
 ylim(-120,80)
@@ -250,14 +256,14 @@ annotate("", xy=(50, -130), xytext=(60, -100), color = 'grey',
 
 
 # surrounding examples
-scatter(space.loc[neurontoplot,1]*-1.0, space.loc[neurontoplot,0]*-1.0, s = 25, facecolor = 'none', edgecolor = 'grey', linewidths = 2)
-txts = ['1', '2', '3']
+scatter(space.loc[neurontoplot,1]*-1.0, space.loc[neurontoplot,0]*-1.0, s = 40, facecolor = 'none', edgecolor = 'grey', linewidths = 2)
+txts = ['a', 'b', 'c']
 xyoffset = [[-10, 12], [14, 12], [8, 20]]
 for i, t in zip(range(3), txts):
 	x, y = (space.loc[neurontoplot[i],1]*-1, space.loc[neurontoplot[i],0]*-1)
 	annotate(t, xy=(x, y), 
 				xytext=(x+np.sign(x)*xyoffset[i][0],  y+np.sign(y)*xyoffset[i][1]), 
-				fontsize = 8,
+				fontsize = 10,
 				arrowprops=dict(facecolor='black',								
 								arrowstyle="->",
 								connectionstyle="arc3")
@@ -270,92 +276,27 @@ cax = inset_axes(axD, "17%", "4%",
                    bbox_transform=axD.transAxes, 
                    loc = 'lower left')
 cb = colorbar(sc, cax = cax, orientation = 'horizontal', ticks = [1, int(np.floor(burst['sws'].max()))])
-cb.set_label('Burst index', labelpad = -22, fontsize = 8)
+cb.set_label('Burst index', labelpad = -24, fontsize = 8)
 cb.ax.xaxis.set_tick_params(pad = 1)
 # cax.set_title("Cluster 2", fontsize = 9, pad = 2.5)
 
 
-axD.text(-0.0, 1.05, "b", transform = axD.transAxes, fontsize = 10, fontweight='bold')
 
 #############################################################
 # c MAPS
 #############################################################
-gs = gridspec.GridSpecFromSubplotSpec(2,8,subplot_spec = outergs[1,:], width_ratios = [0.15, 0.0, 0.25, 0.25, 0.1, 0.3, 0.15, 0.3])
+gs = gridspec.GridSpecFromSubplotSpec(1,3,subplot_spec = outergs[1,:])#, width_ratios = [0.15, 0.0, 0.25, 0.25, 0.1, 0.3, 0.15, 0.3])
 
 mappings = pd.read_hdf("/mnt/DataGuillaume/MergedData/MAPPING_NUCLEUS.h5")
 firing_rate = pd.read_hdf("/mnt/DataGuillaume/MergedData/FIRING_RATE_ALL.h5")
 neurons_ = mappings.index[np.where(mappings['hd'] == 1)[0]]
 neurons_ = neurons_[np.where((firing_rate.loc[neurons_]>2.0).all(axis=1))[0]]
 
-# for i, e in enumerate(['wake', 'rem', 'sws']):
-# 	subplot(1,3,i+1)
-# 	tmp = store_autocorr[e][neurons_]
-# 	tmp.loc[0] = 0.0
-# 	fr = firing_rate.loc[neurons_, e].sort_values()	
-# 	idx = np.arange(0, len(fr), 2)[0:-1]
-# 	for n in fr.index[idx]:
-# 		tmp = autocorr.loc[-100:100,n]
-# 		tmp /= np.mean(tmp.loc[-100:-50])
-# 		plot(tmp.loc[-50:50], color = scalarMap.to_rgba(fr.loc[n]))
 
-##################################
-cax0 = Subplot(fig, gs[0,0])
-fig.add_subplot(cax0)
-noaxis(cax0)
-# cax0.spines['bottom'].set_visible(True)
-autocorr = store_autocorr['rem'][neurons_]
-autocorr.loc[0.0] = 0.0
-fr = firing_rate.loc[neurons_, 'rem'].sort_values()
-idx = np.arange(0, len(fr), 6)[0:-1]
-cm = get_cmap('Reds')
-cNorm = matplotlib.colors.Normalize(vmin = 0.0, vmax = fr.iloc[idx].max())
-scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap = cm)
-for n in fr.index[idx]:
-	tmp = autocorr.loc[-100:100,n]
-	tmp /= np.mean(tmp.loc[-100:-50])
-	cax0.plot(tmp.loc[-50:50], color = scalarMap.to_rgba(fr.loc[n]))
-cax0.text(-0.8, 1.12, "c", transform = cax0.transAxes, fontsize = 10, fontweight='bold')
-
-##################################
-cax00 = Subplot(fig, gs[1,0])
-fig.add_subplot(cax00)
-noaxis(cax00)
-cax00.spines['bottom'].set_visible(True)
-xticks([-50, 0, 50], fontsize = 6)
-cax00.tick_params(axis='x', which='major', pad=1)
-xlabel("Time lag (ms)", labelpad=0.1, fontsize = 6)
-autocorr = store_autocorr['sws'][neurons_]
-autocorr.loc[0.0] = 0.0
-# fr = firing_rate.loc[neurons_, 'sws'].sort_values()
-# idx = np.arange(0, len(fr), 6)[0:-1]
-cm = get_cmap('Reds')
-cNorm = matplotlib.colors.Normalize(vmin = 0.0, vmax = fr.iloc[idx].max())
-scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap = cm)
-for n in fr.index[idx]:
-	tmp = autocorr.loc[-100:100,n]
-	tmp /= np.mean(tmp.loc[-100:-50])
-	cax00.plot(tmp.loc[-50:50], color = scalarMap.to_rgba(fr.loc[n]))
-
-
-cax0.text(0.75, 0.1, "REM", transform = cax0.transAxes, fontsize = 8)
-cax00.text(0.75, 0.1, "NREM", transform = cax00.transAxes, fontsize = 8)
-
-# color bar firing rate
-cax = inset_axes(axD, "10%", "50%",
-                   bbox_to_anchor=(-0.55, -0.5, 1, 1),
-                   bbox_transform=cax0.transAxes, 
-                   loc = 'lower left')
-
-cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cm, norm = cNorm, orientation = 'vertical')
-# cax0.text(0.48,1.3, 'Rate (Hz)', transform = cax0.transAxes, fontsize = 7)
-cb.ax.set_title("Rate (Hz)", fontsize = 7)
-cb.ax.xaxis.set_tick_params(pad = 1)
-cb.ax.yaxis.set_ticks_position('left')
-cb.ax.tick_params(labelsize=6) 
 
 
 ########### cluster 1 HD ##########
-cax1 = Subplot(fig, gs[:,2])
+cax1 = Subplot(fig, gs[:,1])
 fig.add_subplot(cax1)
 noaxis(cax1)
 tmp = rotated_images[1]
@@ -364,10 +305,10 @@ cax1.imshow(tmp, extent = bound, alpha = 1, aspect = 'equal', cmap = 'Reds')
 cax1.imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bessel', aspect = 'equal')
 noaxis(cax1)
 cax1.patch.set_facecolor('none')
-title('Cluster 1')
+# title('Cluster 1')
 #colorbar	
 cax = inset_axes(cax1, "30%", "5%",
-                   bbox_to_anchor=(0.25, -0.4, 1, 1),
+                   bbox_to_anchor=(0.25, -0.3, 1, 1),
                    bbox_transform=cax1.transAxes, 
                    loc = 'lower left')
 cb = matplotlib.colorbar.ColorbarBase(cax, cmap='Reds', orientation = 'horizontal', ticks = [0, 1])
@@ -376,10 +317,10 @@ cb.set_label('Density', labelpad = -24)
 cb.ax.xaxis.set_tick_params(pad = 1)
 # cax.set_title("Cluster 2", fontsize = 4, pad = 2.5)
 # suF1.text(-0.06, 1.15, "E", transform = suF1.transAxes, fontsize = 9)
-cax1.text(-0.05, 1.20, "d", transform = cax1.transAxes, fontsize = 10, fontweight='bold')
+# cax1.text(-0.05, 1.20, "d", transform = cax1.transAxes, fontsize = 10, fontweight='bold')
 
 ########### cluster 2 burstiness ######
-cax2 = Subplot(fig, gs[:,3])
+cax2 = Subplot(fig, gs[:,2])
 fig.add_subplot(cax2)
 noaxis(cax2)
 tmp = rotated_images[-1]
@@ -387,11 +328,11 @@ cax2.imshow(tmp, extent = bound, alpha = 1, aspect = 'equal', cmap = 'viridis')
 cax2.imshow(carte_adrien2, extent = bound_adrien, interpolation = 'bessel', aspect = 'equal')
 noaxis(cax2)
 cax2.patch.set_facecolor('none')
-title('Cluster 2')
+# title('Cluster 2')
 # title("Cluster 2")
 #colorbar	
 cax = inset_axes(cax2, "30%", "5%",
-                   bbox_to_anchor=(0.25, -0.4, 1, 1),
+                   bbox_to_anchor=(0.25, -0.3, 1, 1),
                    bbox_transform=cax2.transAxes, 
                    loc = 'lower left')
 
@@ -402,62 +343,9 @@ cb.ax.set_xticklabels([0, int(np.nanmax(tmp))])
 cb.set_label('Mean\nburstiness', labelpad = -32)
 cb.ax.xaxis.set_tick_params(pad = 1)
 
-###########################################################################
-# E SCORES XGB HD/NOHD
-###########################################################################
-axD = Subplot(fig, gs[:,5])
-fig.add_subplot(axD)
-simpleaxis(axD)
-data3 = cPickle.load(open('../../figures/figures_articles_v4/figure5/AUTOCORR_CORRELATION_SHANKS.pickle', 'rb'))
 
-bins = np.linspace(-1,1,40)
+subplots_adjust(bottom = 0.1, top = 0.95, right = 0.98, left = 0.07, hspace = 0.1)
 
-hd_corr_shanks = data3['shank']['hd']
-nohd_corr_shanks = data3['shank']['nohd']
-hist(nohd_corr_shanks, bins=bins, weights=np.ones_like(nohd_corr_shanks)/float(len(nohd_corr_shanks)), alpha = 0.5, color = 'black', histtype='stepfilled', label = 'non-HD')
-hist(hd_corr_shanks, bins=bins, weights=np.ones_like(hd_corr_shanks)/float(len(hd_corr_shanks)), alpha = 0.5, color = 'red', histtype='stepfilled', label = 'HD')
-xlabel("Pairwise correlation / shanks")
-ylabel("Proportion (%)")
-yticks([0, 0.05, 0.1], [0, 5, 10])
-legend(loc = 'lower left', fontsize = 7, framealpha=0.0, bbox_to_anchor=(0.025, 0.6)) #, title = 'HD recording sites', )
-# title("Pairs/Shanks")
-gca().text(-0.2, 1.1, "e", transform = gca().transAxes, fontsize = 10, fontweight='bold')
-
-
-###########################################################################
-# F SCORES XGB HD/NOHD
-###########################################################################
-store = pd.HDFStore("../../figures/figures_articles_v2/figure1/score_XGB_HDNOHD.h5", 'r')
-score = store['score']
-shuff = store['shuff']
-store.close()
-a = (score.mean(1)-shuff.mean(1))/(1.0 - shuff.mean(1))
-
-
-axE = Subplot(fig, gs[:,-1])
-fig.add_subplot(axE)
-simpleaxis(axE)
-# semilogx(score.loc[0:3000], '+-', markersize = 2, color = 'firebrick', linewidth = 1.5)
-semilogx(a.loc[0:1000], 'o-', markersize = 3, color = 'firebrick', linewidth = 1.5)
-axhline(0.5, linewidth = 1.0, color = 'black', alpha = 0.8, linestyle = '--')
-# ylim(-0.1,1)
-# title("HD classification")
-xlabel("Auto-correlation\nduration (ms)", labelpad = 0.1)
-ylabel("Classification \n score", multialignment='center')
-axE.text(0.4, 0.3, 'HD/non-HD', transform = axE.transAxes, fontsize = 9)
-axE.text(-0.4, 1.05, 'f', transform = axE.transAxes, fontsize = 10, fontweight='bold')
-axE.annotate('6 ms', xy=(6, a.loc[6]), 
-				xytext=(2, a.loc[6]+0.3), 
-				fontsize = 8,
-				arrowprops=dict(facecolor='black',								
-								arrowstyle="->",
-								connectionstyle="arc3")
-				)
-# axE.text(-0.0, 1.05, "d", transform = axE.transAxes, fontsize = 10, fontweight='bold')
-
-
-
-subplots_adjust(bottom = 0.12, top = 0.95, right = 0.98, left = 0.07, hspace = 0.1)
-
-savefig("../../figures/figures_articles_v4/figart_5.pdf", dpi = 900, facecolor = 'white')
-os.system("evince ../../figures/figures_articles_v4/figart_5.pdf &")
+# savefig("../../figures/figures_articles_v4/figart_5.pdf", dpi = 900, facecolor = 'white')
+savefig(r"/home/guillaume/Dropbox (Peyrache Lab)/Talks/figtalk_tsne_5.pdf", dpi = 900, facecolor = 'white')
+# os.system("evince ../../figures/figures_articles_v4/figart_5.pdf &")

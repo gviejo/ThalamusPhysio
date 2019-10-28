@@ -100,7 +100,7 @@ files = np.sort(os.listdir(path))
 stabnohd = {}
 siminohd = {}
 
-for f in files[0:-1]:
+for f in files:
 	data = cPickle.load(open(path+f, 'rb'))
 	times = data['times']
 	stability = []
@@ -135,8 +135,8 @@ for f in files[0:-1]:
 stabnohd = pd.DataFrame.from_dict(stabnohd)
 siminohd = pd.DataFrame.from_dict(siminohd)
 
-stabnohd = stabnohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=0.5)
-siminohd = siminohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=0.5)
+stabnohd = stabnohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=2)
+siminohd = siminohd.rolling(window=10,win_type='gaussian',center=True,min_periods=1).mean(std=2)
 
 figure()
 subplot(221)
@@ -168,6 +168,18 @@ title("similarity")
 show()
 
 
+
+
+tosave = {	'stab':{'hd':stabhd,'nohd':stabnohd},
+			'simi':{'hd':simihd, 'nohd':siminohd}			
+			}
+
+cPickle.dump(tosave, open('../figures/figures_articles_v4/figure2/STABILITY_ISOMAP.pickle', 'wb'))
+
+
+
+
+sys.exit()
 ######################################################################################################
 # HD 100 ms 0.75
 ######################################################################################################
